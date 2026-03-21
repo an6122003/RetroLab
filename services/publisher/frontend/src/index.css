@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global ─────────────────────────────────────────────────── */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #faf8ff;
+  color: #131b2e;
+}
+
+h1, h2, h3, .font-headline {
+  font-family: 'Manrope', sans-serif;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c3c6d7 #f2f3ff;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f2f3ff;
+}
+::-webkit-scrollbar-thumb {
+  background: #c3c6d7;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #737686;
+}
+
+/* ── Glass header ──────────────────────────────────────────── */
+.glass-header {
+  background: rgba(250, 248, 255, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+/* ── MDEditor overrides ────────────────────────────────────── */
+.w-md-editor {
+  --color-canvas-default: #ffffff !important;
+  --color-fg-default: #131b2e !important;
+  --color-border-default: #c3c6d7 !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(195, 198, 215, 0.15) !important;
+  font-family: Inter, system-ui, sans-serif !important;
+  border-radius: 0.75rem !important;
+}
+
+.w-md-editor-toolbar {
+  background-color: #f2f3ff !important;
+  border-bottom-color: rgba(195, 198, 215, 0.15) !important;
+  border-radius: 0.75rem 0.75rem 0 0 !important;
+}
+
+.w-md-editor-toolbar li > button {
+  color: #434655 !important;
+}
+
+.w-md-editor-toolbar li > button:hover {
+  color: #131b2e !important;
+  background-color: #eaedff !important;
+}
+
+.w-md-editor-content {
+  background-color: #ffffff !important;
+}
+
+.w-md-editor textarea,
+.w-md-editor .w-md-editor-text-input,
+.w-md-editor .w-md-editor-text-pre,
+.w-md-editor .w-md-editor-text-pre > code,
+.w-md-editor .w-md-editor-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
+  color: #131b2e !important;
+  tab-size: 4 !important;
+}
+
+.w-md-editor-preview {
+  background-color: #ffffff !important;
+}
+
+.wmde-markdown {
+  background-color: transparent !important;
+  color: #131b2e !important;
+  font-family: Inter, system-ui, sans-serif !important;
+}
+
+/* ── Toast overrides ────────────────────────────────────────── */
+.toast-custom {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 74, 198, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 74, 198, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ── No-scrollbar utility ──────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

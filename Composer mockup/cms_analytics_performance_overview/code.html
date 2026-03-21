@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Analytics - Editorial Architect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-container": "#bc4800",
+                        "surface-bright": "#faf8ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#faf8ff",
+                        "tertiary": "#943700",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#131b2e",
+                        "surface-container-low": "#f2f3ff",
+                        "secondary": "#495c95",
+                        "secondary-fixed": "#dbe1ff",
+                        "primary-container": "#2563eb",
+                        "primary": "#004ac6",
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#31447b",
+                        "outline-variant": "#c3c6d7",
+                        "on-secondary-fixed": "#00174b",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e2e7ff",
+                        "on-tertiary-fixed": "#360f00",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-background": "#131b2e",
+                        "on-tertiary-container": "#ffede6",
+                        "on-primary-fixed": "#00174b",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#d2d9f4",
+                        "surface-container-highest": "#dae2fd",
+                        "primary-fixed": "#dbe1ff",
+                        "surface": "#faf8ff",
+                        "secondary-container": "#acbfff",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "surface-variant": "#dae2fd",
+                        "surface-container": "#eaedff",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "inverse-on-surface": "#eef0ff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-secondary-container": "#394c84",
+                        "inverse-surface": "#283044"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #faf8ff;
+        }
+        h1, h2, h3, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full z-40 h-screen w-20 flex flex-col items-center py-6 bg-slate-50 border-r border-slate-200/50">
+<div class="mb-10 text-blue-700 font-bold">
+<span class="material-symbols-outlined text-3xl">architecture</span>
+</div>
+<nav class="flex flex-col gap-6 flex-grow">
+<!-- Dashboard Tab -->
+<button class="relative w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors group">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="absolute left-16 bg-on-surface text-surface text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Dashboard</span>
+</button>
+<!-- Content Tab -->
+<button class="relative w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors group">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+</button>
+<!-- Analytics Tab (Active) -->
+<button class="relative w-12 h-12 flex items-center justify-center rounded-lg relative after:absolute after:left-[-16px] after:w-1 after:h-8 after:bg-blue-600 after:rounded-r-full text-blue-600 group">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</button>
+<!-- Media Tab -->
+<button class="relative w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors group">
+<span class="material-symbols-outlined" data-icon="perm_media">perm_media</span>
+</button>
+<!-- Settings Tab -->
+<button class="relative w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors group">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</nav>
+<div class="mt-auto flex flex-col gap-6">
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</button>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-5rem)] h-16 flex items-center bg-white/70 backdrop-blur-xl z-30 px-8 shadow-sm">
+<div class="text-2xl font-black tracking-tight text-slate-900 ml-12">Analytics</div>
+<div class="ml-12 flex gap-8">
+<a class="text-blue-600 border-b-2 border-blue-600 font-semibold py-5" href="#">Overview</a>
+<a class="text-slate-500 font-medium py-5 hover:text-blue-600 transition-all" href="#">Real-time</a>
+<a class="text-slate-500 font-medium py-5 hover:text-blue-600 transition-all" href="#">Audience</a>
+</div>
+<div class="ml-auto flex items-center gap-6">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-on-surface-variant font-semibold rounded-lg hover:-translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined text-lg">calendar_today</span>
+<span>Date Range</span>
+</button>
+<button class="px-6 py-2 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-lg hover:-translate-y-0.5 transition-transform duration-200 shadow-md">
+                Export Report
+            </button>
+<div class="flex items-center gap-4 ml-4">
+<button class="text-slate-500 hover:text-blue-600"><span class="material-symbols-outlined">notifications</span></button>
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="User profile avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeRdWm4I8eHpw8zCMqRB285rQ0yBYQAMh0vymv34L0wlZiAhWUDePEmY3M-yNOQwTenDn1fzHXbaYYsYesfaAPgXHVG5EqhE50hkTewnvTp46nVDu1VoADpVrZOBn9gQUgBHGhDwgBfOup0ogVY5QHJL2fgt84ZugXbFSKOZhNQnyVvDlndOezAQVHbRAfy1IHGSW6jVe9GTjrzSisusY3jTM1WbOj3ecH0da_sJ_-KDhP05PxdU7yl3o_4knUPhJYooTgkWiPJYs"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-20 pt-16 min-h-screen">
+<div class="flex">
+<!-- Middle Panel (Secondary Navigation/Filters) -->
+<aside class="w-72 h-[calc(100vh-4rem)] sticky top-16 bg-surface-container-low p-8 hidden lg:block overflow-y-auto">
+<div class="mb-10">
+<h3 class="text-xs font-bold uppercase tracking-widest text-outline mb-6">Reports</h3>
+<ul class="space-y-2">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container-lowest text-primary font-semibold rounded-xl shadow-sm" href="#">
+<span class="material-symbols-outlined text-xl">insights</span>
+<span>Performance</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined text-xl">group</span>
+<span>Demographics</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined text-xl">share</span>
+<span>Traffic Sources</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined text-xl">bolt</span>
+<span>Real-time Hub</span>
+</a>
+</li>
+</ul>
+</div>
+<div>
+<h3 class="text-xs font-bold uppercase tracking-widest text-outline mb-6">Saved Views</h3>
+<ul class="space-y-4">
+<li class="flex items-center gap-3 px-4 py-1 group cursor-pointer">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+<span class="text-sm font-medium text-on-surface-variant group-hover:text-on-surface">Weekly Digest</span>
+</li>
+<li class="flex items-center gap-3 px-4 py-1 group cursor-pointer">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-sm font-medium text-on-surface-variant group-hover:text-on-surface">Content ROI</span>
+</li>
+</ul>
+</div>
+<div class="mt-12 p-6 bg-primary-container/10 rounded-2xl border border-primary/10">
+<p class="text-sm text-primary font-bold mb-2">Architect Pro</p>
+<p class="text-xs text-on-surface-variant leading-relaxed mb-4">Unlock deep AI sentiment analysis for your readers.</p>
+<button class="w-full py-2 bg-primary text-white text-xs font-bold rounded-lg">Upgrade Now</button>
+</div>
+</aside>
+<!-- Dashboard Content -->
+<div class="flex-grow p-12 bg-surface">
+<!-- Page Title Section -->
+<div class="mb-12 flex justify-between items-end">
+<div>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Editorial Intelligence</h1>
+<p class="text-on-surface-variant font-medium">Monitoring activity for June 1st - June 14th, 2024</p>
+</div>
+</div>
+<!-- KPI Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
+<div class="bg-surface-container-lowest p-8 rounded-2xl flex flex-col justify-between h-40">
+<span class="text-xs font-bold uppercase tracking-widest text-outline">Total Views</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-black text-on-surface">1.2M</span>
+<span class="text-xs font-bold text-primary">+12.4%</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-2xl flex flex-col justify-between h-40">
+<span class="text-xs font-bold uppercase tracking-widest text-outline">Avg. Read Time</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-black text-on-surface">4m 12s</span>
+<span class="text-xs font-bold text-tertiary">-2.1%</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-2xl flex flex-col justify-between h-40">
+<span class="text-xs font-bold uppercase tracking-widest text-outline">Subscribers</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-black text-on-surface">42.8k</span>
+<span class="text-xs font-bold text-primary">+5.8%</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-2xl flex flex-col justify-between h-40">
+<span class="text-xs font-bold uppercase tracking-widest text-outline">Avg. CTR</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-black text-on-surface">8.42%</span>
+<span class="text-xs font-bold text-primary">+0.9%</span>
+</div>
+</div>
+</div>
+<!-- Main Chart Section -->
+<div class="bg-surface-container-lowest p-10 rounded-3xl mb-12 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-12">
+<div>
+<h2 class="text-2xl font-bold text-on-surface">Engagement Over Time</h2>
+<p class="text-on-surface-variant">Daily interaction trends across all channels</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="text-sm font-semibold text-on-surface-variant">Views</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+<span class="text-sm font-semibold text-on-surface-variant">Reads</span>
+</div>
+</div>
+</div>
+<!-- SVG Chart Mockup -->
+<div class="relative h-64 w-full">
+<svg class="w-full h-full overflow-visible" viewbox="0 0 1000 200">
+<!-- Grid Lines -->
+<line class="text-surface-container-high" stroke="currentColor" stroke-width="1" x1="0" x2="1000" y1="0" y2="0"></line>
+<line class="text-surface-container-high" stroke="currentColor" stroke-width="1" x1="0" x2="1000" y1="100" y2="100"></line>
+<line class="text-surface-container-high" stroke="currentColor" stroke-width="1" x1="0" x2="1000" y1="200" y2="200"></line>
+<!-- Area/Line Chart -->
+<path class="text-primary" d="M0,180 Q100,160 200,120 T400,100 T600,60 T800,110 T1000,40" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="4"></path>
+<path d="M0,200 L0,180 Q100,160 200,120 T400,100 T600,60 T800,110 T1000,40 L1000,200 Z" fill="url(#paint0_linear)" fill-opacity="0.1"></path>
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="paint0_linear" x1="500" x2="500" y1="0" y2="200">
+<stop stop-color="#004ac6"></stop>
+<stop offset="1" stop-color="#004ac6" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<!-- Chart Tooltip Interaction Point -->
+<div class="absolute left-[60%] top-[30%] -translate-x-1/2 -translate-y-1/2">
+<div class="w-4 h-4 rounded-full bg-primary border-4 border-white shadow-lg"></div>
+<div class="absolute top-[-50px] left-1/2 -translate-x-1/2 bg-on-surface text-surface text-xs px-3 py-1.5 rounded-lg whitespace-nowrap shadow-xl">
+<b>84k Views</b> <br/> June 09
+                            </div>
+</div>
+</div>
+</div>
+<!-- Two-Column Bottom Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+<!-- Top Performing Content -->
+<div class="xl:col-span-2 bg-surface-container-lowest p-10 rounded-3xl">
+<div class="flex justify-between items-center mb-8">
+<h2 class="text-2xl font-bold text-on-surface">Top Performing Content</h2>
+<button class="text-primary font-bold text-sm flex items-center gap-1">
+                                View Full List <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="space-y-4">
+<!-- Article Row -->
+<div class="group flex items-center justify-between p-4 rounded-2xl hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-6">
+<div class="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0">
+<img alt="Article Cover" class="w-full h-full object-cover" data-alt="Abstract art for article thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDphDoJ8LYd1Qm4WtI9nrv5yRKc6doSJGvtQe3wH7Op-lIhfYSHCIND1mQR7GScgGxyctyAYnvhtQEygiuDV79hYj2Gn6n_wk4PoySO-Bm10fqDDZBSfGDu6ottzi-OCW3v1v24ld8CktlL1JNmd2ZWpXUkc6e8VKmnhQkuiQTSa1iDpy3wZq2IJ12rvuVcFx4PEizUKw8BGBeI3Ws6aUV2p_SBPSsS4PpS2oyCsdU-JF9hXnmswO8StJrKMLLoom0WTF57hgi507A"/>
+</div>
+<div>
+<h4 class="font-bold text-on-surface mb-1 group-hover:text-primary transition-colors">The Future of Minimalist Interface Design</h4>
+<div class="flex gap-4">
+<span class="text-xs font-semibold text-outline px-2 py-0.5 bg-surface-container-high rounded-full uppercase tracking-tighter">Design</span>
+<span class="text-xs font-medium text-on-surface-variant">Published 2 days ago</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-lg font-black text-on-surface">24.5k</div>
+<div class="text-xs font-bold text-primary">Views</div>
+</div>
+</div>
+<!-- Article Row -->
+<div class="group flex items-center justify-between p-4 rounded-2xl hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-6">
+<div class="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0">
+<img alt="Article Cover" class="w-full h-full object-cover" data-alt="Code snippets on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMRflYhG8NpbQHDK3wZrbojldoSpqitumAXE6R7sB6itSBLQzUMelqMtuh6_-T32XQeYZ4M_RuXrNqvmY4CSGvYqZyaAp-WM5dMIP69ww91sITjH5kt3xDOQuRa5Tbrd6DVAtPoS-oFIokhvPT9D2eC3jN9qDZUC1dIasv96MYCg3N3y9ryOmBD9XP0qIs9G3b54XSyHj0LA_pK91J3yfONFtL7dOOO72cpihxPntRUSYkIUebKQP5M7MraStMXRa74sz83u7TD-I"/>
+</div>
+<div>
+<h4 class="font-bold text-on-surface mb-1 group-hover:text-primary transition-colors">Why TypeScript is Winning the Web</h4>
+<div class="flex gap-4">
+<span class="text-xs font-semibold text-outline px-2 py-0.5 bg-surface-container-high rounded-full uppercase tracking-tighter">Technology</span>
+<span class="text-xs font-medium text-on-surface-variant">Published 5 days ago</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-lg font-black text-on-surface">19.2k</div>
+<div class="text-xs font-bold text-primary">Views</div>
+</div>
+</div>
+<!-- Article Row -->
+<div class="group flex items-center justify-between p-4 rounded-2xl hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-6">
+<div class="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0">
+<img alt="Article Cover" class="w-full h-full object-cover" data-alt="Books stacked in a modern library" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKgWVFLBDOc8GG_ecbpJddVljFKali8h9G5L_uwKTebwnObJ2JkZFquyU_Gsgn9wzBL2reVlr--v7hTh3wOk-mHN2bfWUkUcmJbv2i0_JfjcxquiZXbgXinW2DByu3rkJnDHZqy1hVG6kmt8m4ZxW0Ps4Cf4Pqm1Iv_dRqn-LjD-dgaagqfFqNTG-lR9Zl2Fwb8cddK4uQmzQuy2zb2PCO7CQWYV4FbORDwn7jVUgf88UeENXAlqHS4fxWrKfwevkE4bWJ8pESFYg"/>
+</div>
+<div>
+<h4 class="font-bold text-on-surface mb-1 group-hover:text-primary transition-colors">Curating Digital Gardens for Longevity</h4>
+<div class="flex gap-4">
+<span class="text-xs font-semibold text-outline px-2 py-0.5 bg-surface-container-high rounded-full uppercase tracking-tighter">Editorial</span>
+<span class="text-xs font-medium text-on-surface-variant">Published 1 week ago</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-lg font-black text-on-surface">14.8k</div>
+<div class="text-xs font-bold text-primary">Views</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Traffic Sources -->
+<div class="bg-surface-container-lowest p-10 rounded-3xl">
+<h2 class="text-2xl font-bold text-on-surface mb-8">Traffic Sources</h2>
+<div class="relative w-48 h-48 mx-auto mb-10">
+<!-- Donut Chart Mockup -->
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#e2e7ff" stroke-width="12"></circle>
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#004ac6" stroke-dasharray="160 251.2" stroke-width="12"></circle>
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#495c95" stroke-dasharray="60 251.2" stroke-dashoffset="-160" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="text-2xl font-black text-on-surface leading-none">64%</span>
+<span class="text-[10px] font-bold text-outline uppercase tracking-wider">Organic</span>
+</div>
+</div>
+<ul class="space-y-6">
+<li class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="text-sm font-semibold text-on-surface-variant">Organic Search</span>
+</div>
+<span class="font-bold text-on-surface">64%</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+<span class="text-sm font-semibold text-on-surface-variant">Direct Access</span>
+</div>
+<span class="font-bold text-on-surface">22%</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<span class="text-sm font-semibold text-on-surface-variant">Social Referrals</span>
+</div>
+<span class="font-bold text-on-surface">14%</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB for Top-Level Action -->
+<button class="fixed bottom-10 right-10 w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-container text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform group">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+<div class="absolute right-20 bg-on-surface text-surface px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            New Article
+        </div>
+</button>
+</body></html>

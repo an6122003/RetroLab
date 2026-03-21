@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Editorial Architect - CMS Dashboard</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-low": "#f2f3ff",
+              "on-tertiary": "#ffffff",
+              "secondary-fixed": "#dbe1ff",
+              "on-secondary-container": "#394c84",
+              "on-error-container": "#93000a",
+              "on-surface-variant": "#434655",
+              "tertiary-fixed-dim": "#ffb596",
+              "surface-container": "#eaedff",
+              "on-surface": "#131b2e",
+              "secondary": "#495c95",
+              "error": "#ba1a1a",
+              "surface-variant": "#dae2fd",
+              "on-error": "#ffffff",
+              "on-tertiary-fixed": "#360f00",
+              "on-secondary-fixed": "#00174b",
+              "outline": "#737686",
+              "tertiary-fixed": "#ffdbcd",
+              "primary-fixed-dim": "#b4c5ff",
+              "inverse-primary": "#b4c5ff",
+              "secondary-fixed-dim": "#b4c5ff",
+              "on-tertiary-fixed-variant": "#7d2d00",
+              "tertiary-container": "#bc4800",
+              "secondary-container": "#acbfff",
+              "on-primary-fixed-variant": "#003ea8",
+              "on-secondary-fixed-variant": "#31447b",
+              "on-secondary": "#ffffff",
+              "on-primary": "#ffffff",
+              "primary": "#004ac6",
+              "tertiary": "#943700",
+              "background": "#faf8ff",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#dbe1ff",
+              "surface-tint": "#0053db",
+              "on-primary-fixed": "#00174b",
+              "surface-dim": "#d2d9f4",
+              "surface": "#faf8ff",
+              "on-tertiary-container": "#ffede6",
+              "primary-container": "#2563eb",
+              "inverse-on-surface": "#eef0ff",
+              "on-primary-container": "#eeefff",
+              "surface-bright": "#faf8ff",
+              "error-container": "#ffdad6",
+              "on-background": "#131b2e",
+              "inverse-surface": "#283044",
+              "outline-variant": "#c3c6d7",
+              "surface-container-highest": "#dae2fd",
+              "surface-container-high": "#e2e7ff"
+            },
+            fontFamily: {
+              "headline": ["Manrope", "sans-serif"],
+              "body": ["Inter", "sans-serif"],
+              "label": ["Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #faf8ff;
+            color: #131b2e;
+        }
+        h1, h2, h3, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+        .tonal-shift-no-borders {
+            border: none !important;
+        }
+        .glass-header {
+            background: rgba(250, 248, 255, 0.7);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-x-hidden">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 bottom-0 z-50 h-screen w-20 flex flex-col items-center py-6 bg-slate-50 dark:bg-slate-900 tonal-shift-no-borders">
+<!-- Brand/Avatar Area -->
+<div class="mb-10">
+<div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center overflow-hidden shadow-sm">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="Close up professional portrait of a woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlQb8I2330U9ZyydbfG0_qAjYUcA0fF5pT8cjyT-GrttbjxpDZOR7RpXb8JH-HU0s9MifMaNEjSObFUMyoo3QXoBUh6Tj7TIcgI80J3ioeUK7Q16dNqqqdQ1s-hpYFcBNB9JMB72mmd3SD2XNFFMhvTmr5MEAl4tq88pxw7o0BZ8jQPGU97DGPG3c60JnHi8nO7VISGo8eHbqHJfqBLZa8iqCuiR6qNi5pc_sOV_7zfLw8z4GNxurzMhSGwCHvF09eh20wBVqUx_k"/>
+</div>
+</div>
+<!-- Navigation Icons -->
+<nav class="flex-1 flex flex-col gap-8">
+<!-- Dashboard / Doc (Active) -->
+<button class="group relative flex items-center justify-center w-12 h-12 text-blue-600 dark:text-blue-400 after:absolute after:left-[-16px] after:h-8 after:w-1 after:bg-blue-600 after:rounded-r-full transition-transform scale-95 active:scale-90">
+<span class="material-symbols-outlined text-[28px]" data-icon="article" style="font-variation-settings: 'FILL' 1;">article</span>
+</button>
+<!-- Sparkle (Analytics/AI) -->
+<button class="group flex items-center justify-center w-12 h-12 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-300 transition-all">
+<span class="material-symbols-outlined text-[28px]" data-icon="auto_awesome">auto_awesome</span>
+</button>
+<!-- Lightning Bolt (Activity) -->
+<button class="group flex items-center justify-center w-12 h-12 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-300 transition-all">
+<span class="material-symbols-outlined text-[28px]" data-icon="bolt">bolt</span>
+</button>
+<!-- Settings -->
+<button class="group flex items-center justify-center w-12 h-12 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-300 transition-all">
+<span class="material-symbols-outlined text-[28px]" data-icon="settings">settings</span>
+</button>
+</nav>
+<!-- Footer Actions -->
+<div class="mt-auto flex flex-col gap-6">
+<button class="group flex items-center justify-center w-12 h-12 text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="help">help</span>
+</button>
+<button class="group flex items-center justify-center w-12 h-12 text-slate-400 dark:text-slate-500 hover:text-error transition-all">
+<span class="material-symbols-outlined text-[24px]" data-icon="logout">logout</span>
+</button>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="flex items-center justify-between ml-20 w-[calc(100%-5rem)] h-20 px-12 bg-white dark:bg-slate-950 sticky top-0 z-40">
+<div class="flex items-center gap-12">
+<h1 class="text-2xl font-extrabold text-slate-900 dark:text-slate-50 font-headline tracking-tight">Posts</h1>
+<nav class="flex gap-8">
+<a class="text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 pb-2 transition-all" href="#">My Articles</a>
+<a class="text-slate-500 dark:text-slate-400 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-all" href="#">Pipeline</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-slate-400" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Search articles..." type="text"/>
+</div>
+<button class="p-2 text-slate-500 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+<span>New Compose</span>
+</button>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="ml-20 min-h-screen p-12">
+<!-- Page Title & Asymmetric Header -->
+<div class="mb-12 flex justify-between items-end">
+<div class="pl-4">
+<h2 class="text-[2.75rem] font-extrabold font-headline leading-none text-on-surface">Editorial Queue</h2>
+<p class="text-on-surface-variant mt-3 text-lg font-medium">Curating the next generation of digital narratives.</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm font-semibold text-on-surface-variant uppercase tracking-widest">Last Sync: 2m ago</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+<!-- Secondary Navigation Panel (Filters) -->
+<section class="mb-10">
+<div class="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
+<button class="px-6 py-2 rounded-full bg-primary text-on-primary text-sm font-semibold transition-all shadow-md">
+                    DRAFT
+                </button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-semibold hover:bg-surface-container-highest transition-all">
+                    APPROVED
+                </button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-semibold hover:bg-surface-container-highest transition-all">
+                    PUBLISHED
+                </button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-semibold hover:bg-surface-container-highest transition-all">
+                    REJECTED
+                </button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-semibold hover:bg-surface-container-highest transition-all">
+                    ALL
+                </button>
+</div>
+</section>
+<!-- Main Content Area: Article Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Featured Draft (Asymmetric Layout) -->
+<div class="lg:col-span-8 group cursor-pointer">
+<div class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold tracking-widest uppercase rounded">Priority Draft</span>
+<span class="text-on-surface-variant text-sm font-medium">Oct 24, 2023</span>
+</div>
+<h3 class="text-3xl font-bold font-headline mb-4 group-hover:text-primary transition-colors">The Architecture of Minimalist Interfaces: Why Less is Still More</h3>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-8 max-w-2xl">
+                        Exploring the psychological impact of whitespace and the evolution of the 'no-border' philosophy in modern SaaS design frameworks...
+                    </p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-3">
+<img alt="Author" class="w-10 h-10 rounded-full border-2 border-white object-cover" data-alt="Portrait of a male designer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEoKh66F9ekYO_4wiCe2HwvzrpW-npZsPJjw57rvzfIRFj6SOwh67adtXqgCijyyvb0gugyxOnDKljDQsNfmA-m8Qy4Hd9gfARmeArDcNNeZz5bP2Bomg7h5SkZFRWARHhQCIT8KxThRXDP-F-ZnH9_KtiUWHB2ourMy3sx3xOvBQmqE4zipK3-3RljPU_9iDXV3fAd8rx5ml2EInPPp_AOMdVDr8XZ8_Hiblxy6z-EOx_NX8WLfBu0gVRwMTQYVWhB0mzJ1zSNB0"/>
+<div class="w-10 h-10 rounded-full border-2 border-white bg-surface-container-high flex items-center justify-center text-[10px] font-bold">+2</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<span class="flex items-center gap-1.5 text-sm font-medium"><span class="material-symbols-outlined text-lg" data-icon="schedule">schedule</span> 12 min read</span>
+<span class="flex items-center gap-1.5 text-sm font-medium"><span class="material-symbols-outlined text-lg" data-icon="chat_bubble_outline">chat_bubble_outline</span> 4 comments</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Stats Sidebar (Visual Depth) -->
+<div class="lg:col-span-4 space-y-6">
+<div class="bg-primary p-6 rounded-xl text-on-primary">
+<p class="text-sm font-medium opacity-80 mb-1">Total Word Count</p>
+<h4 class="text-3xl font-extrabold font-headline">42,890</h4>
+<div class="mt-4 h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-white w-3/4"></div>
+</div>
+<p class="mt-3 text-xs font-medium">75% of monthly target reached</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+<h5 class="font-bold font-headline mb-4">Trending Tags</h5>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-xs font-semibold border border-outline-variant/15">#DesignSystem</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-xs font-semibold border border-outline-variant/15">#UXTrends</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-xs font-semibold border border-outline-variant/15">#Typography</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-xs font-semibold border border-outline-variant/15">#Minimalism</span>
+</div>
+</div>
+</div>
+<!-- Standard Cards List -->
+<div class="lg:col-span-12 space-y-6 mt-4">
+<!-- Article Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col md:flex-row gap-8 items-center hover:bg-white transition-colors cursor-pointer group">
+<div class="w-full md:w-48 h-32 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+<img alt="Technology" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Close up of a vintage computer and books" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaVGJ0MmSw4D2ic387s0PITr-__LYnjSTl-cnuN_xY8hN7pBao24ZIFxQutKeH3QHhPW7GgSLy4u-lJFWFZIqucwtZ1eG2O4kD3k5_IVsOnHYs4wN9hd_lzy7YOBxKS4MDPQzSR3GdHDRwe3lsY1oGpyyy2ZIR0RNLzwT636UL9HO_-QAJxfFx5_5naLrSkZD05-A4OBQ6k83R_5Ft8EujD1EwxAjWphreAeHciBzkythH9kZweNE7PXrzwLwzc1rQfuKDFtQh7tQ"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="text-[10px] font-bold text-primary tracking-widest uppercase">Technology</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="text-xs text-on-surface-variant">5 hours ago</span>
+</div>
+<h3 class="text-xl font-bold font-headline mb-2">Retro-Computing: The Renaissance of Tactile Hardware</h3>
+<p class="text-on-surface-variant text-sm line-clamp-2">Why engineers are returning to mechanical keyboards and low-fidelity displays to boost creative output in a hyper-digital world.</p>
+</div>
+<div class="flex flex-col items-end gap-3 flex-shrink-0">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded">DRAFT</span>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="edit">edit</span></button>
+<button class="p-2 text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined" data-icon="delete">delete</span></button>
+</div>
+</div>
+</div>
+<!-- Article Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col md:flex-row gap-8 items-center hover:bg-white transition-colors cursor-pointer group">
+<div class="w-full md:w-48 h-32 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+<img alt="Lifestyle" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Bright minimal living room with a single lamp" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoWJujKnbKXkLZEfFDP7I0FEP5YnrMUCSt_lyAOfGIm6_FlCNb_isMLmEI3G7ZNB9HxUV2iI7pBCHnPysoZ9h5b7jDncUijypegv-dg0JCtARtZh1LIFPw_NVF7-_DXlrdGyxjZyboN_ehACEqpopooW7pwHWyTAN-MJwmj4MbX0j6pZ5CGkpZ8cgej7s7XDCiwMi1Hb21EBQdjPmZQIztn4pgoI4RomQyhJYA9Qe4bN-3ArmqvoNQv1-SBrP_y43BRM5empD6Grg"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="text-[10px] font-bold text-primary tracking-widest uppercase">Editorial</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="text-xs text-on-surface-variant">Yesterday</span>
+</div>
+<h3 class="text-xl font-bold font-headline mb-2">The Quiet Power of Ambient Design in Workspaces</h3>
+<p class="text-on-surface-variant text-sm line-clamp-2">How light, sound, and spatial arrangement define the output of the modern knowledge worker in remote environments.</p>
+</div>
+<div class="flex flex-col items-end gap-3 flex-shrink-0">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded">DRAFT</span>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="edit">edit</span></button>
+<button class="p-2 text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined" data-icon="delete">delete</span></button>
+</div>
+</div>
+</div>
+<!-- Article Card 4 (Rejected Placeholder) -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col md:flex-row gap-8 items-center hover:bg-white transition-colors cursor-pointer group opacity-75">
+<div class="w-full md:w-48 h-32 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 grayscale">
+<img alt="Data" class="w-full h-full object-cover" data-alt="Abstract blue digital data visualization" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3nN5wFse_uo_sShBIHQrvTxBN3RseS87f6XG1b9YF2cOTD1Axs9wrcNOTowxkap085DHKt_6REwYZAJe6QNOjiezVe2Bi3bGVx9_pEdQwPSnoZHIR_F1lFGglrqZWa8OInzIuAVus4_rpoPcx89t9Rq-K5-sLp1V1RYbRrXjr0jjvXF2YrSao_SfSND2J0bA6YzVwFTkNaYXoF9ZMbxt6aZA-VowP-GhNI4xpujGR1VrARW3aEK9eX9b906CDlOZvJ5HuM7MD06U"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<span class="text-[10px] font-bold text-on-surface-variant tracking-widest uppercase">Metrics</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="text-xs text-on-surface-variant">2 days ago</span>
+</div>
+<h3 class="text-xl font-bold font-headline mb-2 text-on-surface/60">Understanding the 2024 Consumer Sentiment Shift</h3>
+<p class="text-on-surface-variant text-sm line-clamp-2">A deep dive into why users are moving away from traditional social media and towards niche community platforms.</p>
+</div>
+<div class="flex flex-col items-end gap-3 flex-shrink-0">
+<span class="px-3 py-1 bg-error-container text-on-error-container text-[10px] font-bold rounded">REVISION NEEDED</span>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="history">history</span></button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB for Quick Actions (Suppressed on most screens but useful here) -->
+<div class="fixed bottom-10 right-10">
+<button class="w-16 h-16 rounded-full bg-primary text-on-primary shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[32px]" data-icon="edit_note">edit_note</span>
+</button>
+</div>
+</body></html>

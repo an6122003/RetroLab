@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pipeline | The Editorial Architect</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-tint": "#0053db",
+              "surface": "#faf8ff",
+              "on-secondary-fixed": "#00174b",
+              "on-tertiary-container": "#ffede6",
+              "surface-container-low": "#f2f3ff",
+              "surface-container-highest": "#dae2fd",
+              "surface-bright": "#faf8ff",
+              "on-surface": "#131b2e",
+              "error": "#ba1a1a",
+              "on-primary-fixed": "#00174b",
+              "surface-container-lowest": "#ffffff",
+              "surface-container": "#eaedff",
+              "on-primary": "#ffffff",
+              "primary-fixed-dim": "#b4c5ff",
+              "on-secondary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-background": "#131b2e",
+              "primary-fixed": "#dbe1ff",
+              "on-tertiary-fixed": "#360f00",
+              "on-primary-fixed-variant": "#003ea8",
+              "secondary-fixed-dim": "#b4c5ff",
+              "outline-variant": "#c3c6d7",
+              "tertiary": "#943700",
+              "tertiary-fixed-dim": "#ffb596",
+              "secondary": "#495c95",
+              "surface-variant": "#dae2fd",
+              "primary": "#004ac6",
+              "tertiary-container": "#bc4800",
+              "on-secondary-container": "#394c84",
+              "error-container": "#ffdad6",
+              "on-primary-container": "#eeefff",
+              "on-tertiary-fixed-variant": "#7d2d00",
+              "outline": "#737686",
+              "inverse-surface": "#283044",
+              "tertiary-fixed": "#ffdbcd",
+              "surface-dim": "#d2d9f4",
+              "on-surface-variant": "#434655",
+              "secondary-container": "#acbfff",
+              "primary-container": "#2563eb",
+              "inverse-primary": "#b4c5ff",
+              "secondary-fixed": "#dbe1ff",
+              "on-error-container": "#93000a",
+              "surface-container-high": "#e2e7ff",
+              "on-error": "#ffffff",
+              "inverse-on-surface": "#eef0ff",
+              "background": "#faf8ff",
+              "on-secondary-fixed-variant": "#31447b"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #faf8ff; /* surface */
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface antialiased">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full z-40 bg-slate-50 dark:bg-slate-900 h-screen w-20 flex flex-col items-center py-6 border-r-0 font-manrope antialiased">
+<div class="mb-10 text-blue-700 dark:text-blue-500 font-bold">
+<span class="material-symbols-outlined text-3xl" data-icon="dashboard">dashboard</span>
+</div>
+<nav class="flex flex-col gap-6 items-center w-full">
+<!-- Dashboard Tab (Inactive) -->
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+</button>
+<!-- Pipeline Tab (Active) -->
+<button class="w-12 h-12 flex items-center justify-center rounded-lg relative after:absolute after:left-0 after:h-8 after:w-1 after:bg-blue-600 after:rounded-r-full text-blue-600 dark:text-blue-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="Timeline">timeline</span>
+</button>
+<!-- Library Tab (Inactive) -->
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="book_4">book_4</span>
+</button>
+<!-- Analytics Tab (Inactive) -->
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</button>
+</nav>
+<div class="mt-auto">
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 left-0 w-full h-16 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl flex justify-between items-center pl-24 pr-8 z-30 shadow-sm dark:shadow-none">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 font-headline">The Editorial Architect</span>
+<nav class="hidden md:flex items-center gap-6 font-manrope text-sm font-medium">
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:opacity-80 transition-opacity" href="#">My Articles</a>
+<a class="text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-2" href="#">Pipeline</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-sm" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border-none rounded-full text-sm focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Search pipelines..." type="text"/>
+</div>
+<button class="p-2 text-slate-500 hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container overflow-hidden">
+<img alt="Editor Avatar" class="w-full h-full object-cover" data-alt="User profile avatar illustration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwzwKemEGuXNjRTn6kHNzyNCjQ6zZqnzZ5jGquxJ-144dtwDv4J6lkIeOn-ow4o-hzRaVVCN9Xqd2KOkOYOWtbyMFbD4keVTb83QKhwhRI9xII-_Z1JwKk1bZ1zbGLnfjPt38101ZPpybAYexhDc9WS7uubGux3PspaN3hn5GmWepzKVwp-hk7g_D2Hj1UZROuewY9CR_2Po7g7WFFF41Gk2R4wRPScjqQ-mBcKCUCjTPt9Y-b8YlDGYLULLOqMhtw3MDjhBePLb0"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pl-20 pt-16 min-h-screen bg-surface">
+<div class="max-w-[1400px] mx-auto p-10">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-12">
+<div class="ml-2">
+<h1 class="text-[2.75rem] font-extrabold font-headline leading-none text-on-surface tracking-tight mb-2">Workflow Pipeline</h1>
+<p class="text-on-surface-variant font-body">Manage automated content streams and scraping sources.</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-lg font-semibold shadow-md hover:-translate-y-0.5 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+<span>Create New</span>
+</button>
+</div>
+<!-- Bento Grid of Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col">
+<span class="text-sm font-label text-on-surface-variant mb-1">Active Sources</span>
+<span class="text-3xl font-headline font-bold text-on-surface">12</span>
+<div class="mt-4 flex items-center text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full w-fit">
+<span class="material-symbols-outlined text-xs mr-1" data-icon="arrow_upward">arrow_upward</span> 2.4%
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col">
+<span class="text-sm font-label text-on-surface-variant mb-1">Articles Today</span>
+<span class="text-3xl font-headline font-bold text-on-surface">148</span>
+<div class="mt-4 flex items-center text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-full w-fit">
+                        Stable
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col">
+<span class="text-sm font-label text-on-surface-variant mb-1">Scraping Latency</span>
+<span class="text-3xl font-headline font-bold text-on-surface">1.2s</span>
+<div class="mt-4 flex items-center text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full w-fit">
+                        -120ms
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col">
+<span class="text-sm font-label text-on-surface-variant mb-1">Queue Status</span>
+<span class="text-3xl font-headline font-bold text-on-surface">Healthy</span>
+<div class="mt-4 flex items-center text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full w-fit">
+                        All systems nominal
+                    </div>
+</div>
+</div>
+<!-- Pipeline List (Using Tonal Layering Instead of Borders) -->
+<div class="bg-surface-container-low rounded-2xl p-4">
+<div class="flex flex-col gap-4">
+<!-- Pipeline Item: TechCrunch -->
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:shadow-lg transition-shadow duration-300 flex items-center group">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mr-6 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-icon="rss_feed">rss_feed</span>
+</div>
+<div class="flex-1 grid grid-cols-4 gap-8">
+<div class="col-span-1">
+<h3 class="text-lg font-bold font-headline text-on-surface leading-tight">TechCrunch</h3>
+<p class="text-sm text-on-surface-variant font-label truncate">techcrunch.com/feed</p>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Frequency</span>
+<span class="text-sm font-medium">Hourly</span>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Status</span>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+<span class="text-sm font-semibold text-emerald-600">Scraping</span>
+</div>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Generated</span>
+<span class="text-sm font-medium font-headline">1,240 Articles</span>
+</div>
+</div>
+<div class="text-right ml-8 border-l border-outline-variant/20 pl-8">
+<p class="text-xs font-label text-on-surface-variant mb-1">Last Run</p>
+<p class="text-sm font-medium">4 mins ago</p>
+</div>
+<button class="ml-8 p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<!-- Pipeline Item: The Verge -->
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:shadow-lg transition-shadow duration-300 flex items-center group">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mr-6 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-icon="newspaper">newspaper</span>
+</div>
+<div class="flex-1 grid grid-cols-4 gap-8">
+<div class="col-span-1">
+<h3 class="text-lg font-bold font-headline text-on-surface leading-tight">The Verge</h3>
+<p class="text-sm text-on-surface-variant font-label truncate">theverge.com/rss/index.xml</p>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Frequency</span>
+<span class="text-sm font-medium">Daily</span>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Status</span>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+<span class="text-sm font-semibold text-blue-600">Active</span>
+</div>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Generated</span>
+<span class="text-sm font-medium font-headline">854 Articles</span>
+</div>
+</div>
+<div class="text-right ml-8 border-l border-outline-variant/20 pl-8">
+<p class="text-xs font-label text-on-surface-variant mb-1">Last Run</p>
+<p class="text-sm font-medium">2 hours ago</p>
+</div>
+<button class="ml-8 p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<!-- Pipeline Item: Wired -->
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:shadow-lg transition-shadow duration-300 flex items-center group">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mr-6 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-icon="bolt">bolt</span>
+</div>
+<div class="flex-1 grid grid-cols-4 gap-8">
+<div class="col-span-1">
+<h3 class="text-lg font-bold font-headline text-on-surface leading-tight">Wired</h3>
+<p class="text-sm text-on-surface-variant font-label truncate">wired.com/feed/rss</p>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Frequency</span>
+<span class="text-sm font-medium">Real-time</span>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Status</span>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-slate-400"></div>
+<span class="text-sm font-semibold text-on-surface-variant">Paused</span>
+</div>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Generated</span>
+<span class="text-sm font-medium font-headline">2,102 Articles</span>
+</div>
+</div>
+<div class="text-right ml-8 border-l border-outline-variant/20 pl-8">
+<p class="text-xs font-label text-on-surface-variant mb-1">Last Run</p>
+<p class="text-sm font-medium">3 days ago</p>
+</div>
+<button class="ml-8 p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<!-- Pipeline Item: Ars Technica -->
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:shadow-lg transition-shadow duration-300 flex items-center group">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center mr-6 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-icon="microchip">location_chip</span>
+</div>
+<div class="flex-1 grid grid-cols-4 gap-8">
+<div class="col-span-1">
+<h3 class="text-lg font-bold font-headline text-on-surface leading-tight">Ars Technica</h3>
+<p class="text-sm text-on-surface-variant font-label truncate">arstechnica.com/feed</p>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Frequency</span>
+<span class="text-sm font-medium">Hourly</span>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Status</span>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+<span class="text-sm font-semibold text-blue-600">Active</span>
+</div>
+</div>
+<div class="flex flex-col justify-center">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-1">Generated</span>
+<span class="text-sm font-medium font-headline">412 Articles</span>
+</div>
+</div>
+<div class="text-right ml-8 border-l border-outline-variant/20 pl-8">
+<p class="text-xs font-label text-on-surface-variant mb-1">Last Run</p>
+<p class="text-sm font-medium">12 mins ago</p>
+</div>
+<button class="ml-8 p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Focused State: Automation Insights (Glassmorphism concept) -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+<div class="space-y-6">
+<h2 class="text-2xl font-bold font-headline text-on-surface">Automation Health</h2>
+<p class="text-on-surface-variant leading-relaxed">Your pipelines have automatically refined and published 84% of scraped content this week. The AI-curator suggests adjusting the frequency for <strong>Wired</strong> to improve relevance.</p>
+<div class="flex gap-4">
+<button class="px-5 py-2.5 rounded-full bg-surface-container-high text-on-surface text-sm font-semibold hover:bg-surface-container-highest transition-colors">View logs</button>
+<button class="px-5 py-2.5 rounded-full text-primary text-sm font-semibold flex items-center gap-2 hover:gap-3 transition-all">
+                            Efficiency Report
+                            <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Small Asymmetric Stats Card -->
+<div class="relative">
+<div class="absolute -top-4 -left-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+<div class="relative bg-white/40 backdrop-blur-md border border-outline-variant/20 p-8 rounded-2xl shadow-xl">
+<div class="flex items-center justify-between mb-8">
+<div class="flex flex-col">
+<span class="text-xs font-label text-on-surface-variant uppercase">Success Rate</span>
+<span class="text-4xl font-headline font-extrabold text-primary">99.8%</span>
+</div>
+<div class="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin-slow"></div>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[99.8%] rounded-full"></div>
+</div>
+<div class="mt-4 flex justify-between text-xs font-label text-on-surface-variant">
+<span>0 Failed tasks</span>
+<span>4,281 Completed</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

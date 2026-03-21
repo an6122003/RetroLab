@@ -1,0 +1,43 @@
+# ── Dependencies ──
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# ── Build outputs ──
+.next/
+dist/
+build/
+*.tsbuildinfo
+build_output.txt
+
+# ── IDE & OS ──
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# ── Secrets & credentials ──
+**/secrets/
+*-sa-key.json
+*.json.key
+.env
+.env.*
+!.env.example
+
+# ── Backups ──
+**/backups/
+
+# ── Lock files (regenerated on install) ──
+package-lock.json
+
+# ── Gemini agent artifacts ──
+.gemini/
+.agent/
+
+# ── Legacy / unused directories ──
+flew/
+views/
+public/

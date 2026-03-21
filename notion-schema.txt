@@ -1,0 +1,46 @@
+BẢNG CẤU HÌNH THUỘC TÍNH (PROPERTIES) CHO NOTION DATABASE
+(Dành cho việc khớp nối với giao diện RetroLab Next.js)
+
+Để giao diện hiển thị trọn vẹn và tính năng Gợi ý (Recommendation) hoạt động, hãy đảm bảo bảng thông tin (danh sách dọc) của mỗi bài viết trong Notion có CHÍNH XÁC các thuộc tính (Properties) sau.
+
+Các thuộc tính có sẵn (bạn đã có):
+----------------------------------------
+1. Name (Mặc định)
+   - Type: Title (Tiêu đề chính của bài: "Google đang giúp điện thoại...")
+
+2. Date
+   - Type: Date (Ngày giờ đăng bài)
+
+3. Tags
+   - Type: Multi-select (Dùng để nhóm các bài liên quan cho mục "Có thể bạn sẽ thích". VD: Android, Google, Pin)
+
+4. Category
+   - Type: Select (CHÚ Ý: Phải nhập đúng Text để web đổi giao diện: Tin tức, AI, Đánh giá, Góc nhìn, Tips & Tricks, Vật vờ đánh giá)
+
+5. Status
+   - Type: Select (Để web chỉ lấy các bài có Status chọn là "Live")
+
+
+Các thuộc tính cần thêm mới (Bấm "+ Add a property"):
+----------------------------------------
+6. Tên: Slug
+   - Type: Text (hoặc Rich text)
+   - Tác dụng: Tạo đường dẫn URL sạch. VD: google-toi-uu-pin-android
+
+7. Tên: Excerpt
+   - Type: Text (hoặc Rich text)
+   - Tác dụng: Đoạn mô tả/sapo cực ngắn hiển thị ngoài trang chủ (1-2 câu).
+
+8. Tên: Featured
+   - Type: Checkbox
+   - Tác dụng: Nếu đánh dấu [x], bài viết sẽ được ưu tiên ghim lên các khối giao diện lớn nhất trên cùng trang chủ (Hero Banner).
+
+9. Tên: Author
+   - Type: Select (hoặc Text)
+   - Tác dụng: Tên người viết (VD: Minh Ngọc). Nếu để trống, web mặc định ghi "RetroLab".
+
+
+LƯU Ý QUAN TRỌNG VỀ ẢNH BÌA (THUMBNAIL):
+----------------------------------------
+KHÔNG tạo property cho ảnh.
+Để bài viết có ảnh hiển thị trên web, hãy rê chuột lên phía trên cùng của tiêu đề bài viết trong Notion, bấm nút "Add cover" (Thêm ảnh bìa) và tải ảnh lên. Hệ thống sẽ tự động quét và cắt cúp làm thumbnail trên toàn bộ website.

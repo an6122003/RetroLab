@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Worker Management - Editorial Architect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-container": "#394c84",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#31447b",
+                        "on-primary-fixed": "#00174b",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#495c95",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#434655",
+                        "surface-variant": "#dae2fd",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "outline-variant": "#c3c6d7",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#283044",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-background": "#131b2e",
+                        "tertiary-container": "#bc4800",
+                        "outline": "#737686",
+                        "primary-container": "#2563eb",
+                        "surface-dim": "#d2d9f4",
+                        "surface-tint": "#0053db",
+                        "on-tertiary-container": "#ffede6",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e2e7ff",
+                        "on-primary-container": "#eeefff",
+                        "secondary-fixed": "#dbe1ff",
+                        "secondary-container": "#acbfff",
+                        "surface-bright": "#faf8ff",
+                        "background": "#faf8ff",
+                        "inverse-primary": "#b4c5ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-surface": "#131b2e",
+                        "on-error-container": "#93000a",
+                        "primary": "#004ac6",
+                        "surface-container-highest": "#dae2fd",
+                        "tertiary": "#943700",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface-container-low": "#f2f3ff",
+                        "surface": "#faf8ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#eaedff"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #faf8ff;
+        }
+        h1, h2, h3, .font-headline {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full z-40 h-screen w-20 flex flex-col items-center py-6 border-r-0 bg-slate-50 dark:bg-slate-900 font-manrope text-sm font-medium">
+<div class="mb-10">
+<span class="material-symbols-outlined text-blue-700 font-bold text-xl" data-icon="architecture">architecture</span>
+</div>
+<nav class="flex flex-col gap-6 flex-1">
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 transition-colors duration-200 ease-in-out scale-95" title="Dashboard">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 transition-colors duration-200 ease-in-out scale-95" title="Posts">
+<span class="material-symbols-outlined" data-icon="article">article</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 transition-colors duration-200 ease-in-out scale-95" title="Pipeline">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 transition-colors duration-200 ease-in-out scale-95" title="Analytics">
+<span class="material-symbols-outlined" data-icon="monitoring">monitoring</span>
+</button>
+<!-- Active Tab: Workers -->
+<button class="w-12 h-12 flex items-center justify-center rounded-lg relative before:absolute before:left-0 before:w-1 before:h-8 before:bg-blue-600 before:rounded-r-full text-blue-600 dark:text-blue-400 bg-slate-200/30 transition-colors duration-200 ease-in-out scale-95" title="Workers">
+<span class="material-symbols-outlined" data-icon="engineering">engineering</span>
+</button>
+</nav>
+<div class="flex flex-col gap-6 mt-auto">
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 transition-colors duration-200 ease-in-out scale-95" title="Settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 transition-colors duration-200 ease-in-out scale-95" title="Logout">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</button>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="ml-20 flex justify-between items-center px-12 w-[calc(100%-5rem)] h-20 border-b-0 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-sm dark:shadow-none fixed top-0 z-30">
+<div class="flex items-center gap-12">
+<h1 class="font-manrope text-2xl font-bold tracking-tight text-blue-700 dark:text-blue-400">Worker Management</h1>
+<nav class="hidden lg:flex items-center gap-8 font-label text-sm font-medium h-full pt-2">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-all" href="#">System</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-all" href="#">Management</a>
+<a class="text-blue-700 border-b-2 border-blue-700 pb-2" href="#">Active Workers</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-all" href="#">Logs</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group hidden md:block">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-sm" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search workers..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-container text-white rounded-lg font-medium text-sm shadow-sm hover:-translate-y-0.5 transition-transform">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+                Deploy New Worker
+            </button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10">
+<img class="w-full h-full object-cover" data-alt="Admin Avatar User Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIDYiteOHwHGVUEohfdPV4G0jOc8Z-zBTE-tXnSFXVKhXmcdRZK2-MgDGpc8hTS7gtSCRrwOY647HFdsIQPzhBSS0lDtED25vn3xGqjpPbjwrf7PYMUXhXExfw99ZwjVQek7CN3ijLYwHnR6PP2D_n890WSX2Q2ef_cExvnAz4eSVahTxkrqGrVfFUkiwVgq6uMZ86XQ4850N_xcDDoh4HQG2m7v3NHRcwfJl1BPjnEZNh6-wFfvlJosfuZZYguzv46XHcKMqSvMU"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-20 pt-28 px-12 pb-12 min-h-screen">
+<!-- Hero Header Section -->
+<section class="mb-12">
+<div class="max-w-4xl">
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2 font-headline">The Fleet Overview</h2>
+<p class="text-on-surface-variant text-lg max-w-2xl">Manage your editorial AI ecosystem. Scale scraper capacity, monitor rewrite engine health, and optimize throughput from a central command deck.</p>
+</div>
+</section>
+<!-- KPI Cards Section (System Health) -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-6">
+<div class="w-14 h-14 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl" data-icon="smart_toy">smart_toy</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium mb-1">Active Workers</p>
+<p class="text-3xl font-bold font-headline">14<span class="text-sm font-normal text-slate-400 ml-2">/ 20 cap</span></p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-6">
+<div class="w-14 h-14 rounded-xl bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-3xl" data-icon="bolt">bolt</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium mb-1">Total Throughput</p>
+<p class="text-3xl font-bold font-headline">1.2k<span class="text-sm font-normal text-slate-400 ml-2">tasks/hr</span></p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-6">
+<div class="w-14 h-14 rounded-xl bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-3xl" data-icon="timer">timer</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium mb-1">System Uptime</p>
+<p class="text-3xl font-bold font-headline">99.98%<span class="text-sm font-normal text-slate-400 ml-2">uptime</span></p>
+</div>
+</div>
+</section>
+<!-- Worker List / Grid -->
+<section>
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-xl font-bold font-headline">Active Infrastructure</h3>
+<div class="flex gap-2">
+<button class="px-4 py-2 rounded-full bg-primary text-white text-sm font-medium">All Workers</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors">Operational</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors">Maintenance</button>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<!-- Worker Card 1 -->
+<div class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 flex flex-col gap-6 hover:shadow-xl hover:shadow-primary/5 transition-all">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500" data-icon="terminal">terminal</span>
+</div>
+<div>
+<h4 class="text-lg font-bold font-headline leading-tight">Article Scraper-01</h4>
+<p class="text-on-surface-variant text-xs mt-1">ID: worker_7741_v1</p>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Online
+                        </div>
+</div>
+<div class="grid grid-cols-3 gap-8 py-4 border-y border-outline-variant/10">
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Load Performance</p>
+<div class="flex items-end gap-2">
+<span class="text-xl font-bold">42%</span>
+<div class="w-full h-1.5 bg-slate-100 rounded-full mb-1.5 overflow-hidden">
+<div class="h-full bg-primary" style="width: 42%"></div>
+</div>
+</div>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Completed (24h)</p>
+<p class="text-xl font-bold">4,821</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Last Active</p>
+<p class="text-sm font-medium text-on-surface-variant mt-1">2 mins ago</p>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">CPU</div>
+<div class="w-8 h-8 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-purple-600">MEM</div>
+</div>
+<div class="flex gap-3">
+<button class="text-primary text-sm font-bold hover:underline">View Logs</button>
+<button class="p-2 text-slate-400 hover:text-error transition-colors"><span class="material-symbols-outlined text-lg" data-icon="stop_circle">stop_circle</span></button>
+</div>
+</div>
+</div>
+<!-- Worker Card 2 -->
+<div class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 flex flex-col gap-6 hover:shadow-xl hover:shadow-primary/5 transition-all">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<h4 class="text-lg font-bold font-headline leading-tight">Rewrite Engine-Beta</h4>
+<p class="text-on-surface-variant text-xs mt-1">ID: neural_09_pro</p>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Processing
+                        </div>
+</div>
+<div class="grid grid-cols-3 gap-8 py-4 border-y border-outline-variant/10">
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Load Performance</p>
+<div class="flex items-end gap-2">
+<span class="text-xl font-bold">88%</span>
+<div class="w-full h-1.5 bg-slate-100 rounded-full mb-1.5 overflow-hidden">
+<div class="h-full bg-primary" style="width: 88%"></div>
+</div>
+</div>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Completed (24h)</p>
+<p class="text-xl font-bold">842</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Last Active</p>
+<p class="text-sm font-medium text-on-surface-variant mt-1">Active Now</p>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">CPU</div>
+<div class="w-8 h-8 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-purple-600">MEM</div>
+<div class="w-8 h-8 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-orange-600">GPU</div>
+</div>
+<div class="flex gap-3">
+<button class="text-primary text-sm font-bold hover:underline">View Logs</button>
+<button class="p-2 text-slate-400 hover:text-error transition-colors"><span class="material-symbols-outlined text-lg" data-icon="stop_circle">stop_circle</span></button>
+</div>
+</div>
+</div>
+<!-- Worker Card 3 -->
+<div class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/15 flex flex-col gap-6 hover:shadow-xl hover:shadow-primary/5 transition-all">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500" data-icon="search_insights">search_insights</span>
+</div>
+<div>
+<h4 class="text-lg font-bold font-headline leading-tight">SEO Optimizer-04</h4>
+<p class="text-on-surface-variant text-xs mt-1">ID: sem_bot_alpha</p>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                            Idle
+                        </div>
+</div>
+<div class="grid grid-cols-3 gap-8 py-4 border-y border-outline-variant/10">
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Load Performance</p>
+<div class="flex items-end gap-2">
+<span class="text-xl font-bold">5%</span>
+<div class="w-full h-1.5 bg-slate-100 rounded-full mb-1.5 overflow-hidden">
+<div class="h-full bg-slate-300" style="width: 5%"></div>
+</div>
+</div>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Completed (24h)</p>
+<p class="text-xl font-bold">12,109</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Last Active</p>
+<p class="text-sm font-medium text-on-surface-variant mt-1">14 mins ago</p>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">CPU</div>
+</div>
+<div class="flex gap-3">
+<button class="text-primary text-sm font-bold hover:underline">View Logs</button>
+<button class="p-2 text-slate-400 hover:text-error transition-colors"><span class="material-symbols-outlined text-lg" data-icon="stop_circle">stop_circle</span></button>
+</div>
+</div>
+</div>
+<!-- Worker Card 4 (Error State) -->
+<div class="bg-surface-container-lowest p-8 rounded-xl border-2 border-error/10 flex flex-col gap-6 hover:shadow-xl hover:shadow-error/5 transition-all">
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-lg bg-error/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-error" data-icon="error">error</span>
+</div>
+<div>
+<h4 class="text-lg font-bold font-headline leading-tight">Image Gen-02</h4>
+<p class="text-on-surface-variant text-xs mt-1">ID: vision_crush_9</p>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+                            Error
+                        </div>
+</div>
+<div class="grid grid-cols-3 gap-8 py-4 border-y border-outline-variant/10">
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Load Performance</p>
+<div class="flex items-end gap-2 text-error">
+<span class="text-xl font-bold">0%</span>
+<div class="w-full h-1.5 bg-error/10 rounded-full mb-1.5 overflow-hidden">
+<div class="h-full bg-error" style="width: 0%"></div>
+</div>
+</div>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Completed (24h)</p>
+<p class="text-xl font-bold">142</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">Last Active</p>
+<p class="text-sm font-medium text-error mt-1">Failed 4h ago</p>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="bg-error-container/20 px-4 py-1.5 rounded-lg">
+<p class="text-xs text-error font-medium">Critical: Memory leak detected in thread #04</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-error text-white px-4 py-1.5 rounded-lg text-sm font-bold">Restart</button>
+<button class="p-2 text-slate-400 hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-lg" data-icon="settings">settings</span></button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Secondary Section: Deployment Queue -->
+<section class="mt-16">
+<div class="bg-surface-container p-1 rounded-2xl">
+<div class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/10">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h3 class="text-xl font-bold font-headline">Recent Deployment Logs</h3>
+<p class="text-sm text-on-surface-variant">Audit trail of the last infrastructure changes.</p>
+</div>
+<button class="text-primary font-bold text-sm">Download CSV</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="border-b border-outline-variant/10">
+<th class="pb-4 font-bold text-sm text-slate-400 uppercase tracking-widest">Event</th>
+<th class="pb-4 font-bold text-sm text-slate-400 uppercase tracking-widest">Target</th>
+<th class="pb-4 font-bold text-sm text-slate-400 uppercase tracking-widest">Time</th>
+<th class="pb-4 font-bold text-sm text-slate-400 uppercase tracking-widest text-right">Operator</th>
+</tr>
+</thead>
+<tbody>
+<tr class="group">
+<td class="py-5 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="font-medium">Successful Deployment</span>
+</td>
+<td class="py-5 text-on-surface-variant">Article Scraper-05</td>
+<td class="py-5 text-on-surface-variant">Today, 10:42 AM</td>
+<td class="py-5 text-right font-medium">System_Admin_01</td>
+</tr>
+<tr class="group border-t border-outline-variant/5">
+<td class="py-5 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+<span class="font-medium">Manual Restart</span>
+</td>
+<td class="py-5 text-on-surface-variant">SEO Optimizer-01</td>
+<td class="py-5 text-on-surface-variant">Today, 09:15 AM</td>
+<td class="py-5 text-right font-medium">Editorial_Director</td>
+</tr>
+<tr class="group border-t border-outline-variant/5">
+<td class="py-5 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-amber-500"></div>
+<span class="font-medium">Scaling Triggered</span>
+</td>
+<td class="py-5 text-on-surface-variant">Cluster: Rewrite_Engines</td>
+<td class="py-5 text-on-surface-variant">Yesterday, 11:58 PM</td>
+<td class="py-5 text-right font-medium">Auto_Scaler_Bot</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Background Glow -->
+<div class="fixed bottom-0 right-0 w-96 h-96 bg-primary/5 blur-[120px] -z-10 pointer-events-none"></div>
+<div class="fixed top-0 left-0 w-96 h-96 bg-secondary/5 blur-[120px] -z-10 pointer-events-none"></div>
+</body></html>
