@@ -4,8 +4,6 @@
 # Start all services: docker compose up -d
 # View logs:         docker compose logs -f worker
 
-version: "3.9"
-
 x-common: &common
   build:
     context: .
@@ -17,6 +15,8 @@ x-common: &common
     redis:
       condition: service_healthy
   restart: unless-stopped
+  volumes:
+    - ./config:/app/config   # persist & share sources.yaml with host
 
 services:
   # ── Infrastructure ──────────────────────────────────────────
@@ -40,6 +40,9 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes   # enable AOF persistence
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -75,8 +78,8 @@ services:
     command: >
       uvicorn pipeline.api:app --host 0.0.0.0 --port 8000
     ports:
-      - "8000:8000"
+      - "8002:8000"
 
 volumes:
   pgdata:
-
+  redisdata:

@@ -34,9 +34,12 @@ SYSTEM_PROMPT_TEMPLATE = (
     "Return valid JSON only — no markdown fences, no preamble."
 )
 
+# Valid categories that the LLM must choose from
+VALID_CATEGORIES = ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]
+
 USER_PROMPT_TEMPLATE = """\
 Rewrite the following article in {lang}.
-Title, body, summary, perspective, and tags → {lang}.
+Title, body, summary, perspective, category, and tags → all in {lang}.
 image_keywords and inline_image_keywords → English always (for image search APIs).
 
 SOURCE ARTICLE:
@@ -66,9 +69,10 @@ Return a JSON object with exactly these fields:
   Focus on compelling, insightful writing. Elaborate on the original content to add value, but do not hallucinate facts.
 - "summary": 2-3 sentences in {lang}, professional tone.
 - "perspective": 2 sentences of editorial opinion in {lang}.
+- "category": REQUIRED. An array of one or more categories from EXACTLY this list: ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]. Pick the most relevant. Most articles belong to at least 1-2 categories. General tech news = ["Tin tức", "Công Nghệ"]. AI-related = must include "AI". Gaming/emulation/retro gaming = must include "Game & Giả Lập". Programming/software dev/IT = must include "Công nghệ thông tin".
 - "image_keywords": 4-6 English phrases for high-quality hero image search.
 - "inline_image_keywords": a JSON array of search phrases for each placeholder (must match # of placeholders in body).
-- "tags": 5-10 lowercase topic tags in {lang} (e.g. "điện thoại", "trí tuệ nhân tạo", "đánh giá"). Use {lang} words for concepts, keep product/brand names in English.
+- "tags": 5-10 topic tags in {lang}. ALL tags must be in Vietnamese (e.g. "điện thoại", "trí tuệ nhân tạo", "đánh giá", "bảo mật", "phần mềm"). The ONLY exception: keep product/brand names in English (e.g. "Samsung", "iPhone", "ChatGPT"). Do NOT use English words for concepts — translate them.
 - "reading_time_minutes": estimated reading time as an integer.
 
 Rules: Write in a premium, authoritative tech journalism voice. 
@@ -276,10 +280,25 @@ async def rewrite_article(
             required_fields = [
                 "title", "body", "summary", "perspective",
                 "image_keywords", "tags", "reading_time_minutes",
+                "category",
             ]
             missing = [f for f in required_fields if f not in result]
             if missing:
                 raise ValueError(f"Missing fields in LLM response: {missing}")
+
+            # Validate and normalize category
+            raw_cats = result.get("category", [])
+            if isinstance(raw_cats, str):
+                raw_cats = [raw_cats]
+            # Keep only valid categories
+            valid = [c for c in raw_cats if c in VALID_CATEGORIES]
+            if not valid:
+                # Fuzzy match: try case-insensitive matching
+                cat_map = {c.lower(): c for c in VALID_CATEGORIES}
+                for c in raw_cats:
+                    if c.lower() in cat_map:
+                        valid.append(cat_map[c.lower()])
+            result["category"] = valid if valid else ["Tin tức"]
 
             # Attach model info for tracking
             result["_model"] = model_name

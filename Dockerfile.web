@@ -1,0 +1,54 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Next.js Blog — Production Dockerfile
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Deploy target: Google Cloud Run
+# Build:  docker build -f Dockerfile.web -t retrolab-web .
+# Run:    docker run -p 3001:3001 --env-file .env retrolab-web
+
+# ── Stage 1: Install deps ────────────────────────────────────
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json ./
+RUN npm install --production=false
+
+# ── Stage 2: Build ───────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Build args become env vars at build time
+ARG NOTION_API_KEY
+ARG NOTION_DATABASE_ID
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+ENV NOTION_API_KEY=$NOTION_API_KEY
+ENV NOTION_DATABASE_ID=$NOTION_DATABASE_ID
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+RUN npm run build
+
+# ── Stage 3: Production runner ───────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
+
+# Don't run as root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone output (includes minimal node_modules)
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+USER nextjs
+
+EXPOSE 3001
+
+CMD ["node", "server.js"]

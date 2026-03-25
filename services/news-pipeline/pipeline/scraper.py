@@ -132,19 +132,32 @@ async def scrape_article(url: str) -> dict[str, Any]:
         "scrape_path": scrape_path,
     }
 
-    # Path A: httpx + trafilatura
+    # Path A: httpx + trafilatura (with realistic browser headers)
     try:
         async with httpx.AsyncClient(
             timeout=30,
             follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; NewsPipeline/1.0)"},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            },
         ) as client:
             resp = await client.get(url)
             resp.raise_for_status()
             html = resp.text
     except Exception:
-        logger.exception("scrape_fetch_failed", url=url)
-        raise
+        logger.warning("scrape_httpx_failed", url=url)
+        html = ""
 
     # Extract as markdown to preserve inline images
     extracted = trafilatura.extract(
@@ -275,14 +288,48 @@ def _extract_author_from_html(html: str) -> str | None:
 
 
 async def _fetch_with_playwright(url: str) -> str:
-    """Fetch a page using Playwright for JS-rendered content."""
-    from playwright.async_api import async_playwright
+    """Fetch a page using Playwright with Cloudflare challenge handling.
+    
+    Runs sync Playwright in a thread pool to avoid event loop conflicts
+    in Celery workers.
+    """
+    import concurrent.futures
+    import time as _time
 
     settings = get_settings()
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=settings.playwright_headless)
-        page = await browser.new_page()
-        await page.goto(url, wait_until="networkidle", timeout=30_000)
-        content = await page.content()
-        await browser.close()
-    return content
+
+    def _do_fetch(target_url: str) -> str:
+        from playwright.sync_api import sync_playwright
+        pw = sync_playwright().start()
+        browser = pw.chromium.launch(
+            headless=settings.playwright_headless,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        ctx = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        page.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined})')
+
+        try:
+            page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
+        except Exception:
+            pass  # Continue even on timeout
+
+        # Wait for Cloudflare/bot challenge to resolve
+        for _ in range(5):
+            _time.sleep(3)
+            title = page.title()
+            if "just a moment" not in title.lower() and "checking" not in title.lower() and "attention" not in title.lower():
+                break
+
+        content = page.content()
+        browser.close()
+        pw.stop()
+        return content
+
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        return await loop.run_in_executor(pool, _do_fetch, url)
+

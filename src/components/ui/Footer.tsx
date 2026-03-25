@@ -39,9 +39,9 @@ export default function Footer() {
             <h3 className="text-gray-900 font-bold text-lg mb-6">Chuyên mục</h3>
             <ul className="flex flex-col gap-4 text-sm text-gray-500">
               <li><Link href="/category/ai" className="hover:text-[#2563eb] transition-colors">Trí tuệ nhân tạo</Link></li>
-              <li><Link href="/category/danh-gia" className="hover:text-[#2563eb] transition-colors">Review Sản phẩm</Link></li>
-              <li><Link href="/category/goc-nhin" className="hover:text-[#2563eb] transition-colors">Góc nhìn Công nghệ</Link></li>
-              <li><Link href="/category/tips-tricks" className="hover:text-[#2563eb] transition-colors">Thủ thuật & Mẹo vặt</Link></li>
+              <li><Link href="/category/cong-nghe" className="hover:text-[#2563eb] transition-colors">Công Nghệ</Link></li>
+              <li><Link href="/category/it" className="hover:text-[#2563eb] transition-colors">Công Nghệ Thông Tin</Link></li>
+              <li><Link href="/category/game-gia-lap" className="hover:text-[#2563eb] transition-colors">Game & Giả Lập</Link></li>
               <li><Link href="/category/tin-tuc" className="hover:text-[#2563eb] transition-colors">Tin tức</Link></li>
             </ul>
           </div>

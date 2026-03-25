@@ -1,0 +1,30 @@
+# Dependencies (installed in Docker)
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets (passed via --build-arg or --env-file)
+.env
+.env.*
+!.env.example
+
+# Dev artifacts
+.gemini/
+.agent/
+*.log

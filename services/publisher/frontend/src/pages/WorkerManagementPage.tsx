@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api } from '../api';
 import AppShell from '../components/AppShell';
 
 type WorkerTab = 'workers' | 'queues' | 'activity' | 'ollama';
+
+const STAGE_META: Record<string, { label: string; color: string; bgColor: string; icon: string; animate?: boolean }> = {
+  spawning:            { label: 'Spawning',        color: 'text-blue-700',    bgColor: 'bg-blue-50',    icon: 'rocket_launch',  animate: true },
+  connecting:          { label: 'Connecting',      color: 'text-amber-700',   bgColor: 'bg-amber-50',   icon: 'sync',           animate: true },
+  retrying_connection: { label: 'Retrying',        color: 'text-orange-700',  bgColor: 'bg-orange-50',  icon: 'refresh',        animate: true },
+  running:             { label: 'Running',         color: 'text-emerald-700', bgColor: 'bg-emerald-50', icon: 'check_circle',   animate: false },
+  connection_failed:   { label: 'Conn. Failed',    color: 'text-error',       bgColor: 'bg-error-container', icon: 'link_off', animate: false },
+  failed:              { label: 'Failed',          color: 'text-error',       bgColor: 'bg-error-container', icon: 'error',   animate: false },
+  exited:              { label: 'Exited',          color: 'text-on-surface-variant', bgColor: 'bg-surface-container', icon: 'stop_circle', animate: false },
+  unknown:             { label: 'Unknown',         color: 'text-on-surface-variant', bgColor: 'bg-surface-container', icon: 'help', animate: false },
+};
 
 const QUEUE_META: Record<string, { label: string; icon: string; color: string }> = {
   scraper_queue:     { label: 'Scraper',  icon: 'terminal',      color: 'text-blue-600' },
@@ -286,6 +297,7 @@ export default function WorkerManagementPage() {
             onStop={(name) => stopMutation.mutate(name)}
             isSpawning={spawnMutation.isPending}
             isStopping={stopMutation.isPending}
+            queryClient={queryClient}
           />
         )}
 
@@ -328,7 +340,7 @@ export default function WorkerManagementPage() {
 /* ═══════════════════════════════════════════════════════════════════
  *  WORKERS TAB — Real Celery worker status + system metrics
  * ═══════════════════════════════════════════════════════════════════ */
-function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, activeTaskCount, activeTasks, system, onSpawn, onStop, isSpawning, isStopping }: {
+function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, activeTaskCount, activeTasks, system, onSpawn, onStop, isSpawning, isStopping, queryClient }: {
   workers: { name: string; status: string; active_tasks: number; total_processed: number; pool: string; concurrency: number; pid: number | null; queues: string[] }[];
   isAlive: boolean;
   isLoading: boolean;
@@ -341,11 +353,51 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
   onStop: (name: string) => void;
   isSpawning: boolean;
   isStopping: boolean;
+  queryClient: ReturnType<typeof useQueryClient>;
 }) {
   const [showSpawnDialog, setShowSpawnDialog] = useState(false);
   const [spawnQueues, setSpawnQueues] = useState<string[]>(['default', 'scraper_queue', 'rewriter_queue', 'image_search_queue']);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   const allQueues = ['default', 'scraper_queue', 'rewriter_queue', 'image_search_queue'];
+
+  // Process status polling
+  const { data: processData } = useQuery({
+    queryKey: ['worker-processes'],
+    queryFn: api.getWorkerProcesses,
+    refetchInterval: 3000,
+  });
+
+  // Redis health check
+  const { data: redisStatus } = useQuery({
+    queryKey: ['redis-check'],
+    queryFn: api.checkRedis,
+    refetchInterval: 10000,
+  });
+
+  // Log viewer for expanded process
+  const { data: logData, refetch: refetchLogs } = useQuery({
+    queryKey: ['worker-logs', expandedLog],
+    queryFn: () => expandedLog ? api.getWorkerLogs(expandedLog, 50) : null,
+    enabled: !!expandedLog,
+    refetchInterval: expandedLog ? 2000 : false,
+  });
+
+  const logEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logData?.lines]);
+
+  const processes = processData?.processes || [];
+  const redisOk = redisStatus?.ok ?? true;
+
+  const formatUptime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  };
 
   return (
     <section className="space-y-8">
@@ -373,6 +425,19 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
           </button>
         </div>
       </div>
+
+      {/* Redis Health Banner */}
+      {!redisOk && (
+        <div className="rounded-xl bg-error-container border border-error/20 p-4 flex items-center gap-3">
+          <span className="material-symbols-outlined text-error text-xl">link_off</span>
+          <div>
+            <p className="text-sm text-on-error-container font-bold">Redis Broker Unreachable</p>
+            <p className="text-xs text-on-error-container/80">
+              {redisStatus?.message || 'Workers cannot start without Redis. Make sure docker compose is running (redis + postgres).'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Spawn Worker Dialog */}
       {showSpawnDialog && (
@@ -420,6 +485,122 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Process Monitor ═══ */}
+      {processes.length > 0 && (
+        <div className="bg-surface-container p-1 rounded-2xl">
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary">monitor_heart</span>
+                <h3 className="text-lg font-bold font-headline">Process Monitor</h3>
+                <span className="text-xs text-on-surface-variant">Live process stage tracking</span>
+              </div>
+              <button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['worker-processes'] })}
+                className="p-1.5 text-outline hover:text-primary hover:bg-surface-container rounded-lg transition-colors"
+                title="Refresh"
+              >
+                <span className="material-symbols-outlined text-[18px]">refresh</span>
+              </button>
+            </div>
+            <div className="space-y-2">
+              {processes.map(proc => {
+                const stage = STAGE_META[proc.stage] || STAGE_META.unknown;
+                const isExpanded = expandedLog === proc.name;
+                return (
+                  <div key={proc.name} className="border border-outline-variant/10 rounded-xl overflow-hidden">
+                    {/* Process row */}
+                    <div
+                      className="flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-surface-container/30 transition-colors"
+                      onClick={() => setExpandedLog(isExpanded ? null : proc.name)}
+                    >
+                      {/* Stage indicator */}
+                      <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold ${stage.bgColor} ${stage.color}`}>
+                        <span className={`material-symbols-outlined text-[14px] ${stage.animate ? 'animate-spin' : ''}`} style={stage.animate ? { animationDuration: '2s' } : {}}>
+                          {stage.icon}
+                        </span>
+                        {stage.label}
+                      </div>
+
+                      {/* Name */}
+                      <span className="font-semibold text-sm font-mono">{proc.name}</span>
+
+                      {/* PID */}
+                      {proc.pid && (
+                        <span className="text-[10px] text-outline font-mono bg-surface-container px-2 py-0.5 rounded">
+                          PID {proc.pid}
+                        </span>
+                      )}
+
+                      {/* Queues */}
+                      {proc.queues && (
+                        <span className="text-[10px] text-on-surface-variant truncate max-w-[200px]" title={proc.queues}>
+                          {proc.queues}
+                        </span>
+                      )}
+
+                      {/* Spacer */}
+                      <span className="flex-1" />
+
+                      {/* Uptime */}
+                      {proc.uptime_seconds > 0 && (
+                        <span className="text-xs text-outline font-mono">{formatUptime(proc.uptime_seconds)}</span>
+                      )}
+
+                      {/* Expand icon */}
+                      <span className={`material-symbols-outlined text-[18px] text-outline transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                        expand_more
+                      </span>
+                    </div>
+
+                    {/* Expanded log viewer */}
+                    {isExpanded && (
+                      <div className="border-t border-outline-variant/10 bg-[#1e1e2e] px-5 py-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[14px] text-slate-400">terminal</span>
+                            <span className="text-xs text-slate-400 font-mono">Worker Logs</span>
+                            {logData && (
+                              <span className="text-[10px] text-slate-500 font-mono">({logData.total_lines} lines total)</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); refetchLogs(); }}
+                            className="text-[10px] text-slate-400 hover:text-slate-200 font-mono"
+                          >
+                            ↻ refresh
+                          </button>
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                          <pre className="text-xs text-slate-300 font-mono leading-5 whitespace-pre-wrap break-all">
+                            {logData?.lines?.length ? (
+                              logData.lines.map((line, i) => (
+                                <div key={i} className={`${
+                                  line.includes('ERROR') || line.includes('Cannot connect') ? 'text-red-400' :
+                                  line.includes('WARNING') ? 'text-amber-400' :
+                                  line.includes('ready') || line.includes('Connected') ? 'text-emerald-400' :
+                                  ''
+                                }`}>
+                                  <span className="text-slate-600 select-none">{String(logData.total_lines - logData.lines.length + i + 1).padStart(4, ' ')} │ </span>
+                                  {line}
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-slate-500 italic">No log output yet — process may still be starting...</span>
+                            )}
+                            <div ref={logEndRef} />
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -539,19 +720,21 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
 
                 {/* Stats */}
                 <div className="grid grid-cols-4 gap-6 py-4 border-y border-outline-variant/10">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-2">Active</p>
                     <p className="text-xl font-bold">{w.active_tasks}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-2">Processed</p>
                     <p className="text-xl font-bold">{w.total_processed}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-2">Pool</p>
-                    <p className="text-sm font-medium text-on-surface-variant mt-1">{w.pool}</p>
+                    <p className="text-sm font-medium text-on-surface-variant mt-1 truncate" title={w.pool}>
+                      {w.pool.split('.').pop()?.split(':')[0] || w.pool}
+                    </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-2">PID</p>
                     <p className="text-sm font-mono text-on-surface-variant mt-1">{w.pid || '—'}</p>
                   </div>

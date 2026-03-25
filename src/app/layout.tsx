@@ -5,6 +5,7 @@ import Header from "@/components/ui/Header";
 import Footer from "@/components/ui/Footer";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 import NavigationProgress from "@/components/ui/NavigationProgress";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "RetroLab - Tạp chí Công nghệ",
@@ -19,15 +20,17 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className="min-h-screen flex flex-col">
-        <Suspense fallback={null}>
-          <NavigationProgress />
-        </Suspense>
-        <Header />
-        <div className="flex-grow">
-          {children}
-        </div>
-        <Footer />
-        <ScrollToTop />
+        <AuthProvider>
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
+          <Header />
+          <div className="flex-grow">
+            {children}
+          </div>
+          <Footer />
+          <ScrollToTop />
+        </AuthProvider>
       </body>
     </html>
   );

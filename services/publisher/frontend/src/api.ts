@@ -149,6 +149,18 @@ export const api = {
       method: 'DELETE',
     }),
 
+  updateSource: (category: string, sourceName: string, updates: Record<string, any>) =>
+    request<{ status: string }>(`/pipeline/sources/${encodeURIComponent(category)}/${encodeURIComponent(sourceName)}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+  detectSourcePatterns: (url: string) =>
+    request<{ article_url_pattern: string; article_selector: string; sample_urls: string[]; link_count?: number; message: string }>('/pipeline/sources/detect', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
   getPipelineConfig: () => request<PipelineConfig>('/pipeline/config'),
 
   updatePipelineConfig: (config: PipelineConfig) =>
@@ -190,7 +202,7 @@ export const api = {
     }>('/pipeline/worker/status'),
 
   spawnWorker: (queues?: string[], name?: string) =>
-    request<{ status: string; name: string; queues: string; message: string }>('/pipeline/worker/spawn', {
+    request<{ status: string; name: string; queues: string; pid: number; log_file: string; message: string }>('/pipeline/worker/spawn', {
       method: 'POST',
       body: JSON.stringify({ queues, name }),
     }),
@@ -199,6 +211,23 @@ export const api = {
     request<{ status: string; name: string; message: string }>(`/pipeline/worker/stop/${encodeURIComponent(workerName)}`, {
       method: 'POST',
     }),
+
+  getWorkerProcesses: () =>
+    request<{
+      processes: {
+        name: string; pid: number | null; stage: string;
+        queues: string; uptime_seconds: number; log_file: string;
+      }[];
+    }>('/pipeline/worker/processes'),
+
+  getWorkerLogs: (workerName: string, lines = 100) =>
+    request<{
+      worker_name: string; stage: string; pid: number | null;
+      total_lines: number; lines: string[];
+    }>(`/pipeline/worker/logs/${encodeURIComponent(workerName)}?lines=${lines}`),
+
+  checkRedis: () =>
+    request<{ ok: boolean; message: string; redis_url: string }>('/pipeline/worker/redis-check'),
 
   getPipelineActivity: () =>
     request<{ ts: string; step: string; detail: string; status: string }[]>('/pipeline/activity'),
@@ -265,6 +294,13 @@ export const api = {
   // Composer
   composeArticle: (url: string, models: string[], language?: string) =>
     request<ComposeResponse>('/pipeline/compose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, models, language: language || 'Vietnamese' }),
+    }),
+
+  composeRetry: (url: string, models: string[], language?: string) =>
+    request<ComposeResponse>('/pipeline/compose/retry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, models, language: language || 'Vietnamese' }),

@@ -1,15 +1,16 @@
 "use client";
 
 import Link from 'next/link';
-import { Search, User } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import UserMenu from '@/components/auth/UserMenu';
 
 const navItems = [
   { label: 'Tin tức', href: '/category/tin-tuc' },
   { label: 'AI', href: '/category/ai' },
-  { label: 'Đánh giá', href: '/category/danh-gia' },
-  { label: 'Góc nhìn', href: '/category/goc-nhin' },
-  { label: 'Tips & Tricks', href: '/category/tips-tricks' },
+  { label: 'Công Nghệ', href: '/category/cong-nghe' },
+  { label: 'IT', href: '/category/it' },
+  { label: 'Game & Giả Lập', href: '/category/game-gia-lap' },
 ];
 
 export default function Header() {
@@ -60,9 +61,7 @@ export default function Header() {
             <Search size={16} className="text-gray-500 mr-2" />
             <span className="text-sm text-gray-500">Tìm kiếm...</span>
           </Link>
-          <div className="w-10 h-10 rounded-full bg-[#f0f4ff] text-[#2563eb] flex items-center justify-center cursor-pointer hover:bg-blue-100 transition-colors">
-            <User size={20} />
-          </div>
+          <UserMenu />
         </div>
 
       </div>

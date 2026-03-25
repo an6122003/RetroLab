@@ -911,8 +911,11 @@ function SourcesTab({
   onRefresh: () => void;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
+  const [editingKey, setEditingKey] = useState<string | null>(null); // "category::name"
+  const [editForm, setEditForm] = useState<Record<string, any>>({});
   const [newSource, setNewSource] = useState({
-    category: 'tech',
+    category: 'tin_tuc',
     name: '',
     type: 'rss',
     url: '',
@@ -923,229 +926,385 @@ function SourcesTab({
   });
   const queryClient = useQueryClient();
 
+  const CATEGORY_META: Record<string, { label: string; icon: string; color: string; bgTint: string; border: string }> = {
+    tin_tuc:        { label: 'Tin Tức',          icon: 'newspaper',      color: 'text-blue-600',    bgTint: 'bg-blue-500/5',    border: 'border-l-blue-500' },
+    ai:             { label: 'AI',               icon: 'smart_toy',      color: 'text-purple-600',  bgTint: 'bg-purple-500/5',  border: 'border-l-purple-500' },
+    cong_nghe:      { label: 'Công Nghệ',        icon: 'devices',        color: 'text-cyan-600',    bgTint: 'bg-cyan-500/5',    border: 'border-l-cyan-500' },
+    it:             { label: 'IT',               icon: 'terminal',       color: 'text-emerald-600', bgTint: 'bg-emerald-500/5', border: 'border-l-emerald-500' },
+    game_emulation: { label: 'Game & Emulation', icon: 'sports_esports', color: 'text-amber-600',   bgTint: 'bg-amber-500/5',   border: 'border-l-amber-500' },
+    tech:           { label: 'Tech',             icon: 'memory',         color: 'text-on-surface-variant', bgTint: 'bg-surface-container', border: 'border-l-outline' },
+  };
+
+  const categoryOrder = ['tin_tuc', 'ai', 'cong_nghe', 'it', 'game_emulation'];
+
   const addMutation = useMutation({
     mutationFn: () => {
-      const payload: any = {
-        name: newSource.name,
-        type: newSource.type,
-        enabled: newSource.enabled,
-      };
-      if (newSource.type === 'rss') {
-        payload.url = newSource.url;
-      } else {
-        payload.seed_url = newSource.seed_url;
-        payload.article_url_pattern = newSource.article_url_pattern;
-        payload.article_selector = newSource.article_selector;
-      }
+      const payload: any = { name: newSource.name, type: newSource.type, enabled: newSource.enabled };
+      if (newSource.type === 'rss') payload.url = newSource.url;
+      else { payload.seed_url = newSource.seed_url; payload.article_url_pattern = newSource.article_url_pattern; payload.article_selector = newSource.article_selector; }
       return api.addSource(newSource.category, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-sources'] });
       toast.success('Source added!');
       setShowAddForm(false);
-      setNewSource({ category: 'tech', name: '', type: 'rss', url: '', seed_url: '', article_url_pattern: '', article_selector: '', enabled: true });
+      setNewSource({ category: 'tin_tuc', name: '', type: 'rss', url: '', seed_url: '', article_url_pattern: '', article_selector: '', enabled: true });
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-20 rounded-2xl bg-surface-container-low animate-pulse" />
-        ))}
-      </div>
-    );
-  }
+  const updateMutation = useMutation({
+    mutationFn: ({ category, name, updates }: { category: string; name: string; updates: Record<string, any> }) =>
+      api.updateSource(category, name, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-sources'] });
+      toast.success('Source updated!');
+      setEditingKey(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const [detecting, setDetecting] = useState<'add' | 'edit' | null>(null);
+
+  const runDetect = async (seedUrl: string, target: 'add' | 'edit') => {
+    if (!seedUrl) { toast.error('Enter a Seed URL first'); return; }
+    setDetecting(target);
+    try {
+      const result = await api.detectSourcePatterns(seedUrl);
+      if (target === 'add') {
+        setNewSource(prev => ({
+          ...prev,
+          article_url_pattern: result.article_url_pattern || prev.article_url_pattern,
+          article_selector: result.article_selector || prev.article_selector,
+        }));
+      } else {
+        setEditForm(prev => ({
+          ...prev,
+          article_url_pattern: result.article_url_pattern || prev.article_url_pattern,
+          article_selector: result.article_selector || prev.article_selector,
+        }));
+      }
+      toast.success(result.message || 'Patterns detected!');
+    } catch (err: any) {
+      toast.error(err.message || 'Detection failed');
+    } finally {
+      setDetecting(null);
+    }
+  };
+
+  const toggleCollapse = (cat: string) => setCollapsedCats(prev => {
+    const next = new Set(prev);
+    next.has(cat) ? next.delete(cat) : next.add(cat);
+    return next;
+  });
+
+  const startEditing = (category: string, source: any) => {
+    const key = `${category}::${source.name}`;
+    setEditingKey(key);
+    setEditForm({
+      name: source.name || '',
+      type: source.type || 'rss',
+      url: source.url || '',
+      seed_url: source.seed_url || '',
+      article_url_pattern: source.article_url_pattern || '',
+      article_selector: source.article_selector || '',
+      tags: (source.tags || []).join(', '),
+    });
+  };
+
+  const saveEdit = (category: string, originalName: string) => {
+    const updates: Record<string, any> = { ...editForm };
+    // Convert tags string to array
+    if (typeof updates.tags === 'string') {
+      updates.tags = updates.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+    }
+    // Remove irrelevant fields based on type
+    if (updates.type === 'rss') {
+      delete updates.seed_url;
+      delete updates.article_url_pattern;
+      delete updates.article_selector;
+    } else {
+      delete updates.url;
+    }
+    updateMutation.mutate({ category, name: originalName, updates });
+  };
+
+  if (isLoading) return (
+    <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-32 rounded-2xl bg-surface-container-low animate-pulse" />)}</div>
+  );
+
+  const allEntries = sources ? Object.values(sources).flat() : [];
+  const totalSources = allEntries.length;
+  const enabledSources = allEntries.filter((s: any) => s.enabled !== false).length;
+  const rssSources = allEntries.filter((s: any) => s.type === 'rss').length;
+  const crawlSources = allEntries.filter((s: any) => s.type === 'crawl').length;
+
+  const sortedCategories = sources
+    ? [...Object.keys(sources)].sort((a, b) => (categoryOrder.indexOf(a) === -1 ? 99 : categoryOrder.indexOf(a)) - (categoryOrder.indexOf(b) === -1 ? 99 : categoryOrder.indexOf(b)))
+    : [];
+
+  const inputCls = "w-full px-2.5 py-1.5 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-xs focus:border-primary/50 focus:outline-none";
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-5 animate-fade-in-up">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">News Sources</h2>
-          <p className="text-on-surface-variant mt-2 text-lg">Manage RSS feeds and crawl targets.</p>
+          <p className="text-on-surface-variant mt-1">Manage RSS feeds and crawl targets across categories.</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={onRefresh}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
-          >
-            <span className="material-symbols-outlined text-[14px]">refresh</span>
-            Refresh
+          <button onClick={onRefresh} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors">
+            <span className="material-symbols-outlined text-[14px]">refresh</span> Refresh
           </button>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary hover:translate-y-[-1px] transition-all font-semibold"
-          >
-            <span className="material-symbols-outlined text-[14px]">add</span>
-            Add Source
+          <button onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary hover:translate-y-[-1px] transition-all font-semibold shadow-sm">
+            <span className="material-symbols-outlined text-[14px]">add</span> Add Source
           </button>
         </div>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Total', value: totalSources, icon: 'hub', color: 'text-on-surface' },
+          { label: 'Active', value: enabledSources, icon: 'check_circle', color: 'text-emerald-600' },
+          { label: 'RSS Feeds', value: rssSources, icon: 'rss_feed', color: 'text-amber-600' },
+          { label: 'Crawlers', value: crawlSources, icon: 'travel_explore', color: 'text-purple-600' },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl bg-surface-container-low border border-outline-variant/15 p-3 flex items-center gap-3">
+            <span className={`material-symbols-outlined text-[22px] ${s.color}`}>{s.icon}</span>
+            <div>
+              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] text-outline uppercase tracking-wider">{s.label}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Add Source Form */}
       {showAddForm && (
-        <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-6 space-y-4 border border-emerald-500/30">
-          <h3 className="text-sm font-semibold text-emerald-600 uppercase tracking-wider">New Source</h3>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="bg-surface-container-low border-2 border-emerald-500/30 rounded-2xl p-5 space-y-4 animate-fade-in-up">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-emerald-600 uppercase tracking-wider flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">add_circle</span> New Source
+            </h3>
+            <button onClick={() => setShowAddForm(false)} className="text-outline hover:text-on-surface"><span className="material-symbols-outlined text-[18px]">close</span></button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-on-surface-variant block mb-1">Name</label>
-              <input
-                type="text"
-                value={newSource.name}
-                onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-                placeholder="e.g. The Verge"
-              />
+              <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">Name</label>
+              <input type="text" value={newSource.name} onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
+                className={inputCls} placeholder="e.g. The Verge" />
             </div>
             <div>
-              <label className="text-xs text-on-surface-variant block mb-1">Category</label>
-              <input
-                type="text"
-                value={newSource.category}
-                onChange={(e) => setNewSource({ ...newSource, category: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-                placeholder="tech"
-              />
+              <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">Category</label>
+              <select value={newSource.category} onChange={(e) => setNewSource({ ...newSource, category: e.target.value })} className={inputCls}>
+                {categoryOrder.map(cat => <option key={cat} value={cat}>{CATEGORY_META[cat]?.label || cat}</option>)}
+              </select>
             </div>
             <div>
-              <label className="text-xs text-on-surface-variant block mb-1">Type</label>
-              <select
-                value={newSource.type}
-                onChange={(e) => setNewSource({ ...newSource, type: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-              >
+              <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">Type</label>
+              <select value={newSource.type} onChange={(e) => setNewSource({ ...newSource, type: e.target.value })} className={inputCls}>
                 <option value="rss">RSS Feed</option>
                 <option value="crawl">Web Crawl</option>
               </select>
             </div>
-            {newSource.type === 'rss' ? (
-              <div>
-                <label className="text-xs text-on-surface-variant block mb-1">Feed URL</label>
-                <input
-                  type="text"
-                  value={newSource.url}
-                  onChange={(e) => setNewSource({ ...newSource, url: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-                  placeholder="https://example.com/feed/"
-                />
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="text-xs text-on-surface-variant block mb-1">Seed URL</label>
-                  <input
-                    type="text"
-                    value={newSource.seed_url}
-                    onChange={(e) => setNewSource({ ...newSource, seed_url: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-                    placeholder="https://example.com/news"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-on-surface-variant block mb-1">URL Pattern (regex)</label>
-                  <input
-                    type="text"
-                    value={newSource.article_url_pattern}
-                    onChange={(e) => setNewSource({ ...newSource, article_url_pattern: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-                    placeholder="example\.com/article-\d+"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-on-surface-variant block mb-1">Article Selector (CSS)</label>
-                  <input
-                    type="text"
-                    value={newSource.article_selector}
-                    onChange={(e) => setNewSource({ ...newSource, article_selector: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none"
-                    placeholder="h2 a, h3 a"
-                  />
-                </div>
-              </>
-            )}
           </div>
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={() => addMutation.mutate()}
-              disabled={!newSource.name || addMutation.isPending}
-              className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-on-surface hover:bg-emerald-500 disabled:opacity-50 transition-colors"
-            >
-              {addMutation.isPending ? 'Adding...' : 'Add Source'}
+          {newSource.type === 'rss' ? (
+            <div>
+              <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">Feed URL</label>
+              <input type="text" value={newSource.url} onChange={(e) => setNewSource({ ...newSource, url: e.target.value })}
+                className={inputCls} placeholder="https://example.com/feed/" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">Seed URL <span className="text-error">*</span></label>
+                <div className="flex gap-2">
+                  <input type="text" value={newSource.seed_url} onChange={(e) => setNewSource({ ...newSource, seed_url: e.target.value })}
+                    className={`${inputCls} flex-1`} placeholder="https://example.com/news — the main page to discover articles from" />
+                  <button onClick={() => runDetect(newSource.seed_url, 'add')} disabled={detecting === 'add' || !newSource.seed_url}
+                    className="px-3 py-1.5 text-[10px] rounded-lg bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 transition-colors font-semibold flex items-center gap-1 whitespace-nowrap">
+                    <span className={`material-symbols-outlined text-[14px] ${detecting === 'add' ? 'animate-spin' : ''}`}>{detecting === 'add' ? 'progress_activity' : 'auto_fix_high'}</span>
+                    {detecting === 'add' ? 'Detecting...' : 'Auto-detect'}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">URL Pattern (regex) <span className="text-outline">optional</span></label>
+                  <input type="text" value={newSource.article_url_pattern} onChange={(e) => setNewSource({ ...newSource, article_url_pattern: e.target.value })}
+                    className={inputCls} placeholder="Leave empty to match all links from the domain" />
+                  <p className="text-[9px] text-outline mt-1">Regex to match article URLs. e.g. <code>gamespot\.com/articles/</code></p>
+                </div>
+                <div>
+                  <label className="text-[10px] text-on-surface-variant block mb-1 uppercase tracking-wider">Article Selector (CSS) <span className="text-outline">optional</span></label>
+                  <input type="text" value={newSource.article_selector} onChange={(e) => setNewSource({ ...newSource, article_selector: e.target.value })}
+                    className={inputCls} placeholder="Leave empty to use default (a[href])" />
+                  <p className="text-[9px] text-outline mt-1">CSS selector for article links. e.g. <code>h2 a, h3 a, .article-title a</code></p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => addMutation.mutate()} disabled={!newSource.name || addMutation.isPending}
+              className="px-5 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors font-medium">
+              {addMutation.isPending ? 'Adding...' : '+ Add Source'}
             </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-sm rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
-            >
-              Cancel
-            </button>
+            <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-sm rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors">Cancel</button>
           </div>
         </div>
       )}
 
-      {/* Source categories */}
-      {sources && Object.entries(sources).map(([category, entries]) => (
-        <div key={category} className="space-y-2">
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            {category}
-            <span className="text-[10px] text-outline font-normal ml-1">
-              ({entries.length} source{entries.length !== 1 ? 's' : ''})
-            </span>
-          </h3>
+      {/* Category Grid (2 columns) */}
+      <div className="grid grid-cols-2 gap-4">
+        {sources && sortedCategories.map((category) => {
+          const entries = sources[category] || [];
+          const meta = CATEGORY_META[category] || { label: category, icon: 'folder', color: 'text-on-surface-variant', bgTint: 'bg-surface-container', border: 'border-l-outline' };
+          const isCollapsed = collapsedCats.has(category);
+          const enabledCount = entries.filter((s: any) => s.enabled !== false).length;
 
-          <div className="space-y-1.5">
-            {entries.map((source: any) => (
-              <div
-                key={source.name}
-                className={`bg-surface-container-low border border-outline-variant/15 rounded-xl p-4 flex items-center gap-4 transition-all ${
-                  source.enabled !== false ? '' : 'opacity-50'
-                }`}
-              >
-                {/* Type badge */}
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
-                  source.type === 'rss'
-                    ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30'
-                    : 'bg-purple-500/15 text-purple-600 border border-purple-500/30'
-                }`}>
-                  {source.type}
-                </span>
-
+          return (
+            <div key={category} className={`rounded-2xl bg-surface-container-low border border-outline-variant/15 overflow-hidden border-l-4 ${meta.border} transition-all`}>
+              {/* Category Header */}
+              <div className={`px-4 py-3 flex items-center gap-3 cursor-pointer select-none hover:bg-surface-container/30 transition-colors ${meta.bgTint}`}
+                onClick={() => toggleCollapse(category)}>
+                <span className={`material-symbols-outlined text-[22px] ${meta.color}`}>{meta.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-on-surface">{source.name}</h4>
-                  <p className="text-xs text-outline truncate">
-                    {source.url || source.seed_url}
-                  </p>
+                  <h3 className={`text-sm font-bold ${meta.color}`}>{meta.label}</h3>
+                  <p className="text-[10px] text-outline">{enabledCount}/{entries.length} active</p>
                 </div>
-
-                {/* Toggle */}
-                <button
-                  onClick={() => onToggle(category, source.name)}
-                  className={`w-10 h-5 rounded-full transition-all relative flex-shrink-0 ${
-                    source.enabled !== false ? 'bg-emerald-500' : 'bg-surface-container-high'
-                  }`}
-                >
-                  <span className={`w-3.5 h-3.5 rounded-full bg-surface-container-lowest absolute top-[3px] transition-all ${
-                    source.enabled !== false ? 'left-5' : 'left-1'
-                  }`} />
-                </button>
-
-                {/* Delete */}
-                <button
-                  onClick={() => {
-                    if (confirm(`Delete "${source.name}"?`)) {
-                      onDelete(category, source.name);
-                    }
-                  }}
-                  className="text-outline hover:text-error transition-colors text-sm flex-shrink-0"
-                >
-                  ✕
-                </button>
+                {entries.length > 0 && (
+                  <div className="w-12 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(enabledCount / entries.length) * 100}%` }} />
+                  </div>
+                )}
+                <span className={`material-symbols-outlined text-[18px] text-outline transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}>expand_more</span>
               </div>
-            ))}
-          </div>
-        </div>
-      ))}
+
+              {/* Source List */}
+              {!isCollapsed && (
+                <div className="px-3 pb-3">
+                  {entries.length === 0 ? (
+                    <div className="py-6 text-center">
+                      <span className={`material-symbols-outlined text-[32px] ${meta.color} opacity-20`}>{meta.icon}</span>
+                      <p className="text-xs text-outline mt-2">No sources yet</p>
+                      <button onClick={() => { setNewSource(prev => ({ ...prev, category })); setShowAddForm(true); }}
+                        className={`text-[10px] mt-2 px-3 py-1 rounded-full ${meta.bgTint} ${meta.color} hover:opacity-80 transition-opacity font-medium`}>
+                        + Add first source
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5 mt-1">
+                      {entries.map((source: any) => {
+                        const sourceKey = `${category}::${source.name}`;
+                        const isEditing = editingKey === sourceKey;
+                        return (
+                          <div key={source.name}>
+                            {/* Source Row */}
+                            <div className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all hover:bg-surface-container/40 ${source.enabled !== false ? '' : 'opacity-40'} ${isEditing ? 'bg-surface-container/40' : ''}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${source.type === 'rss' ? 'bg-amber-500' : 'bg-purple-500'}`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-xs font-semibold text-on-surface truncate">{source.name}</h4>
+                                  <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex-shrink-0 ${
+                                    source.type === 'rss' ? 'bg-amber-500/10 text-amber-600' : 'bg-purple-500/10 text-purple-600'}`}>{source.type}</span>
+                                </div>
+                                <p className="text-[10px] text-outline truncate mt-0.5">{source.url || source.seed_url}</p>
+                              </div>
+                              {source.tags && source.tags.length > 0 && (
+                                <div className="hidden group-hover:flex gap-0.5 flex-shrink-0">
+                                  {source.tags.slice(0, 2).map((tag: string) => (
+                                    <span key={tag} className="text-[8px] px-1 py-0.5 rounded bg-surface-container text-on-surface-variant">{tag}</span>
+                                  ))}
+                                  {source.tags.length > 2 && <span className="text-[8px] text-outline">+{source.tags.length - 2}</span>}
+                                </div>
+                              )}
+                              {/* Edit button */}
+                              <button onClick={(e) => { e.stopPropagation(); isEditing ? setEditingKey(null) : startEditing(category, source); }}
+                                className={`text-outline hover:text-primary transition-all flex-shrink-0 ${isEditing ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100'}`}>
+                                <span className="material-symbols-outlined text-[14px]">{isEditing ? 'close' : 'edit'}</span>
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); onToggle(category, source.name); }}
+                                className={`w-8 h-4 rounded-full transition-all relative flex-shrink-0 ${source.enabled !== false ? 'bg-emerald-500' : 'bg-surface-container-high'}`}>
+                                <span className={`w-3 h-3 rounded-full bg-white absolute top-[2px] transition-all shadow-sm ${source.enabled !== false ? 'left-[18px]' : 'left-[2px]'}`} />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${source.name}"?`)) onDelete(category, source.name); }}
+                                className="opacity-0 group-hover:opacity-100 text-outline hover:text-error transition-all flex-shrink-0">
+                                <span className="material-symbols-outlined text-[14px]">close</span>
+                              </button>
+                            </div>
+
+                            {/* Inline Edit Form */}
+                            {isEditing && (
+                              <div className="ml-4 mr-2 mt-1 mb-2 p-3 rounded-xl bg-surface-container/60 border border-outline-variant/15 space-y-2.5 animate-fade-in-up">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[9px] text-outline uppercase tracking-wider block mb-0.5">Name</label>
+                                    <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] text-outline uppercase tracking-wider block mb-0.5">Tags <span className="normal-case">(comma separated)</span></label>
+                                    <input type="text" value={editForm.tags || ''} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                                      className={inputCls} placeholder="ai, science, tech" />
+                                  </div>
+                                </div>
+                                {editForm.type === 'rss' ? (
+                                  <div>
+                                    <label className="text-[9px] text-outline uppercase tracking-wider block mb-0.5">Feed URL</label>
+                                    <input type="text" value={editForm.url || ''} onChange={(e) => setEditForm({ ...editForm, url: e.target.value })} className={inputCls} />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <label className="text-[9px] text-outline uppercase tracking-wider block mb-0.5">Seed URL</label>
+                                      <div className="flex gap-2">
+                                        <input type="text" value={editForm.seed_url || ''} onChange={(e) => setEditForm({ ...editForm, seed_url: e.target.value })} className={`${inputCls} flex-1`} />
+                                        <button onClick={() => runDetect(editForm.seed_url, 'edit')} disabled={detecting === 'edit' || !editForm.seed_url}
+                                          className="px-2 py-1 text-[9px] rounded-lg bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 transition-colors font-semibold flex items-center gap-1 whitespace-nowrap">
+                                          <span className={`material-symbols-outlined text-[12px] ${detecting === 'edit' ? 'animate-spin' : ''}`}>{detecting === 'edit' ? 'progress_activity' : 'auto_fix_high'}</span>
+                                          {detecting === 'edit' ? '...' : 'Detect'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="text-[9px] text-outline uppercase tracking-wider block mb-0.5">URL Pattern <span className="normal-case text-outline">(optional regex)</span></label>
+                                        <input type="text" value={editForm.article_url_pattern || ''} onChange={(e) => setEditForm({ ...editForm, article_url_pattern: e.target.value })}
+                                          className={inputCls} placeholder="Leave empty → all links from domain" />
+                                      </div>
+                                      <div>
+                                        <label className="text-[9px] text-outline uppercase tracking-wider block mb-0.5">Selector <span className="normal-case text-outline">(optional CSS)</span></label>
+                                        <input type="text" value={editForm.article_selector || ''} onChange={(e) => setEditForm({ ...editForm, article_selector: e.target.value })}
+                                          className={inputCls} placeholder="Leave empty → uses a[href]" />
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                                <div className="flex gap-2 pt-1">
+                                  <button onClick={() => saveEdit(category, source.name)} disabled={updateMutation.isPending}
+                                    className="px-3 py-1 text-[10px] rounded-lg bg-primary text-white hover:bg-primary-container disabled:opacity-50 transition-colors font-semibold">
+                                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                                  </button>
+                                  <button onClick={() => setEditingKey(null)}
+                                    className="px-3 py-1 text-[10px] rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
