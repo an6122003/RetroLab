@@ -212,7 +212,7 @@ export default function EditorPanel({ article: initialArticle, onActionsReady }:
     onError: (err) => toast.error((err as Error).message),
   });
 
-  const canApprove = !!(article.slug && article.selected_image);
+  const canApprove = !!(article.slug && article.selected_image && article.category);
   const isEditable = ['draft', 'image_pending'].includes(article.status);
 
   // Expose actions to parent for header buttons
@@ -380,20 +380,51 @@ export default function EditorPanel({ article: initialArticle, onActionsReady }:
                 onChange={(tags) => updateField('tags', tags)}
               />
 
-              {/* Category */}
-              <div className="space-y-1">
+              {/* Category (required) */}
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                  Category
+                  Category <span className="text-error">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={article.category || ''}
-                  onChange={(e) => updateField('category', e.target.value)}
-                  spellCheck={false}
-                  lang="vi"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant/15 text-on-surface text-sm focus:border-accent-500/50 focus:outline-none transition-colors"
-                  placeholder="Category"
-                />
+                {(() => {
+                  const CATEGORIES = ['Tin tức', 'AI', 'Công Nghệ', 'Công nghệ thông tin', 'Game & Giả Lập'] as const;
+                  const selected = (article.category || '').split(',').map(s => s.trim()).filter(Boolean);
+                  const toggleCat = (cat: string) => {
+                    const next = selected.includes(cat)
+                      ? selected.filter(c => c !== cat)
+                      : [...selected, cat];
+                    updateField('category', next.join(', '));
+                  };
+                  return (
+                    <>
+                      <div className="flex flex-wrap gap-1.5">
+                        {CATEGORIES.map(cat => {
+                          const isActive = selected.includes(cat);
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => toggleCat(cat)}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200 ${
+                                isActive
+                                  ? 'bg-primary/20 text-primary border-primary/40 shadow-sm shadow-primary/10'
+                                  : 'bg-surface-container-low text-on-surface-variant border-outline-variant/15 hover:border-outline-variant/30 hover:bg-surface-container'
+                              }`}
+                            >
+                              {isActive && <span className="mr-1">✓</span>}
+                              {cat}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selected.length === 0 && (
+                        <p className="text-[10px] text-error/80 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">warning</span>
+                          Category is required — select at least one
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

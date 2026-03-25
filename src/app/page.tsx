@@ -36,7 +36,7 @@ export default async function Home() {
   // --- Mockup Pane Distribution ---
   const heroLarge = getCircular(allPosts, 0, 2);
   const heroSmall = getCircular(allPosts, 2, 3);
-  const ticker1 = allPosts[5] || allPosts[0];
+  const tickerArticles = getCircular(allPosts, 5, Math.min(5, allPosts.length));
   
   // Magazine Section
   const magTop = allPosts[6] || allPosts[0];
@@ -57,7 +57,15 @@ export default async function Home() {
   const editorPicks = getCircular(allPosts, 23, 2);
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col w-full">
+    <main className="relative min-h-screen">
+      {/* Visible gradient background */}
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-[#eef2ff] via-[#f8fafc] to-[#ede9fe]"></div>
+      {/* Visible floating gradient orbs */}
+      <div className="fixed -z-10 top-[10%] -left-[5%] w-[700px] h-[700px] bg-[#2563eb]/[0.12] rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="fixed -z-10 top-[40%] -right-[5%] w-[600px] h-[600px] bg-[#7c3aed]/[0.10] rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="fixed -z-10 bottom-[5%] left-[20%] w-[500px] h-[500px] bg-[#06b6d4]/[0.08] rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col w-full">
       
       {/* 1. TOP HERO GRID (2 Large / 3 Small) */}
       <div className="flex flex-col gap-6 mb-12">
@@ -70,10 +78,12 @@ export default async function Home() {
       </div>
 
       {/* 2. TICKER 1 */}
-      <Ticker article={ticker1} />
+      <Ticker articles={tickerArticles} />
 
       {/* 3. FEATURED MAGAZINE LAYOUT */}
-      <div className="flex flex-col w-full mb-16 border-b border-gray-200 pb-12">
+      <div className="flex flex-col w-full mb-16 pb-12 relative">
+        {/* Glassmorphic section separator */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
         {/* Mag Top Item */}
         <Link href={`/article/${magTop.slug}`} className="flex flex-col md:flex-row gap-6 mb-10 group cursor-pointer">
           <div className="w-full md:w-[380px] shrink-0 aspect-[16/9] rounded-lg overflow-hidden relative border border-gray-100">
@@ -113,6 +123,13 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* Gradient section divider */}
+      <div className="w-full flex items-center gap-4 mb-12">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#2563eb]/20 to-transparent"></div>
+        <div className="w-2 h-2 rounded-full bg-[#2563eb]/20"></div>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#2563eb]/20 to-transparent"></div>
+      </div>
+
       {/* 4. ASYMMETRIC LAYOUT (List + Sidebar) */}
       <div className="flex flex-col lg:flex-row gap-10 mb-16">
         <div className="flex-1 flex flex-col gap-8">
@@ -145,9 +162,9 @@ export default async function Home() {
         <aside className="w-full lg:w-[300px] shrink-0">
           <div className="sticky top-28">
             <div className="text-[10px] text-gray-300 uppercase tracking-wider mb-2 text-center font-bold">Advertisement</div>
-            <div className="w-full rounded-lg overflow-hidden bg-gray-50 border border-gray-100 aspect-[3/4] flex items-center justify-center grayscale opacity-50 relative">
-               {/* Mockup Ad Style */}
-               <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-center p-6">
+            <div className="w-full rounded-xl overflow-hidden bg-white/40 backdrop-blur-sm border border-white/60 aspect-[3/4] flex items-center justify-center relative shadow-sm">
+               {/* Glassmorphic Ad Placeholder */}
+               <div className="absolute inset-0 bg-gradient-to-br from-gray-50/80 to-gray-100/80 flex items-center justify-center text-center p-6">
                   <span className="text-xs text-gray-400 font-bold uppercase tracking-widest leading-loose">
                     Không gian <br/> Quảng cáo <br/> 300x400
                   </span>
@@ -158,13 +175,13 @@ export default async function Home() {
       </div>
 
       {/* 5. NOTABLE GRID WITH TABS ("Đáng chú ý") */}
-      <div className="mb-16">
-        <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-10">
+      <div className="mb-16 bg-white/70 backdrop-blur-md rounded-2xl p-6 md:p-10 border border-gray-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-between border-b border-gray-200/70 pb-4 mb-10">
           <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-widest">Đáng chú ý</h2>
           <div className="hidden md:flex gap-8 overflow-x-auto whitespace-nowrap">
             <button className="text-[#2563eb] font-bold border-b-2 border-[#2563eb] pb-4 -mb-[17px] px-1">Tất cả</button>
             <button className="text-gray-500 font-semibold hover:text-gray-900 pb-4 -mb-[17px] px-1 transition-colors">AI</button>
-            <button className="text-gray-500 font-semibold hover:text-gray-900 pb-4 -mb-[17px] px-1 transition-colors">Đánh giá</button>
+            <button className="text-gray-500 font-semibold hover:text-gray-900 pb-4 -mb-[17px] px-1 transition-colors">Công Nghệ</button>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -199,8 +216,8 @@ export default async function Home() {
       </div>
 
       {/* 7. EDITOR'S PICKS ("Lựa chọn của Editor") */}
-      <div className="mb-12">
-        <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-widest border-b border-gray-200 pb-4 mb-10">
+      <div className="mb-12 bg-white/70 backdrop-blur-md rounded-2xl p-6 md:p-10 border border-gray-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+        <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-widest border-b border-gray-200/70 pb-4 mb-10">
           Lựa chọn của Editor
         </h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -211,6 +228,7 @@ export default async function Home() {
       {/* 8. NEWSLETTER SECTION */}
       <NewsletterSection />
       
+      </div>
     </main>
   );
 }

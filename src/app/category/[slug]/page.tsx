@@ -7,12 +7,10 @@ export const revalidate = 3600;
 const CATEGORY_MAP: Record<string, string> = {
   'tin-tuc': 'Tin tức',
   'ai': 'AI',
-  'danh-gia': 'Đánh giá',
-  'goc-nhin': 'Góc nhìn',
-  'tips-tricks': 'Tips & Tricks',
+  'cong-nghe': 'Công Nghệ',
+  'it': 'Công Nghệ Thông Tin',
+  'game-gia-lap': 'Game & Giả Lập',
   'chua-phan-loai': 'Chưa phân loại',
-  'xem-xong-mua': 'Xem xong mua',
-  'vat-vo-danh-gia': 'Vật vờ đánh giá',
 };
 
 function getCategoryName(slug: string): string {
@@ -34,28 +32,44 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const categoryName = getCategoryName(slug);
   
   const allPosts = await getPosts();
-  let categoryPosts = allPosts.filter(
-    p => p.category.toLowerCase() === categoryName.toLowerCase()
-  );
+  let categoryPosts: typeof allPosts;
 
-  // If no posts in specific category, show all posts as fallback to demonstrate layout
+  // Filter by both Category and Tags (case-insensitive) — pass if either matches
+  const matchName = categoryName.toLowerCase();
+  categoryPosts = allPosts.filter(p => {
+    const catMatch = p.category.toLowerCase() === matchName;
+    const tagMatch = p.tags
+      .split(',')
+      .map(t => t.trim().toLowerCase())
+      .includes(matchName);
+    return catMatch || tagMatch;
+  });
+
+  // Fallback: show 10 latest posts if no matches found
   if (categoryPosts.length === 0) {
     categoryPosts = allPosts.slice(0, 10);
   }
 
-  // Determine which layout to use based on the slug
-  if (slug === 'ai' || slug === 'tin-tuc') {
+  if (slug === 'ai') {
+    return <Layouts.AILayout categoryName={categoryName} posts={categoryPosts} />;
+  }
+
+  if (slug === 'tin-tuc') {
     return <Layouts.NewsLayout categoryName={categoryName} posts={categoryPosts} />;
   }
 
-  if (slug === 'danh-gia' || slug === 'vat-vo-danh-gia') {
+  if (slug === 'cong-nghe') {
     return <Layouts.MagazineLayout categoryName={categoryName} posts={categoryPosts} />;
   }
 
-  if (slug === 'tips-tricks') {
+  if (slug === 'game-gia-lap') {
     return <Layouts.AlternateLayout categoryName={categoryName} posts={categoryPosts} />;
   }
 
-  // Default layout (includes Goc Nhin style)
+  if (slug === 'it') {
+    return <Layouts.ITLayout categoryName={categoryName} posts={categoryPosts} />;
+  }
+
+  // Default layout
   return <Layouts.DefaultCategoryLayout categoryName={categoryName} posts={categoryPosts} />;
 }

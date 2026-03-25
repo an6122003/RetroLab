@@ -1,117 +1,174 @@
-tech:
-  - name: The Verge
-    type: rss
-    url: https://www.theverge.com/rss/tech/index.xml
-    enabled: true
-    tags: [smartphones, ai, apps, reviews]
-
-  - name: 9to5Google
-    type: rss
-    url: https://9to5google.com/feed/
-    enabled: true
-    tags: [android, google, smartphones]
-
-  - name: 9to5Mac
-    type: rss
-    url: https://9to5mac.com/feed/
-    enabled: true
-    tags: [apple, iphone, mac]
-
-  - name: XDA Developers
-    type: rss
-    url: https://www.xda-developers.com/feed/
-    enabled: true
-    tags: [android, smartphones, tips]
-
-  - name: Android Authority
-    type: rss
-    url: https://www.androidauthority.com/feed/
-    enabled: true
-    tags: [android, smartphones, reviews]
-
-  - name: Android Central
-    type: rss
-    url: https://www.androidcentral.com/rss.xml
-    enabled: true
-    tags: [android, smartphones, reviews]
-
-  - name: Ars Technica
-    type: rss
-    url: https://feeds.arstechnica.com/arstechnica/index/
-    enabled: true
-    tags: [ai, science, security, analysis]
-
-  - name: Engadget
-    type: rss
-    url: https://www.engadget.com/rss.xml
-    enabled: true
-    tags: [gadgets, reviews, smartphones]
-
-  - name: Gizmodo
-    type: rss
-    url: https://gizmodo.com/rss
-    enabled: true
-    tags: [gadgets, science, ai]
-
-  - name: TechCrunch
-    type: rss
-    url: https://techcrunch.com/feed/
-    enabled: true
-    tags: [startups, ai, apps]
-
-  - name: Wired
-    type: rss
-    url: https://www.wired.com/feed/rss
-    enabled: true
-    tags: [ai, science, culture, analysis]
-
-  - name: TechRadar
-    type: rss
-    url: https://www.techradar.com/rss
-    enabled: true
-    tags: [reviews, smartphones, laptops]
-
-  - name: MacRumors
-    type: rss
-    url: https://feeds.macrumors.com/MacRumors-All
-    enabled: true
-    tags: [apple, iphone, mac]
-
-  - name: Hacker News
-    type: rss
-    url: https://hnrss.org/frontpage
-    enabled: true
-    tags: [programming, startups, ai]
-
-  - name: MIT Technology Review
-    type: rss
-    url: https://www.technologyreview.com/feed/
-    enabled: true
-    tags: [ai, science, analysis]
-
-  - name: GSMArena
-    type: crawl
-    seed_url: https://www.gsmarena.com/news.php3
-    article_url_pattern: 'gsmarena\.com/[a-z0-9_-]+-news-\d+\.php'
-    article_selector: 'h3 a, .news-item a'
-    js_required: false
-    enabled: true
-    tags: [smartphones, reviews, specs]
-
-  - name: Phandroid
-    type: crawl
-    seed_url: https://phandroid.com/category/android-news/
-    article_url_pattern: 'phandroid\.com/\d{4}/\d{2}/'
-    article_selector: 'h2 a, h3 a'
-    js_required: false
-    enabled: true
-    tags: [android, smartphones, apps]
-
-  - name: NotebookCheck
-    type: crawl
-    seed_url: https://www.notebookcheck.net/News.5.0.html
-    article_url_pattern: 'notebookcheck\.net/[a-z0-9-]+\.\d+\.0\.html'
-    article_selector: '.teaser-title a, h3 a'
-    js_required: false
-    enabled: true
-    tags: [laptops, smartphones, reviews, benchmarks]
+tin_tuc:
+- name: The Verge
+  type: rss
+  url: https://www.theverge.com/rss/tech/index.xml
+  enabled: true
+  tags:
+  - smartphones
+  - ai
+  - apps
+  - reviews
+- name: TechCrunch
+  type: rss
+  url: https://techcrunch.com/feed/
+  enabled: true
+  tags:
+  - startups
+  - ai
+  - apps
+- name: Engadget
+  type: rss
+  url: https://www.engadget.com/rss.xml
+  enabled: true
+  tags:
+  - gadgets
+  - reviews
+  - smartphones
+- name: Ars Technica
+  type: rss
+  url: https://feeds.arstechnica.com/arstechnica/index/
+  enabled: true
+  tags:
+  - ai
+  - science
+  - security
+  - analysis
+- name: Wired
+  type: rss
+  url: https://www.wired.com/feed/rss
+  enabled: true
+  tags:
+  - ai
+  - science
+  - culture
+  - analysis
+- name: Hacker News
+  type: rss
+  url: https://hnrss.org/frontpage
+  enabled: true
+  tags:
+  - programming
+  - startups
+  - ai
+ai:
+- name: MIT Technology Review
+  type: rss
+  url: https://www.technologyreview.com/feed/
+  enabled: true
+  tags:
+  - ai
+  - science
+  - analysis
+- name: Gizmodo
+  type: rss
+  url: https://gizmodo.com/rss
+  enabled: true
+  tags:
+  - gadgets
+  - science
+  - ai
+cong_nghe:
+- name: 9to5Google
+  type: rss
+  url: https://9to5google.com/feed/
+  enabled: true
+  tags:
+  - android
+  - google
+  - smartphones
+- name: 9to5Mac
+  type: rss
+  url: https://9to5mac.com/feed/
+  enabled: true
+  tags:
+  - apple
+  - iphone
+  - mac
+- name: Android Authority
+  type: rss
+  url: https://www.androidauthority.com/feed/
+  enabled: true
+  tags:
+  - android
+  - smartphones
+  - reviews
+- name: Android Central
+  type: rss
+  url: https://www.androidcentral.com/rss.xml
+  enabled: true
+  tags:
+  - android
+  - smartphones
+  - reviews
+- name: TechRadar
+  type: rss
+  url: https://www.techradar.com/rss
+  enabled: true
+  tags:
+  - reviews
+  - smartphones
+  - laptops
+- name: MacRumors
+  type: rss
+  url: https://feeds.macrumors.com/MacRumors-All
+  enabled: true
+  tags:
+  - apple
+  - iphone
+  - mac
+- name: GSMArena
+  type: crawl
+  seed_url: https://www.gsmarena.com/news.php3
+  article_url_pattern: gsmarena\.com/[a-z0-9_-]+-news-\d+\.php
+  article_selector: h3 a, .news-item a
+  js_required: false
+  enabled: true
+  tags:
+  - smartphones
+  - reviews
+  - specs
+- name: NotebookCheck
+  type: crawl
+  seed_url: https://www.notebookcheck.net/News.5.0.html
+  article_url_pattern: notebookcheck\.net/[a-z0-9-]+\.\d+\.0\.html
+  article_selector: .teaser-title a, h3 a
+  js_required: false
+  enabled: true
+  tags:
+  - laptops
+  - smartphones
+  - reviews
+  - benchmarks
+- name: Vật Vờ Studio
+  type: crawl
+  seed_url: https://vatvostudio.vn/
+  article_url_pattern: vatvostudio\.vn/[a-z0-9-]+/
+  article_selector: h3 a
+  enabled: true
+it:
+- name: XDA Developers
+  type: rss
+  url: https://www.xda-developers.com/feed/
+  enabled: true
+  tags:
+  - android
+  - smartphones
+  - tips
+- name: Phandroid
+  type: crawl
+  seed_url: https://phandroid.com/category/android-news/
+  article_url_pattern: phandroid\.com/\d{4}/\d{2}/
+  article_selector: h2 a, h3 a
+  js_required: false
+  enabled: true
+  tags:
+  - android
+  - smartphones
+  - apps
+game_emulation:
+- name: GameSpot
+  type: crawl
+  seed_url: https://www.gamespot.com/
+  article_url_pattern: ''
+  article_selector: ''
+  enabled: true

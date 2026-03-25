@@ -1,12 +1,12 @@
 import { Search, User } from 'lucide-react';
 
-export default function Header() {
+export default function Header({ onProfileClick }: { onProfileClick?: () => void }) {
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
         
         {/* Logo */}
-        <div className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.reload()}>
           <div className="w-8 h-8 rounded-full bg-[#2563eb] flex items-center justify-center relative">
             <div className="w-2 h-2 bg-[#facc15] rounded-full absolute top-1.5 right-1.5"></div>
           </div>
@@ -35,7 +35,11 @@ export default function Header() {
               className="bg-transparent border-none outline-none text-sm w-32 focus:w-48 transition-all duration-300 text-gray-900 placeholder-gray-500"
             />
           </div>
-          <button className="w-10 h-10 rounded-full bg-blue-50 text-[#2563eb] flex items-center justify-center hover:bg-blue-100 transition-colors">
+          <button 
+            onClick={onProfileClick}
+            className="w-10 h-10 rounded-full bg-blue-50 text-[#2563eb] flex items-center justify-center hover:bg-blue-100 transition-colors"
+            title="Hồ sơ cá nhân"
+          >
             <User size={18} />
           </button>
         </div>

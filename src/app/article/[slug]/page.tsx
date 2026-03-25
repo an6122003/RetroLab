@@ -6,6 +6,7 @@ import { Clock, Folder } from "lucide-react";
 import type { Metadata } from 'next';
 import { Suspense } from "react";
 import { ArticleSkeleton } from "@/components/ui/Skeletons";
+import ArticleActions from "@/components/post/ArticleActions";
 
 export const revalidate = 3600;
 
@@ -94,6 +95,9 @@ async function ArticleContent({ slug }: { slug: string }) {
           </div>
         </div>
 
+        {/* Like / Save / Share actions */}
+        <ArticleActions postSlug={slug} />
+
         {/* Article Body */}
         <div 
           className="prose prose-lg max-w-none text-gray-800"
@@ -114,6 +118,9 @@ async function ArticleContent({ slug }: { slug: string }) {
             ))}
           </div>
         )}
+
+        {/* Bottom actions — for readers who finish the article */}
+        <ArticleActions postSlug={slug} />
 
         {/* Footer Category */}
         <div className="flex items-center gap-2 border-t border-gray-200 pt-6 mt-10 mb-10">

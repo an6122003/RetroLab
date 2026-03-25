@@ -299,7 +299,11 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
             "summary": rewritten["summary"],
             "perspective": rewritten["perspective"],
             "reading_time_minutes": rewritten["reading_time_minutes"],
-            "category": raw_article.get("category"),
+            "category": (
+                ", ".join(rewritten["category"])
+                if isinstance(rewritten.get("category"), list) and rewritten["category"]
+                else rewritten.get("category") or "Tin tức"
+            ),
             "tags": rewritten["tags"],
             "image_keywords": rewritten["image_keywords"],
             "inline_image_keywords": rewritten.get("inline_image_keywords", []),

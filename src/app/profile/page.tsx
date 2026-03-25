@@ -1,0 +1,630 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import {
+  User, Heart, MessageSquare, Settings, LogOut,
+  Clock, Trash2, Bookmark, Bell, Lock, Check
+} from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { getAvatar, AVATARS, type AvatarOption } from '@/constants/avatars';
+import { getProfile, updateProfile, getUserSettings, updateUserSettings } from '@/lib/services/profile.service';
+import { getUserLikedSlugs } from '@/lib/services/likes.service';
+import { getUserSavedSlugs, unsavePost } from '@/lib/services/saves.service';
+import { unlikePost } from '@/lib/services/likes.service';
+import type { Profile, UserSettings } from '@/lib/types/database';
+
+type TabType = 'saved' | 'liked' | 'comments' | 'settings';
+
+export default function ProfilePage() {
+  const { user, loading: authLoading, logout, refresh } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const initialTab = (searchParams.get('tab') as TabType) || 'saved';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+
+  // Profile state
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+
+  // Edit states
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatarId, setEditAvatarId] = useState('avatar-01');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [pushNotif, setPushNotif] = useState(false);
+  const [newsletter, setNewsletter] = useState(true);
+
+  // Post lists
+  const [savedSlugs, setSavedSlugs] = useState<string[]>([]);
+  const [likedSlugs, setLikedSlugs] = useState<string[]>([]);
+
+  // UI states
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Load user data
+  const loadUserData = useCallback(async () => {
+    if (!user) return;
+
+    const [profileData, settingsData, saved, liked] = await Promise.all([
+      getProfile(user.id),
+      getUserSettings(user.id),
+      getUserSavedSlugs(user.id),
+      getUserLikedSlugs(user.id),
+    ]);
+
+    if (profileData) {
+      setProfile(profileData);
+      setEditName(profileData.display_name);
+      setEditBio(profileData.bio || '');
+      setEditAvatarId(profileData.avatar_id);
+    }
+    if (settingsData) {
+      setSettings(settingsData);
+      setEmailNotif(settingsData.email_notifications);
+      setPushNotif(settingsData.push_notifications);
+      setNewsletter(settingsData.newsletter_subscribed);
+    }
+    setSavedSlugs(saved);
+    setLikedSlugs(liked);
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login');
+      return;
+    }
+    loadUserData();
+  }, [user, authLoading, router, loadUserData]);
+
+  const handleSaveSettings = async () => {
+    if (!user) return;
+    setSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      await Promise.all([
+        updateProfile(user.id, {
+          display_name: editName,
+          bio: editBio,
+          avatar_id: editAvatarId,
+        }),
+        updateUserSettings(user.id, {
+          email_notifications: emailNotif,
+          push_notifications: pushNotif,
+          newsletter_subscribed: newsletter,
+        }),
+      ]);
+      setSaveSuccess(true);
+      await refresh();
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUnsave = async (slug: string) => {
+    if (!user) return;
+    await unsavePost(user.id, slug);
+    setSavedSlugs((prev) => prev.filter((s) => s !== slug));
+  };
+
+  const handleUnlike = async (slug: string) => {
+    if (!user) return;
+    await unlikePost(user.id, slug);
+    setLikedSlugs((prev) => prev.filter((s) => s !== slug));
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
+
+  // Loading state
+  if (authLoading || (!user && !authLoading)) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-1/4 shrink-0 flex flex-col gap-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col items-center">
+            <div className="w-24 h-24 rounded-full skeleton-bone mb-4" />
+            <div className="h-5 w-32 skeleton-bone rounded mb-2" />
+            <div className="h-4 w-40 skeleton-bone rounded" />
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="h-8 w-48 skeleton-bone rounded mb-6" />
+          <div className="space-y-4">
+            <div className="h-32 skeleton-bone rounded-lg" />
+            <div className="h-32 skeleton-bone rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentAvatar = getAvatar(editAvatarId);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col md:flex-row gap-8">
+      {/* ═══════════════════════════════════════════
+          Sidebar
+          ═══════════════════════════════════════════ */}
+      <div className="w-full md:w-1/4 shrink-0 flex flex-col gap-6">
+        {/* User Card */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col items-center text-center">
+          <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-4 relative border-4 border-white shadow-sm overflow-hidden">
+            <Image
+              src={currentAvatar.src}
+              alt={currentAvatar.label}
+              width={96}
+              height={96}
+              className="w-full h-full object-cover"
+            />
+            <div className="w-4 h-4 bg-green-500 border-2 border-white rounded-full absolute bottom-1 right-1"></div>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {profile?.display_name || user?.email || 'User'}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">{user?.email}</p>
+          <div className="w-full flex justify-between text-sm border-t border-gray-100 pt-4 mt-2 px-2">
+            <div className="flex flex-col items-center">
+              <span className="font-bold text-gray-900 text-lg">{savedSlugs.length}</span>
+              <span className="text-gray-500 text-[10px] uppercase tracking-wider">Đã lưu</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="font-bold text-gray-900 text-lg">{likedSlugs.length}</span>
+              <span className="text-gray-500 text-[10px] uppercase tracking-wider">Đã thích</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="font-bold text-gray-900 text-lg">0</span>
+              <span className="text-gray-500 text-[10px] uppercase tracking-wider">Bình luận</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+          <SidebarTab
+            active={activeTab === 'saved'}
+            onClick={() => setActiveTab('saved')}
+            icon={<Bookmark size={18} className={activeTab === 'saved' ? 'fill-[#2563eb]' : ''} />}
+            label="Bài viết đã lưu"
+            activeColor="blue"
+          />
+          <SidebarTab
+            active={activeTab === 'liked'}
+            onClick={() => setActiveTab('liked')}
+            icon={<Heart size={18} className={activeTab === 'liked' ? 'fill-[#ef4444]' : ''} />}
+            label="Bài viết đã thích"
+            activeColor="red"
+          />
+          <SidebarTab
+            active={activeTab === 'comments'}
+            onClick={() => setActiveTab('comments')}
+            icon={<MessageSquare size={18} className={activeTab === 'comments' ? 'fill-[#2563eb]' : ''} />}
+            label="Bình luận của tôi"
+            activeColor="blue"
+          />
+          <SidebarTab
+            active={activeTab === 'settings'}
+            onClick={() => setActiveTab('settings')}
+            icon={<Settings size={18} />}
+            label="Cài đặt tài khoản"
+            activeColor="blue"
+          />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-50 font-medium text-sm text-left transition-colors border-t border-gray-100"
+          >
+            <LogOut size={18} />
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          Main Content
+          ═══════════════════════════════════════════ */}
+      <div className="flex-1 flex flex-col">
+
+        {/* ── Saved Tab ── */}
+        {activeTab === 'saved' && (
+          <>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                <Bookmark className="text-[#2563eb]" size={24} fill="#2563eb" />
+                Bài viết đã lưu
+              </h1>
+              <span className="text-sm text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full">
+                {savedSlugs.length} bài viết
+              </span>
+            </div>
+            {savedSlugs.length === 0 ? (
+              <EmptyState
+                icon={<Bookmark size={48} className="text-gray-300" />}
+                message="Chưa có bài viết nào được lưu."
+              />
+            ) : (
+              <div className="flex flex-col gap-4">
+                {savedSlugs.map((slug) => (
+                  <PostCard
+                    key={slug}
+                    slug={slug}
+                    actionIcon={<Trash2 size={18} />}
+                    actionTitle="Bỏ lưu"
+                    actionHoverClass="hover:text-red-500 hover:bg-red-50"
+                    onAction={() => handleUnsave(slug)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Liked Tab ── */}
+        {activeTab === 'liked' && (
+          <>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                <Heart className="text-[#ef4444]" size={24} fill="#ef4444" />
+                Bài viết đã thích
+              </h1>
+              <span className="text-sm text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full">
+                {likedSlugs.length} bài viết
+              </span>
+            </div>
+            {likedSlugs.length === 0 ? (
+              <EmptyState
+                icon={<Heart size={48} className="text-gray-300" />}
+                message="Chưa có bài viết nào được thích."
+              />
+            ) : (
+              <div className="flex flex-col gap-4">
+                {likedSlugs.map((slug) => (
+                  <PostCard
+                    key={slug}
+                    slug={slug}
+                    actionIcon={<Heart size={18} fill="currentColor" />}
+                    actionTitle="Bỏ thích"
+                    actionHoverClass="text-[#ef4444] hover:bg-red-50"
+                    onAction={() => handleUnlike(slug)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Comments Tab ── */}
+        {activeTab === 'comments' && (
+          <>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                <MessageSquare className="text-[#2563eb]" size={24} fill="#2563eb" />
+                Bình luận của tôi
+              </h1>
+              <span className="text-sm text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full">
+                0 bình luận
+              </span>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
+              <MessageSquare size={48} className="mx-auto mb-4 text-gray-300" />
+              <p>Tính năng quản lý bình luận đang được phát triển.</p>
+            </div>
+          </>
+        )}
+
+        {/* ── Settings Tab ── */}
+        {activeTab === 'settings' && (
+          <>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                <Settings className="text-gray-700" size={24} />
+                Cài đặt tài khoản
+              </h1>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {/* Profile Info Section */}
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <User size={18} className="text-[#2563eb]" />
+                  Thông tin cá nhân
+                </h3>
+                <div className="flex flex-col sm:flex-row gap-6 mb-6">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center relative border border-gray-200 overflow-hidden">
+                      <Image
+                        src={currentAvatar.src}
+                        alt={currentAvatar.label}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                      className="text-sm text-[#2563eb] font-medium hover:underline"
+                    >
+                      Thay đổi ảnh
+                    </button>
+
+                    {/* Avatar picker */}
+                    {showAvatarPicker && (
+                      <div className="grid grid-cols-4 gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-fade-in">
+                        {AVATARS.map((av: AvatarOption) => (
+                          <button
+                            key={av.id}
+                            onClick={() => {
+                              setEditAvatarId(av.id);
+                              setShowAvatarPicker(false);
+                            }}
+                            className={`w-12 h-12 rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${
+                              editAvatarId === av.id
+                                ? 'border-[#2563eb] ring-2 ring-blue-200'
+                                : 'border-transparent hover:border-gray-300'
+                            }`}
+                            title={av.label}
+                          >
+                            <Image
+                              src={av.src}
+                              alt={av.label}
+                              width={48}
+                              height={48}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Email không thể thay đổi.</p>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tiểu sử</label>
+                  <textarea
+                    rows={3}
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Giới thiệu ngắn về bản thân..."
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Security Section */}
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Lock size={18} className="text-[#2563eb]" />
+                  Bảo mật
+                </h3>
+                <div className="flex flex-col gap-4 max-w-md">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu hiện tại</label>
+                    <input type="password" placeholder="••••••••" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
+                    <input type="password" placeholder="••••••••" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu mới</label>
+                    <input type="password" placeholder="••••••••" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notifications Section */}
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Bell size={18} className="text-[#2563eb]" />
+                  Thông báo
+                </h3>
+                <div className="flex flex-col gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={emailNotif}
+                      onChange={(e) => setEmailNotif(e.target.checked)}
+                      className="w-4 h-4 text-[#2563eb] rounded border-gray-300 focus:ring-[#2563eb]"
+                    />
+                    <span className="text-sm text-gray-700">Nhận email thông báo khi có bài viết mới từ tác giả yêu thích</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={pushNotif}
+                      onChange={(e) => setPushNotif(e.target.checked)}
+                      className="w-4 h-4 text-[#2563eb] rounded border-gray-300 focus:ring-[#2563eb]"
+                    />
+                    <span className="text-sm text-gray-700">Nhận email khi có người trả lời bình luận của tôi</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newsletter}
+                      onChange={(e) => setNewsletter(e.target.checked)}
+                      className="w-4 h-4 text-[#2563eb] rounded border-gray-300 focus:ring-[#2563eb]"
+                    />
+                    <span className="text-sm text-gray-700">Đăng ký nhận bản tin tổng hợp hàng tuần (Newsletter)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                {saveSuccess && (
+                  <div className="flex items-center gap-2 text-sm text-green-600 mr-auto">
+                    <Check size={16} />
+                    <span>Đã lưu thành công!</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => loadUserData()}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#2563eb] rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   Sub-components
+   ═══════════════════════════════════════════ */
+
+function SidebarTab({
+  active,
+  onClick,
+  icon,
+  label,
+  activeColor,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  activeColor: 'blue' | 'red';
+}) {
+  const colorMap = {
+    blue: {
+      bg: 'bg-blue-50 text-[#2563eb] border-l-4 border-[#2563eb]',
+    },
+    red: {
+      bg: 'bg-red-50 text-[#ef4444] border-l-4 border-[#ef4444]',
+    },
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 px-6 py-4 font-medium text-sm text-left transition-colors ${
+        active
+          ? colorMap[activeColor].bg
+          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+/**
+ * Post card for saved/liked lists.
+ * Fetches metadata from the Notion API on mount.
+ * Falls back gracefully if the article was deleted.
+ */
+function PostCard({
+  slug,
+  actionIcon,
+  actionTitle,
+  actionHoverClass,
+  onAction,
+}: {
+  slug: string;
+  actionIcon: React.ReactNode;
+  actionTitle: string;
+  actionHoverClass: string;
+  onAction: () => void;
+}) {
+  const [meta, setMeta] = useState<{ title: string; excerpt: string; coverImage: string; category: string } | null>(null);
+
+  useEffect(() => {
+    // Fetch article metadata from our API
+    fetch(`/api/article-meta?slug=${encodeURIComponent(slug)}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => setMeta(data))
+      .catch(() => setMeta(null));
+  }, [slug]);
+
+  return (
+    <Link
+      href={`/article/${slug}`}
+      className="flex flex-col sm:flex-row gap-6 bg-white border border-gray-200 rounded-lg p-4 group cursor-pointer hover:shadow-md transition-shadow relative"
+    >
+      <div className="w-full sm:w-[240px] shrink-0 aspect-[16/9] rounded-md overflow-hidden bg-gray-100">
+        {meta?.coverImage ? (
+          <img
+            src={meta.coverImage}
+            alt={meta.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+        ) : (
+          <div className="w-full h-full skeleton-bone" />
+        )}
+      </div>
+      <div className="flex flex-col justify-center flex-1 pr-8">
+        <span className="text-[#2563eb] text-[11px] font-bold uppercase tracking-widest mb-2">
+          {meta?.category || '...'}
+        </span>
+        <h3 className="text-lg font-bold text-gray-900 leading-snug group-hover:text-[#2563eb] transition-colors mb-2">
+          {meta?.title || (
+            <span className="inline-block h-5 w-64 skeleton-bone rounded" />
+          )}
+        </h3>
+        <p className="text-gray-600 text-[14px] leading-relaxed line-clamp-2 mb-3">
+          {meta?.excerpt || ''}
+        </p>
+        <div className="flex items-center text-[12px] text-gray-400 gap-1 mt-auto">
+          <Clock size={12} /> {slug}
+        </div>
+      </div>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAction(); }}
+        className={`absolute top-4 right-4 p-2 text-gray-400 rounded-full transition-colors ${actionHoverClass}`}
+        title={actionTitle}
+      >
+        {actionIcon}
+      </button>
+    </Link>
+  );
+}
+
+function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
+      <div className="mx-auto mb-4">{icon}</div>
+      <p>{message}</p>
+    </div>
+  );
+}

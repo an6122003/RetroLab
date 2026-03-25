@@ -8,6 +8,7 @@ directly. Sources config is read from / written to the pipeline's sources.yaml.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -44,10 +45,16 @@ def _get_celery() -> Celery:
 # ── Paths ────────────────────────────────────────────────────────
 
 def _sources_path() -> Path:
+    config_dir = os.getenv("PIPELINE_CONFIG_DIR")
+    if config_dir:
+        return Path(config_dir) / "sources.yaml"
     return settings.pipeline_dir / "config" / "sources.yaml"
 
 
 def _env_path() -> Path:
+    config_dir = os.getenv("PIPELINE_CONFIG_DIR")
+    if config_dir:
+        return Path(config_dir).parent / ".env"
     return settings.pipeline_dir / ".env"
 
 
@@ -82,6 +89,7 @@ class SourceEntry(BaseModel):
     js_required: bool | None = None
     enabled: bool = True
     output_language: str | None = None
+    tags: list[str] | None = None
 
 
 class PipelineConfig(BaseModel):
@@ -134,6 +142,181 @@ async def update_sources(
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(sources, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     return {"status": "saved"}
+
+
+@router.post("/sources/detect")
+async def detect_source_patterns(
+    payload: dict[str, str] = Body(...),
+) -> dict[str, Any]:
+    """Auto-detect article URL pattern and CSS selector from a seed URL.
+
+    Fetches the page, analyzes all links, groups them by URL structure,
+    and returns the most likely article pattern + CSS selector.
+    """
+    import re as _re
+    from collections import Counter
+    from urllib.parse import urlparse, urljoin
+
+    seed_url = payload.get("url", "").strip()
+    if not seed_url:
+        raise HTTPException(status_code=400, detail="url is required")
+
+    # Fetch the page
+    import httpx
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=headers) as client:
+            resp = await client.get(seed_url)
+            resp.raise_for_status()
+            html = resp.text
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch: {exc}")
+
+    # Parse HTML
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        # Fallback: basic regex link extraction
+        link_re = _re.compile(r'<a\s[^>]*href=["\']([^"\']+)["\']', _re.IGNORECASE)
+        raw_links = link_re.findall(html)
+        parsed_seed = urlparse(seed_url)
+        domain = parsed_seed.netloc.replace("www.", "")
+
+        # Filter to same-domain links
+        article_links = []
+        for href in raw_links:
+            full = urljoin(seed_url, href)
+            p = urlparse(full)
+            if domain in p.netloc and len(p.path) > 10:
+                article_links.append(full)
+
+        if not article_links:
+            return {
+                "article_url_pattern": "",
+                "article_selector": "a[href]",
+                "sample_urls": [],
+                "message": "No article-like links found on this page.",
+            }
+
+        # Find common path pattern
+        path_structures: list[str] = []
+        for link in article_links:
+            p = urlparse(link)
+            path = p.path
+            path = _re.sub(r'/\d+', r'/\\d+', path)
+            path = _re.sub(r'/[a-f0-9]{8,}', r'/[a-f0-9]+', path)
+            path_structures.append(path)
+
+        most_common_path = Counter(path_structures).most_common(1)[0][0]
+        escaped_domain = _re.escape(domain)
+        pattern = f"{escaped_domain}{most_common_path}"
+
+        return {
+            "article_url_pattern": pattern,
+            "article_selector": "a[href]",
+            "sample_urls": article_links[:5],
+            "message": f"Detected {len(article_links)} article-like links.",
+        }
+
+    # Full BeautifulSoup analysis
+    soup = BeautifulSoup(html, "html.parser")
+    parsed_seed = urlparse(seed_url)
+    domain = parsed_seed.netloc.replace("www.", "")
+
+    # Collect all links with their parent info
+    link_data: list[dict[str, Any]] = []
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
+        full_url = urljoin(seed_url, href)
+        p = urlparse(full_url)
+
+        if p.scheme not in ("http", "https"):
+            continue
+        if domain not in p.netloc.replace("www.", ""):
+            continue
+        if len(p.path) < 10:
+            continue
+        skip_patterns = [
+            r"/tag/", r"/category/", r"/author/", r"/page/\d+",
+            r"/search", r"/login", r"/register", r"/about",
+            r"/contact", r"/privacy", r"/terms", r"/feed",
+            r"\.(css|js|png|jpg|gif|svg|ico|xml|json)$",
+        ]
+        if any(_re.search(sp, p.path, _re.IGNORECASE) for sp in skip_patterns):
+            continue
+
+        parent = a_tag.parent
+        selectors = []
+        if parent:
+            if parent.name:
+                selectors.append(f"{parent.name} a")
+            for cls in (parent.get("class") or []):
+                selectors.append(f".{cls} a")
+        if a_tag.get("class"):
+            for cls in a_tag["class"]:
+                selectors.append(f"a.{cls}")
+        heading_parent = a_tag.find_parent(["h1", "h2", "h3", "h4"])
+        if heading_parent:
+            selectors.append(f"{heading_parent.name} a")
+
+        link_data.append({
+            "url": full_url,
+            "path": p.path,
+            "selectors": selectors,
+            "text": (a_tag.get_text(strip=True) or "")[:100],
+        })
+
+    if not link_data:
+        return {
+            "article_url_pattern": "",
+            "article_selector": "a[href]",
+            "sample_urls": [],
+            "message": "No article-like links found on this page.",
+        }
+
+    # Generalize paths into patterns
+    path_patterns: list[str] = []
+    for ld in link_data:
+        path = ld["path"]
+        path = _re.sub(r"/\d{4}/\d{2}/\d{2}/", r"/\\d{4}/\\d{2}/\\d{2}/", path)
+        path = _re.sub(r"/\d{4}/\d{2}/", r"/\\d{4}/\\d{2}/", path)
+        path = _re.sub(r"/\d+(/|$)", r"/\\d+\\1", path)
+        path = _re.sub(r"/[a-f0-9]{8,}(/|$)", r"/[a-f0-9]+\\1", path)
+        path = _re.sub(r"/[a-z0-9]+-[a-z0-9-]+", r"/[a-z0-9-]+", path)
+        path_patterns.append(path)
+
+    pattern_counter = Counter(path_patterns)
+    best_pattern_path, best_count = pattern_counter.most_common(1)[0]
+    escaped_domain = _re.escape(domain)
+    suggested_pattern = f"{escaped_domain}{best_pattern_path}"
+
+    selector_counter: Counter[str] = Counter()
+    matching_urls: list[str] = []
+    for ld, pp in zip(link_data, path_patterns):
+        if pp == best_pattern_path:
+            matching_urls.append(ld["url"])
+            for sel in ld["selectors"]:
+                selector_counter[sel] += 1
+
+    best_selector = "a[href]"
+    if selector_counter:
+        heading_selectors = {k: v for k, v in selector_counter.items() if k.startswith("h")}
+        if heading_selectors:
+            best_selector = max(heading_selectors, key=heading_selectors.get)
+        else:
+            best_selector = selector_counter.most_common(1)[0][0]
+
+    return {
+        "article_url_pattern": suggested_pattern,
+        "article_selector": best_selector,
+        "sample_urls": matching_urls[:5],
+        "link_count": len(matching_urls),
+        "message": f"Found {len(matching_urls)} article links matching the detected pattern.",
+    }
 
 
 @router.post("/sources/{category}")
@@ -213,6 +396,41 @@ async def toggle_source(category: str, source_name: str) -> dict[str, Any]:
             return {"status": "toggled", "enabled": source["enabled"]}
 
     raise HTTPException(status_code=404, detail=f"Source '{source_name}' not found")
+
+
+@router.put("/sources/{category}/{source_name}")
+async def update_source(
+    category: str,
+    source_name: str,
+    updated: dict[str, Any] = Body(...),
+) -> dict[str, str]:
+    """Update a source's fields by category and name."""
+    path = _sources_path()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="sources.yaml not found")
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    if category not in data:
+        raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
+
+    for source in data[category]:
+        if source.get("name") == source_name:
+            # Merge updates into the source
+            for key, value in updated.items():
+                if value is not None and value != "":
+                    source[key] = value
+                elif key in source and (value is None or value == ""):
+                    # Allow clearing optional fields
+                    if key not in ("name", "type", "enabled"):
+                        source.pop(key, None)
+            with open(path, "w", encoding="utf-8") as f:
+                yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+            return {"status": "updated"}
+
+    raise HTTPException(status_code=404, detail=f"Source '{source_name}' not found")
+
 
 
 # ── Pipeline config ──────────────────────────────────────────────
@@ -314,58 +532,144 @@ async def update_config(config: PipelineConfig = Body(...)) -> dict[str, str]:
 
 # ── Worker Management ────────────────────────────────────────────
 
+# In-memory tracker for spawned worker processes
+_spawned_workers: dict[str, dict[str, Any]] = {}
+
+
+def _find_celery_cmd() -> str:
+    """Locate the celery executable (venv or PATH)."""
+    pipeline_dir = settings.pipeline_dir
+    venv_celery_exe = pipeline_dir / ".venv" / "Scripts" / "celery.exe"
+    venv_celery_unix = pipeline_dir / ".venv" / "Scripts" / "celery"
+    venv_celery_bin = pipeline_dir / ".venv" / "bin" / "celery"
+
+    if venv_celery_exe.exists():
+        return str(venv_celery_exe)
+    elif venv_celery_unix.exists():
+        return str(venv_celery_unix)
+    elif venv_celery_bin.exists():
+        return str(venv_celery_bin)
+    return "celery"
+
+
+def _check_redis() -> tuple[bool, str]:
+    """Quick check if Redis is reachable. Returns (ok, message)."""
+    import redis as redis_lib
+    try:
+        r = redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+        r.ping()
+        return True, "Redis is reachable"
+    except Exception as e:
+        return False, f"Cannot connect to Redis at {settings.REDIS_URL}: {e}"
+
+
+def _get_worker_stage(info: dict) -> str:
+    """Determine the live stage of a tracked worker process."""
+    import psutil
+
+    pid = info.get("pid")
+    if not pid:
+        return "failed"  # never started
+
+    # Check if process is still alive
+    try:
+        proc = psutil.Process(pid)
+        if proc.status() == psutil.STATUS_ZOMBIE:
+            return "exited"
+    except psutil.NoSuchProcess:
+        # Process is gone — check log for clues
+        log_path = info.get("log_file")
+        if log_path and Path(log_path).exists():
+            tail = Path(log_path).read_text(encoding="utf-8", errors="replace")[-2000:]
+            if "Cannot connect" in tail or "Error" in tail and "connecting" in tail:
+                return "connection_failed"
+            if "ready" in tail.lower():
+                return "exited"  # ran but stopped
+        return "exited"
+    except Exception:
+        return "unknown"
+
+    # Process is alive — check log to determine stage
+    log_path = info.get("log_file")
+    if log_path and Path(log_path).exists():
+        try:
+            tail = Path(log_path).read_text(encoding="utf-8", errors="replace")[-3000:]
+        except Exception:
+            tail = ""
+
+        if "ready" in tail.lower() and "celery@" in tail.lower():
+            return "running"
+        if "Cannot connect" in tail or ("Error" in tail and "connecting" in tail):
+            return "connection_failed"
+        if "Trying again" in tail:
+            return "retrying_connection"
+        if "celery@" in tail.lower() or "[tasks]" in tail:
+            return "connecting"
+
+    # Process alive but no logs yet — just spawned
+    return "spawning"
+
+
 @router.post("/worker/restart")
 async def restart_worker() -> dict[str, str]:
     """Restart the Celery worker: shutdown old, spawn new."""
     import asyncio
     import subprocess
-    import sys
+    import time
 
     celery = _get_celery()
 
-    # 1. Broadcast shutdown to all workers
+    # 1. Pre-check Redis connectivity
+    redis_ok, redis_msg = _check_redis()
+    if not redis_ok:
+        raise HTTPException(status_code=503, detail=f"Cannot start worker: {redis_msg}")
+
+    # 2. Broadcast shutdown to all workers
     try:
         celery.control.broadcast("shutdown")
-    except Exception as e:
-        # Worker might already be down
-        pass
+    except Exception:
+        pass  # Worker might already be down
 
-    # 2. Wait a moment for the old worker to exit
+    # 3. Wait a moment for the old worker to exit
     await asyncio.sleep(3)
 
-    # 3. Start a new worker as a detached process
+    # 4. Start a new worker with log capture
     pipeline_dir = settings.pipeline_dir
-
-    # On Windows, venv creates celery.exe; on Unix it's just celery
-    venv_celery_exe = pipeline_dir / ".venv" / "Scripts" / "celery.exe"
-    venv_celery = pipeline_dir / ".venv" / "Scripts" / "celery"
-
-    if venv_celery_exe.exists():
-        celery_cmd = str(venv_celery_exe)
-    elif venv_celery.exists():
-        celery_cmd = str(venv_celery)
-    else:
-        celery_cmd = "celery"  # Fall back to PATH
+    celery_cmd = _find_celery_cmd()
+    worker_name = f"main-{int(time.time()) % 10000}"
 
     cmd = [
         celery_cmd,
         "-A", "workers.celery_app",
         "worker",
+        f"--hostname={worker_name}@%h",
         "--loglevel=INFO",
         "--pool=solo",
         "-Q", "default,scraper_queue,rewriter_queue,image_search_queue",
     ]
 
+    # Log file for inspectability
+    logs_dir = pipeline_dir / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    log_file = logs_dir / f"{worker_name}.log"
+
     try:
-        subprocess.Popen(
+        log_fh = open(log_file, "w", encoding="utf-8")
+        proc = subprocess.Popen(
             cmd,
             cwd=str(pipeline_dir),
-            # Detach from parent process
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
         )
-        return {"status": "restarted", "message": "Worker shutdown broadcast sent and new worker spawned"}
+        _spawned_workers[worker_name] = {
+            "pid": proc.pid,
+            "log_file": str(log_file),
+            "queues": "default,scraper_queue,rewriter_queue,image_search_queue",
+            "started_at": time.time(),
+            "cmd": cmd,
+        }
+        return {"status": "restarted", "message": f"Old workers stopped, new worker '{worker_name}' spawned (PID {proc.pid})"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start worker: {e}")
 
@@ -431,29 +735,29 @@ class SpawnWorkerRequest(BaseModel):
 
 
 @router.post("/worker/spawn")
-async def spawn_worker(req: SpawnWorkerRequest) -> dict[str, str]:
+async def spawn_worker(req: SpawnWorkerRequest) -> dict[str, Any]:
     """Spawn a new Celery worker with a unique name and queue assignment."""
     import subprocess
     import time
 
     pipeline_dir = settings.pipeline_dir
 
-    # Auto-generate name if not specified
+    # 1. Pre-check Redis connectivity
+    redis_ok, redis_msg = _check_redis()
+    if not redis_ok:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Cannot start worker — Redis is not reachable. {redis_msg}. "
+                   f"Make sure docker compose is running (postgres + redis)."
+        )
+
+    # 2. Auto-generate name if not specified
     worker_name = req.name
     if not worker_name:
         worker_name = f"worker-{int(time.time()) % 10000}"
 
-    # Find celery executable
-    venv_celery_exe = pipeline_dir / ".venv" / "Scripts" / "celery.exe"
-    venv_celery = pipeline_dir / ".venv" / "Scripts" / "celery"
-
-    if venv_celery_exe.exists():
-        celery_cmd = str(venv_celery_exe)
-    elif venv_celery.exists():
-        celery_cmd = str(venv_celery)
-    else:
-        celery_cmd = "celery"
-
+    # 3. Find celery executable
+    celery_cmd = _find_celery_cmd()
     queues_str = ",".join(req.queues) if req.queues else "default"
 
     cmd = [
@@ -466,19 +770,37 @@ async def spawn_worker(req: SpawnWorkerRequest) -> dict[str, str]:
         "-Q", queues_str,
     ]
 
+    # 4. Create log file for output capture
+    logs_dir = pipeline_dir / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    log_file = logs_dir / f"{worker_name}.log"
+
     try:
-        subprocess.Popen(
+        log_fh = open(log_file, "w", encoding="utf-8")
+        proc = subprocess.Popen(
             cmd,
             cwd=str(pipeline_dir),
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
         )
+
+        # Track the spawned process
+        _spawned_workers[worker_name] = {
+            "pid": proc.pid,
+            "log_file": str(log_file),
+            "queues": queues_str,
+            "started_at": time.time(),
+            "cmd": cmd,
+        }
+
         return {
             "status": "spawned",
             "name": worker_name,
             "queues": queues_str,
-            "message": f"Worker '{worker_name}' spawned on queues: {queues_str}",
+            "pid": proc.pid,
+            "log_file": str(log_file),
+            "message": f"Worker '{worker_name}' spawned (PID {proc.pid}) on queues: {queues_str}",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to spawn worker: {e}")
@@ -491,6 +813,20 @@ async def stop_worker(worker_name: str) -> dict[str, str]:
     try:
         # Send shutdown signal to the specific worker
         celery.control.broadcast("shutdown", destination=[worker_name])
+
+        # Also try to kill tracked local process
+        for tracked_name, info in list(_spawned_workers.items()):
+            # Match by celery hostname (worker_name may be 'celery@worker-xxx@host')
+            if tracked_name in worker_name or worker_name in tracked_name:
+                import psutil
+                try:
+                    proc = psutil.Process(info["pid"])
+                    proc.terminate()
+                except Exception:
+                    pass
+                _spawned_workers.pop(tracked_name, None)
+                break
+
         return {
             "status": "stopping",
             "name": worker_name,
@@ -498,6 +834,87 @@ async def stop_worker(worker_name: str) -> dict[str, str]:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to stop worker: {e}")
+
+
+@router.get("/worker/processes")
+async def list_worker_processes() -> dict[str, Any]:
+    """List all tracked spawned worker processes with their live stage."""
+    import time
+
+    processes = []
+    for name, info in list(_spawned_workers.items()):
+        stage = _get_worker_stage(info)
+        uptime = int(time.time() - info.get("started_at", time.time()))
+
+        processes.append({
+            "name": name,
+            "pid": info.get("pid"),
+            "stage": stage,
+            "queues": info.get("queues", ""),
+            "uptime_seconds": uptime,
+            "log_file": info.get("log_file", ""),
+        })
+
+    # Also scan for orphaned log files (workers spawned before server restart)
+    logs_dir = settings.pipeline_dir / "logs"
+    if logs_dir.exists():
+        tracked_names = set(_spawned_workers.keys())
+        for log_path in logs_dir.glob("*.log"):
+            wname = log_path.stem
+            if wname not in tracked_names:
+                processes.append({
+                    "name": wname,
+                    "pid": None,
+                    "stage": "unknown",
+                    "queues": "",
+                    "uptime_seconds": 0,
+                    "log_file": str(log_path),
+                })
+
+    return {"processes": processes}
+
+
+@router.get("/worker/logs/{worker_name}")
+async def get_worker_logs(worker_name: str, lines: int = 100) -> dict[str, Any]:
+    """Read the tail of a spawned worker's log file."""
+    # Check tracked workers first
+    info = _spawned_workers.get(worker_name)
+    log_file = None
+
+    if info:
+        log_file = Path(info["log_file"])
+    else:
+        # Try to find log file by name
+        candidate = settings.pipeline_dir / "logs" / f"{worker_name}.log"
+        if candidate.exists():
+            log_file = candidate
+
+    if not log_file or not log_file.exists():
+        raise HTTPException(status_code=404, detail=f"No log file found for worker '{worker_name}'")
+
+    try:
+        content = log_file.read_text(encoding="utf-8", errors="replace")
+        all_lines = content.splitlines()
+        tail = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+        stage = _get_worker_stage(info) if info else "unknown"
+
+        return {
+            "worker_name": worker_name,
+            "stage": stage,
+            "pid": info.get("pid") if info else None,
+            "total_lines": len(all_lines),
+            "lines": tail,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read log: {e}")
+
+
+@router.get("/worker/redis-check")
+async def check_redis_status() -> dict[str, Any]:
+    """Check if Redis broker is reachable."""
+    ok, msg = _check_redis()
+    return {"ok": ok, "message": msg, "redis_url": settings.REDIS_URL}
 
 
 @router.get("/activity")
@@ -633,6 +1050,32 @@ async def offload_ollama() -> dict[str, str]:
 
 # ── Composer: side-by-side LLM comparison ────────────────────────
 
+# In-memory scrape cache: URL -> {scraped_data, timestamp}
+_scrape_cache: dict[str, dict[str, Any]] = {}
+_SCRAPE_CACHE_TTL = 1800  # 30 minutes
+
+
+def _get_cached_scrape(url: str) -> dict | None:
+    """Return cached scrape data if still fresh, else None."""
+    import time
+    entry = _scrape_cache.get(url)
+    if entry and (time.time() - entry["timestamp"]) < _SCRAPE_CACHE_TTL:
+        return entry["data"]
+    if entry:
+        _scrape_cache.pop(url, None)
+    return None
+
+
+def _set_cached_scrape(url: str, data: dict) -> None:
+    import time
+    _scrape_cache[url] = {"data": data, "timestamp": time.time()}
+    # Evict old entries (keep max 50)
+    if len(_scrape_cache) > 50:
+        oldest = sorted(_scrape_cache.items(), key=lambda x: x[1]["timestamp"])[:10]
+        for k, _ in oldest:
+            _scrape_cache.pop(k, None)
+
+
 class ComposeRequest(BaseModel):
     url: str
     models: list[str]  # e.g. ["qwen3:14b", "gemma3:12b"]
@@ -649,18 +1092,98 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
     import httpx
     import trafilatura
 
-    # ── Inline scraper (no pipeline dependency) ──
+    # ── Inline scraper with multi-tier fallback ──
+    html = ""
+    scrape_method = "httpx"
+
+    # Tier 1: httpx with realistic browser headers
     try:
         async with httpx.AsyncClient(
             timeout=30,
             follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Cache-Control": "no-cache",
+                "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            },
         ) as client:
             resp = await client.get(req.url)
             resp.raise_for_status()
             html = resp.text
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
+    except Exception:
+        html = ""
+
+    # Tier 2: trafilatura's built-in fetcher (has its own anti-bot handling)
+    if not html:
+        scrape_method = "trafilatura"
+        try:
+            downloaded = trafilatura.fetch_url(req.url)
+            html = downloaded or ""
+        except Exception:
+            html = ""
+
+    # Tier 3: Playwright browser (run sync in threadpool to avoid event loop conflicts with uvicorn)
+    if not html:
+        scrape_method = "playwright"
+        import concurrent.futures
+        import time as _time
+
+        def _scrape_with_playwright(target_url: str) -> str:
+            from playwright.sync_api import sync_playwright
+            pw = sync_playwright().start()
+            browser = pw.chromium.launch(
+                headless=False,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            ctx = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+            )
+            page = ctx.new_page()
+            page.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined})')
+
+            try:
+                page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
+            except Exception:
+                pass  # Continue even on timeout
+
+            # Wait for Cloudflare/bot challenge to resolve
+            for _ in range(5):
+                _time.sleep(3)
+                title = page.title()
+                if "just a moment" not in title.lower() and "checking" not in title.lower() and "attention" not in title.lower():
+                    break
+
+            result_html = page.content()
+            browser.close()
+            pw.stop()
+            return result_html
+
+        try:
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                html = await loop.run_in_executor(pool, _scrape_with_playwright, req.url)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to fetch URL: All scraping methods failed (including Playwright). Error: {e}"
+            )
+
+    if not html:
+        raise HTTPException(
+            status_code=400, 
+            detail="Failed to fetch URL: Scraping methods returned empty content."
+        )
 
     # Extract plain text for the LLM
     extracted = trafilatura.extract(
@@ -973,6 +1496,221 @@ Keep product names in English.
                 "error": str(e)[:500],
             })
 
+    # Cache scraped data for retry
+    _set_cached_scrape(req.url, scraped)
+
+    return {
+        "url": req.url,
+        "scraped": {
+            "title": scraped.get("title", ""),
+            "word_count": scraped.get("word_count", 0),
+            "body_preview": (scraped.get("body_text", ""))[:500],
+            "original_images": scraped.get("original_images", []),
+            "author": scraped.get("author", ""),
+            "sitename": scraped.get("sitename", ""),
+        },
+        "results": results,
+    }
+
+
+class ComposeRetryRequest(BaseModel):
+    url: str
+    models: list[str]  # Only the failed models to retry
+    language: str = "Vietnamese"
+
+
+@router.post("/compose/retry")
+async def compose_retry(req: ComposeRetryRequest) -> dict[str, Any]:
+    """Retry LLM rewrite for failed models using cached scrape data (skips re-scraping)."""
+    import asyncio
+    import time
+    import re as re_mod
+    import json as json_mod
+    import re
+    import httpx
+
+    # Look up cached scrape
+    scraped = _get_cached_scrape(req.url)
+    if not scraped:
+        raise HTTPException(
+            status_code=404,
+            detail="No cached scrape data found for this URL. Please run a full compose first."
+        )
+
+    # ── Rebuild prompts from cached data ──
+    SYSTEM_PROMPT = (
+        "You are an editorial AI for a {lang} tech news website. "
+        "You receive English-language tech news articles and rewrite them "
+        "entirely in {lang}. Write naturally for a {lang}-speaking audience "
+        "— do not translate word-for-word, rewrite with your own editorial "
+        "voice and added perspective. Keep technical terms, product names, "
+        "and brand names in their original English form (e.g. 'Samsung "
+        "Galaxy S26 Ultra', 'Snapdragon 8 Elite', 'Android 16'). "
+        "Return valid JSON only — no markdown fences, no preamble."
+    )
+
+    USER_PROMPT = """\
+Rewrite the following article in {lang}.
+Title, body, summary, perspective, and tags → {lang}.
+image_keywords and inline_image_keywords → English always (for image search APIs).
+
+SOURCE ARTICLE:
+Title: {title}
+Body:
+{body_text}
+
+---
+
+Return a JSON object with exactly these fields:
+- "title": rewritten headline in {lang}
+- "body": Full article in Markdown, in {lang}. Write naturally as a professional journalist.
+  Use markdown formatting only when it genuinely improves readability.
+  Focus on compelling, insightful writing.
+- "summary": 2-3 sentences in {lang}, professional tone.
+- "perspective": 2 sentences of editorial opinion in {lang}.
+- "image_keywords": 4-6 English phrases for hero image search.
+- "tags": 5-10 lowercase topic tags in {lang}. Keep product/brand names in English.
+- "reading_time_minutes": estimated reading time as an integer.
+
+Rules: Write in a premium, authoritative tech journalism voice.
+Keep product names in English.
+"""
+
+    lang = req.language
+    system_prompt = SYSTEM_PROMPT.format(lang=lang)
+    user_prompt = USER_PROMPT.format(
+        lang=lang,
+        title=scraped["title"],
+        body_text=scraped["body_text"],
+    )
+
+    env = _read_env_config()
+    ollama_base = env.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    num_ctx = int(env.get("OLLAMA_NUM_CTX", "8192"))
+    think_enabled = env.get("OLLAMA_THINK", "true").lower() == "true"
+    gemini_api_key = env.get("GEMINI_API_KEY", "")
+    anthropic_api_key = env.get("ANTHROPIC_API_KEY", "")
+
+    def _parse_raw(raw_text: str) -> dict:
+        raw_text = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("\n", 1)[1]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
+        return json_mod.loads(raw_text)
+
+    async def _call_gemini_model(model_name: str) -> dict:
+        from google import genai
+        client = genai.Client(api_key=gemini_api_key)
+        start = time.time()
+        response = await client.aio.models.generate_content(
+            model=model_name,
+            contents=user_prompt,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.7,
+                response_mime_type="application/json",
+            ),
+        )
+        duration = time.time() - start
+        parsed = json_mod.loads(response.text.strip())
+        return {
+            "model": model_name, "provider": "gemini", "status": "success",
+            "duration_sec": round(duration, 1),
+            "tokens_generated": getattr(response, 'usage_metadata', None) and response.usage_metadata.candidates_token_count or 0,
+            "tokens_per_sec": 0, "result": parsed,
+        }
+
+    async def _call_anthropic_model(model_name: str) -> dict:
+        import anthropic
+        client = anthropic.AsyncAnthropic(api_key=anthropic_api_key)
+        start = time.time()
+        message = await client.messages.create(
+            model=model_name, max_tokens=4096, temperature=0.7,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        duration = time.time() - start
+        raw_text = message.content[0].text.strip()
+        parsed = _parse_raw(raw_text)
+        output_tokens = getattr(message, 'usage', None) and message.usage.output_tokens or 0
+        return {
+            "model": model_name, "provider": "anthropic", "status": "success",
+            "duration_sec": round(duration, 1),
+            "tokens_generated": output_tokens,
+            "tokens_per_sec": round(output_tokens / duration, 1) if duration > 0 and output_tokens else 0,
+            "result": parsed,
+        }
+
+    async def _call_ollama_model(model_name: str) -> dict:
+        start = time.time()
+        final_user_prompt = user_prompt
+        if think_enabled:
+            final_user_prompt = "/think\n\n" + user_prompt
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": final_user_prompt},
+            ],
+            "stream": False,
+            "options": {"num_ctx": num_ctx, "temperature": 0.7},
+            "format": "json",
+        }
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            resp = await client.post(f"{ollama_base}/api/chat", json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        raw_text = data.get("message", {}).get("content", "")
+        parsed = _parse_raw(raw_text)
+        duration = time.time() - start
+        eval_count = data.get("eval_count", 0)
+        eval_duration_ns = data.get("eval_duration", 0)
+        tokens_per_sec = (eval_count / (eval_duration_ns / 1e9)) if eval_duration_ns > 0 else 0
+        return {
+            "model": model_name, "provider": "ollama", "status": "success",
+            "duration_sec": round(duration, 1),
+            "tokens_generated": eval_count,
+            "tokens_per_sec": round(tokens_per_sec, 1), "result": parsed,
+        }
+
+    # Group and run models
+    api_tasks = []
+    ollama_models = []
+    for entry in req.models:
+        if ":" in entry and entry.split(":")[0] in ("gemini", "anthropic"):
+            provider, model_name = entry.split(":", 1)
+        else:
+            provider = "ollama"
+            model_name = entry
+        if provider == "gemini":
+            api_tasks.append(("gemini", model_name))
+        elif provider == "anthropic":
+            api_tasks.append(("anthropic", model_name))
+        else:
+            ollama_models.append(model_name)
+
+    results = []
+    if api_tasks:
+        async def _run_api(prov: str, name: str):
+            try:
+                if prov == "gemini":
+                    return await _call_gemini_model(name)
+                else:
+                    return await _call_anthropic_model(name)
+            except Exception as e:
+                return {"model": name, "provider": prov, "status": "error", "duration_sec": 0, "error": str(e)[:500]}
+        api_results = await asyncio.gather(*[_run_api(p, n) for p, n in api_tasks])
+        results.extend(api_results)
+
+    for model_name in ollama_models:
+        try:
+            result = await _call_ollama_model(model_name)
+            results.append(result)
+        except Exception as e:
+            results.append({"model": model_name, "provider": "ollama", "status": "error", "duration_sec": 0, "error": str(e)[:500]})
+
     return {
         "url": req.url,
         "scraped": {
@@ -1058,120 +1796,137 @@ async def compose_save_to_draft(req: ComposeSaveRequest) -> dict[str, Any]:
 
     from sqlalchemy import text
 
-    engine = _get_engine()
+    try:
+        engine = _get_engine()
 
-    r = req.result
-    now = datetime.now(timezone.utc)
-    url_hash = hashlib.sha256(req.url.encode()).hexdigest()
+        r = req.result
+        now = datetime.now(timezone.utc)
+        url_hash = hashlib.sha256(req.url.encode()).hexdigest()
 
-    with engine.connect() as conn:
-        # Check if URL already has a raw_article
-        existing = conn.execute(
-            text("SELECT id FROM raw_articles WHERE url = :url"),
-            {"url": req.url},
-        ).fetchone()
+        with engine.connect() as conn:
+            # Check if URL already has a raw_article
+            existing = conn.execute(
+                text("SELECT id FROM raw_articles WHERE url = :url"),
+                {"url": req.url},
+            ).fetchone()
 
-        if existing:
-            raw_article_id = str(existing[0])
-        else:
-            raw_article_id = str(uuid.uuid4())
+            if existing:
+                raw_article_id = str(existing[0])
+            else:
+                raw_article_id = str(uuid.uuid4())
+                conn.execute(
+                    text("""
+                        INSERT INTO raw_articles (id, url, url_hash, source_name, source_type, title, body_text, word_count, status, scraped_at, created_at, original_images)
+                        VALUES (:id, :url, :url_hash, :source_name, :source_type, :title, :body_text, :word_count, :status, :scraped_at, :created_at, :original_images)
+                    """),
+                    {
+                        "id": raw_article_id,
+                        "url": req.url,
+                        "url_hash": url_hash,
+                        "source_name": "composer",
+                        "source_type": "manual",
+                        "title": req.source_title or r.get("title", ""),
+                        "body_text": "",
+                        "word_count": 0,
+                        "status": "done",
+                        "scraped_at": now,
+                        "created_at": now,
+                        "original_images": json.dumps(req.original_images) if req.original_images else None,
+                    },
+                )
+
+            # Create the article
+            article_id = str(uuid.uuid4())
+            image_keywords = r.get("image_keywords", [])
+            inline_image_keywords = r.get("inline_image_keywords", [])
+            tags = r.get("tags", [])
+
+            # Ensure array fields are lists of strings (not None)
+            if not isinstance(tags, list):
+                tags = []
+            if not isinstance(image_keywords, list):
+                image_keywords = []
+            if not isinstance(inline_image_keywords, list):
+                inline_image_keywords = []
+
+            # Determine source_author with fallback to site name
+            source_author = req.source_author
+            source_outlet = req.source_sitename or "composer"
+            if not source_author and source_outlet:
+                source_author = f"{source_outlet} - Tổng hợp bởi RetroLab"
+
             conn.execute(
                 text("""
-                    INSERT INTO raw_articles (id, url, url_hash, source_name, source_type, title, body_text, word_count, status, scraped_at, created_at, original_images)
-                    VALUES (:id, :url, :url_hash, :source_name, :source_type, :title, :body_text, :word_count, :status, :scraped_at, :created_at, :original_images)
+                    INSERT INTO articles (
+                        id, raw_article_id, title, body, summary, perspective,
+                        reading_time_minutes, tags, image_keywords, inline_image_keywords,
+                        original_images, source_url, source_outlet, source_author,
+                        rewrite_model, output_language, status, created_at
+                    ) VALUES (
+                        :id, :raw_article_id, :title, :body, :summary, :perspective,
+                        :reading_time_minutes, :tags, :image_keywords, :inline_image_keywords,
+                        :original_images, :source_url, :source_outlet, :source_author,
+                        :rewrite_model, :output_language, :status, :created_at
+                    )
                 """),
                 {
-                    "id": raw_article_id,
-                    "url": req.url,
-                    "url_hash": url_hash,
-                    "source_name": "composer",
-                    "source_type": "manual",
-                    "title": req.source_title or r.get("title", ""),
-                    "body_text": "",
-                    "word_count": 0,
-                    "status": "done",
-                    "scraped_at": now,
-                    "created_at": now,
+                    "id": article_id,
+                    "raw_article_id": raw_article_id,
+                    "title": r.get("title", ""),
+                    "body": r.get("body", ""),
+                    "summary": r.get("summary", ""),
+                    "perspective": r.get("perspective", ""),
+                    "reading_time_minutes": int(r.get("reading_time_minutes", 0) or 0),
+                    "tags": tags,
+                    "image_keywords": image_keywords,
+                    "inline_image_keywords": inline_image_keywords,
                     "original_images": json.dumps(req.original_images) if req.original_images else None,
+                    "source_url": req.url,
+                    "source_outlet": source_outlet,
+                    "source_author": source_author,
+                    "rewrite_model": f"{req.provider}:{req.model}",
+                    "output_language": "vi",
+                    "status": "image_pending",
+                    "created_at": now,
                 },
             )
-
-        # Create the article
-        article_id = str(uuid.uuid4())
-        image_keywords = r.get("image_keywords", [])
-        inline_image_keywords = r.get("inline_image_keywords", [])
-        tags = r.get("tags", [])
-
-        # Determine source_author with fallback to site name
-        source_author = req.source_author
-        source_outlet = req.source_sitename or "composer"
-        if not source_author and source_outlet:
-            source_author = f"{source_outlet} - Tổng hợp bởi RetroLab"
-
-        conn.execute(
-            text("""
-                INSERT INTO articles (
-                    id, raw_article_id, title, body, summary, perspective,
-                    reading_time_minutes, tags, image_keywords, inline_image_keywords,
-                    original_images, source_url, source_outlet, source_author,
-                    rewrite_model, output_language, status, created_at
-                ) VALUES (
-                    :id, :raw_article_id, :title, :body, :summary, :perspective,
-                    :reading_time_minutes, :tags, :image_keywords, :inline_image_keywords,
-                    :original_images, :source_url, :source_outlet, :source_author,
-                    :rewrite_model, :output_language, :status, :created_at
-                )
-            """),
-            {
-                "id": article_id,
-                "raw_article_id": raw_article_id,
-                "title": r.get("title", ""),
-                "body": r.get("body", ""),
-                "summary": r.get("summary", ""),
-                "perspective": r.get("perspective", ""),
-                "reading_time_minutes": r.get("reading_time_minutes", 0),
-                "tags": tags,
-                "image_keywords": image_keywords,
-                "inline_image_keywords": inline_image_keywords,
-                "original_images": json.dumps(req.original_images) if req.original_images else None,
-                "source_url": req.url,
-                "source_outlet": source_outlet,
-                "source_author": source_author,
-                "rewrite_model": f"{req.provider}:{req.model}",
-                "output_language": "vi",
-                "status": "image_pending",
-                "created_at": now,
-            },
-        )
-        conn.commit()
-
-    # Trigger Celery image search task
-    try:
-        celery = _get_celery()
-        celery.send_task(
-            "workers.tasks.search_images_task",
-            args=[article_id],
-            queue="image_search_queue",
-        )
-    except Exception as e:
-        # If Celery trigger fails, set status to draft directly (no images)
-        with engine.connect() as conn:
-            conn.execute(
-                text("UPDATE articles SET status = 'draft' WHERE id = :id"),
-                {"id": article_id},
-            )
             conn.commit()
+
+        # Trigger Celery image search task
+        try:
+            celery = _get_celery()
+            celery.send_task(
+                "workers.tasks.search_images_task",
+                args=[article_id],
+                queue="image_search_queue",
+            )
+        except Exception as e:
+            # If Celery trigger fails, set status to draft directly (no images)
+            with engine.connect() as conn:
+                conn.execute(
+                    text("UPDATE articles SET status = 'draft' WHERE id = :id"),
+                    {"id": article_id},
+                )
+                conn.commit()
+            return {
+                "article_id": article_id,
+                "status": "draft",
+                "message": f"Saved as draft (image search skipped: {str(e)[:200]})",
+            }
+
         return {
             "article_id": article_id,
-            "status": "draft",
-            "message": f"Saved as draft (image search skipped: {str(e)[:200]})",
+            "status": "image_pending",
+            "message": "Saved! Image search started — article will appear in drafts shortly.",
         }
 
-    return {
-        "article_id": article_id,
-        "status": "image_pending",
-        "message": "Saved! Image search started — article will appear in drafts shortly.",
-    }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save draft: {type(e).__name__}: {str(e)[:500]}\n{tb[-500:]}"
+        )
 
 
 @router.post("/flush")

@@ -48,6 +48,28 @@ export default function ComposerPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Retry only failed models (skips re-scraping)
+  const retryMutation = useMutation({
+    mutationFn: (failedModels: string[]) => {
+      const targetUrl = composeData?.url || url;
+      return api.composeRetry(targetUrl, failedModels);
+    },
+    onSuccess: (retryData) => {
+      if (!composeData) return;
+      // Merge retry results: replace failed entries with new results
+      const retriedModelNames = new Set(retryData.results.map(r => r.model));
+      const kept = composeData.results.filter(r => !retriedModelNames.has(r.model));
+      setComposeData({
+        ...composeData,
+        results: [...kept, ...retryData.results],
+      });
+      const successes = retryData.results.filter(r => r.status === 'success').length;
+      if (successes > 0) toast.success(`Retried ${successes} model(s) successfully`);
+      else toast.error('Retry failed again');
+    },
+    onError: (err: Error) => toast.error(`Retry failed: ${err.message}`),
+  });
+
   const toggleModel = (key: string) => {
     setSelectedModels(prev =>
       prev.includes(key) ? prev.filter(m => m !== key) : [...prev, key]
@@ -303,7 +325,25 @@ export default function ComposerPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-error">{r.error}</p>
+                        <div>
+                          <p className="text-xs text-error mb-3">{r.error}</p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const prov = (r as any).provider || 'ollama';
+                              const key = prov === 'ollama' ? r.model : `${prov}:${r.model}`;
+                              retryMutation.mutate([key]);
+                            }}
+                            disabled={retryMutation.isPending}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container text-white text-[11px] font-medium hover:bg-primary disabled:opacity-50 transition-all"
+                          >
+                            {retryMutation.isPending ? (
+                              <><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Retrying...</>
+                            ) : (
+                              <><span className="material-symbols-outlined text-[14px]">refresh</span> Retry (skip scrape)</>
+                            )}
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
