@@ -27,11 +27,12 @@ interface EditorActions {
 interface EditorPanelProps {
   article: Article;
   onActionsReady?: (actions: EditorActions) => void;
+  onNavigateNext?: () => void;
 }
 
 type Tab = 'edit' | 'preview' | 'source';
 
-export default function EditorPanel({ article: initialArticle, onActionsReady }: EditorPanelProps) {
+export default function EditorPanel({ article: initialArticle, onActionsReady, onNavigateNext }: EditorPanelProps) {
   const queryClient = useQueryClient();
   const [article, setArticle] = useState(initialArticle);
   const [tab, setTab] = useState<Tab>('edit');
@@ -185,6 +186,7 @@ export default function EditorPanel({ article: initialArticle, onActionsReady }:
       setArticle(updated);
       queryClient.invalidateQueries({ queryKey: ['articles'] });
       toast.success('Article approved ✓');
+      onNavigateNext?.();
     },
     onError: (err) => toast.error((err as Error).message),
   });
@@ -197,6 +199,7 @@ export default function EditorPanel({ article: initialArticle, onActionsReady }:
       setShowRejectConfirm(false);
       queryClient.invalidateQueries({ queryKey: ['articles'] });
       toast('Article rejected', { icon: '🗑️' });
+      onNavigateNext?.();
     },
     onError: (err) => toast.error((err as Error).message),
   });

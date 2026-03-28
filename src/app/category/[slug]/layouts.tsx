@@ -2,6 +2,7 @@ import { ArticleData, formatDate } from "@/lib/notion";
 import Image from "next/image";
 import Link from "next/link";
 import { Clock, Cpu, Terminal, Smartphone, Wifi, Zap, Monitor, Brain, Sparkles, Bot, Network, Newspaper, Globe, TrendingUp, Flame, Radio } from "lucide-react";
+import AdBanner from "@/components/ui/AdBanner";
 
 interface LayoutProps {
   categoryName: string;
@@ -131,7 +132,7 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
 
       {/* 3-Card Featured Strip */}
       {featuredStrip.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-1.5 h-7 bg-[#dc2626] rounded-full"></div>
             <h2 className="text-xl font-bold uppercase tracking-widest text-gray-900">🔥 Tin nóng</h2>
@@ -161,6 +162,11 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
           </div>
         </div>
       )}
+
+      {/* Ad: Leaderboard after Tin nóng */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AdBanner size="leaderboard" />
+      </div>
 
       {/* Main Content + Sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
@@ -223,6 +229,9 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
               </div>
             )}
 
+            {/* Ad: Leaderboard between grid and list */}
+            <AdBanner size="leaderboard" />
+
             {/* Remaining Posts — compact list */}
             {remainingPosts.length > 0 && (
               <div>
@@ -281,6 +290,9 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
                   </div>
                 </div>
               )}
+
+              {/* Ad: Sidebar rectangle */}
+              <AdBanner size="sidebar" />
 
               {/* News Topics Tag Cloud */}
               <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -388,7 +400,7 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
 
       {/* Horizontal Featured Strip — overlapping hero */}
       {stripPosts.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20 mb-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20 mb-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {stripPosts.map((post, idx) => {
               const accentColors = ['#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b'];
@@ -412,6 +424,11 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
           </div>
         </div>
       )}
+
+      {/* Ad: Leaderboard after featured strip */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AdBanner size="leaderboard" />
+      </div>
 
       {/* Main Content: 2-Column + Sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
@@ -446,7 +463,7 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
 
             {/* 2-Column Mini Grid */}
             {gridPosts.length > 0 && (
-              <div className="mb-12">
+              <div className="mb-4">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-1.5 h-7 bg-[#ec4899] rounded-full"></div>
                   <h2 className="text-xl font-bold uppercase tracking-widest text-gray-900">Mới nhất</h2>
@@ -473,6 +490,9 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
                 </div>
               </div>
             )}
+
+            {/* Ad: Leaderboard between grid and list */}
+            <AdBanner size="leaderboard" />
 
             {/* Remaining Posts — compact horizontal cards */}
             {remainingPosts.length > 0 && (
@@ -531,6 +551,9 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
                   </div>
                 </div>
               )}
+
+              {/* Ad: Sidebar rectangle */}
+              <AdBanner size="sidebar" />
 
               {/* Gaming Newsletter CTA */}
               <div className="bg-gradient-to-br from-[#1a0a2e] to-[#2d1650] rounded-xl p-6 text-center border border-[#8b5cf6]/20">
@@ -657,7 +680,7 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Featured Bento: 1 Large Hero + 2 Side */}
         {heroMain && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-4">
             {/* Large Hero */}
             <Link href={`/article/${heroMain.slug}`} className="lg:col-span-3 relative group overflow-hidden rounded-xl cursor-pointer h-[320px] md:h-[420px] border border-gray-200 shadow-md">
               <Image src={heroMain.coverImage} alt={heroMain.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -697,12 +720,15 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
           </div>
         )}
 
+        {/* Ad: Leaderboard after bento */}
+        <AdBanner size="leaderboard" />
+
         {/* Main Content + Sidebar */}
         <div className="flex flex-col lg:flex-row gap-10">
           {/* Main: Card Grid */}
           <div className="flex-1 min-w-0">
             {gridPosts.length > 0 && (
-              <div className="mb-16">
+              <div className="mb-4">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-1.5 h-7 bg-[#2563eb] rounded-full"></div>
                   <h2 className="text-xl font-bold uppercase tracking-widest text-gray-900">Mới nhất</h2>
@@ -736,6 +762,9 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
                 </div>
               </div>
             )}
+
+            {/* Ad: Leaderboard between grid and list */}
+            <AdBanner size="leaderboard" />
 
             {/* Compact List for Remaining Posts */}
             {listPosts.length > 0 && (
@@ -793,6 +822,9 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
                   </div>
                 </div>
               )}
+
+              {/* Ad: Sidebar rectangle */}
+              <AdBanner size="sidebar" />
 
               {/* Tech Newsletter CTA */}
               <div className="bg-gradient-to-br from-[#0f172a] to-[#1e3a5f] rounded-xl p-6 text-center border border-[#2563eb]/20 relative overflow-hidden">
@@ -1039,7 +1071,7 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
 
       {/* Featured strip — 3 horizontal cards */}
       {featuredStrip.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-20 mb-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-20 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {featuredStrip.map(post => (
               <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
@@ -1061,6 +1093,11 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
           </div>
         </div>
       )}
+
+      {/* Ad: Leaderboard after featured strip */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AdBanner size="leaderboard" />
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="flex flex-col lg:flex-row gap-10">
@@ -1094,6 +1131,9 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
                 </div>
               </>
             )}
+
+            {/* Ad: Leaderboard between grid and list */}
+            <AdBanner size="leaderboard" />
 
             {/* Remaining posts as compact list */}
             {remainingPosts.length > 0 && (
@@ -1147,6 +1187,7 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
                   ))}
                 </div>
               </div>
+              <AdBanner size="sidebar" />
             </aside>
           )}
         </div>
@@ -1287,7 +1328,7 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
 
       {/* 3-Card Featured Strip */}
       {featuredStrip.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {featuredStrip.map((post, idx) => {
               const accents = ['#6366f1', '#a78bfa', '#06b6d4'];
@@ -1318,6 +1359,11 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
           </div>
         </div>
       )}
+
+      {/* Ad: Leaderboard after featured strip */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AdBanner size="leaderboard" />
+      </div>
 
       {/* Main Content + Sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
@@ -1352,7 +1398,7 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
 
             {/* 2-Column Grid */}
             {gridPosts.length > 0 && (
-              <div className="mb-12">
+              <div className="mb-4">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-1.5 h-7 bg-[#a78bfa] rounded-full"></div>
                   <h2 className="text-xl font-bold uppercase tracking-widest text-gray-900">Mới nhất</h2>
@@ -1386,6 +1432,9 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
                 </div>
               </div>
             )}
+
+            {/* Ad: Leaderboard between grid and list */}
+            <AdBanner size="leaderboard" />
 
             {/* Remaining Posts  */}
             {remainingPosts.length > 0 && (
@@ -1444,6 +1493,9 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
                   </div>
                 </div>
               )}
+
+              {/* Ad: Sidebar rectangle */}
+              <AdBanner size="sidebar" />
 
               {/* AI Topics Tag Cloud */}
               <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">

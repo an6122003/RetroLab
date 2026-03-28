@@ -38,12 +38,28 @@ export default function ComposerPage() {
     return acc;
   }, {});
 
-  // Compose mutation
-  const composeMutation = useMutation({
-    mutationFn: () => api.composeArticle(url, selectedModels),
+  // Scrape-only mutation (step 1)
+  const scrapeMutation = useMutation({
+    mutationFn: () => api.scrapeOnly(url),
     onSuccess: (data) => {
       setComposeData(data);
-      toast.success(`Composed with ${data.results.length} model(s)`);
+      toast.success(`Scraped: ${data.scraped.word_count} words`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  // Compose mutation (step 2 — rewrite with LLMs)
+  const composeMutation = useMutation({
+    mutationFn: () => {
+      const targetUrl = composeData?.url || url;
+      return api.composeRetry(targetUrl, selectedModels);
+    },
+    onSuccess: (data) => {
+      setComposeData(prev => prev ? {
+        ...prev,
+        results: [...prev.results, ...data.results],
+      } : data);
+      toast.success(`Rewritten by ${data.results.length} model(s)`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -76,7 +92,9 @@ export default function ComposerPage() {
     );
   };
 
-  const canCompose = url.trim().length > 0 && selectedModels.length > 0 && !composeMutation.isPending;
+  const canScrape = url.trim().length > 0 && !scrapeMutation.isPending;
+  const canRewrite = composeData && selectedModels.length > 0 && !composeMutation.isPending;
+  const isWorking = scrapeMutation.isPending || composeMutation.isPending;
 
   const ModelSidebar = (
     <>
@@ -182,23 +200,41 @@ export default function ComposerPage() {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="Paste URL to Scrape & Rewrite..."
                 className="w-full bg-transparent border-none text-sm text-on-surface placeholder:text-outline focus:outline-none"
-                onKeyDown={(e) => { if (e.key === 'Enter' && canCompose) composeMutation.mutate(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { if (canRewrite) composeMutation.mutate(); else if (canScrape) scrapeMutation.mutate(); } }}
               />
             </div>
             <button
+              onClick={() => scrapeMutation.mutate()}
+              disabled={!canScrape}
+              className="px-5 py-2.5 rounded-lg bg-surface-container-high text-on-surface text-sm font-semibold hover:bg-surface-container-highest active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 border border-outline-variant/20"
+            >
+              {scrapeMutation.isPending ? (
+                <>
+                  <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                  Scraping...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Scrape
+                </>
+              )}
+            </button>
+            <button
               onClick={() => composeMutation.mutate()}
-              disabled={!canCompose}
-              className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-semibold hover:translate-y-[-2px] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
+              disabled={!canRewrite}
+              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-semibold hover:translate-y-[-2px] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
+              title={!composeData ? 'Scrape first, then rewrite' : ''}
             >
               {composeMutation.isPending ? (
                 <>
                   <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                  Composing...
+                  Rewriting...
                 </>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[18px]">bolt</span>
-                  Scrape
+                  Rewrite
                 </>
               )}
             </button>
@@ -235,14 +271,19 @@ export default function ComposerPage() {
           )}
 
           {/* Loading state */}
-          {composeMutation.isPending && (
+          {isWorking && !composeData && (
             <div className="text-center py-24">
               <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/15 shadow-sm">
                 <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 <div>
-                  <p className="text-sm text-on-surface font-medium">Composing article...</p>
+                  <p className="text-sm text-on-surface font-medium">
+                    {scrapeMutation.isPending ? 'Scraping article...' : 'Rewriting with LLMs...'}
+                  </p>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    Running {selectedModels.length} model{selectedModels.length > 1 ? 's' : ''} (API models in parallel, Ollama sequentially)
+                    {scrapeMutation.isPending 
+                      ? 'Fetching and extracting content from URL'
+                      : `Running ${selectedModels.length} model${selectedModels.length > 1 ? 's' : ''}`
+                    }
                   </p>
                 </div>
               </div>
@@ -255,15 +296,24 @@ export default function ComposerPage() {
               {/* Scraped article info */}
               <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/15 p-4 shadow-sm">
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-sm font-semibold text-on-surface">{composeData.scraped.title || 'Untitled'}</h3>
                     <p className="text-xs text-on-surface-variant mt-1">
                       {composeData.scraped.word_count} words
                       {composeData.scraped.original_images?.length ? ` · ${composeData.scraped.original_images.length} images` : ''}
+                      {(composeData.scraped as any).scrape_method && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded bg-surface-container text-[9px] uppercase tracking-wider font-medium">
+                          via {(composeData.scraped as any).scrape_method}
+                        </span>
+                      )}
                       {' · '}<a href={composeData.url} target="_blank" className="text-primary hover:underline">{composeData.url}</a>
                     </p>
                   </div>
                 </div>
+
+                {/* Source content preview (collapsible) */}
+                <SourceContentPreview bodyText={(composeData.scraped as any).body_text || composeData.scraped.body_preview || ''} />
+
                 {/* Image gallery */}
                 {composeData.scraped.original_images && composeData.scraped.original_images.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-outline-variant/15">
@@ -543,4 +593,44 @@ function markdownToHtml(md: string): string {
   html = html.replace(/(<li>.*?<\/li>(?:\s*<br\/>)?)+/g, (match) => `<ul>${match.replace(/<br\/>/g, '')}</ul>`);
 
   return html;
+}
+
+
+/** Collapsible source content preview */
+function SourceContentPreview({ bodyText }: { bodyText: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!bodyText) return null;
+
+  const preview = expanded ? bodyText : bodyText.slice(0, 500);
+  const isTruncated = bodyText.length > 500;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-outline-variant/15">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-[10px] text-on-surface-variant uppercase tracking-wider font-medium hover:text-primary transition-colors mb-2"
+      >
+        <span className="material-symbols-outlined text-[14px]">
+          {expanded ? 'expand_less' : 'expand_more'}
+        </span>
+        Scraped Source Content ({bodyText.length.toLocaleString()} chars)
+      </button>
+      {(expanded || !isTruncated) && (
+        <pre className="text-xs text-on-surface-variant bg-surface-container rounded-lg p-3 overflow-auto max-h-[50vh] whitespace-pre-wrap font-mono border border-outline-variant/10 leading-relaxed">
+          {preview}
+          {!expanded && isTruncated && (
+            <span className="text-outline">... ({bodyText.length - 500} more chars)</span>
+          )}
+        </pre>
+      )}
+      {!expanded && isTruncated && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="text-[10px] text-primary hover:underline mt-1"
+        >
+          Show full content →
+        </button>
+      )}
+    </div>
+  );
 }

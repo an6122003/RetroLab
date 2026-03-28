@@ -1,9 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import { Search } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import UserMenu from '@/components/auth/UserMenu';
+import InlineSearch from '@/components/ui/InlineSearch';
 
 const navItems = [
   { label: 'Tin tức', href: '/category/tin-tuc' },
@@ -54,13 +54,7 @@ export default function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-4">
-          <Link
-            href="/search"
-            className="hidden sm:flex items-center bg-gray-100 rounded-full px-4 py-2 border border-gray-200 hover:border-gray-300 transition-colors"
-          >
-            <Search size={16} className="text-gray-500 mr-2" />
-            <span className="text-sm text-gray-500">Tìm kiếm...</span>
-          </Link>
+          <InlineSearch />
           <UserMenu />
         </div>
 

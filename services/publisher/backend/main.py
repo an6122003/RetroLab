@@ -43,9 +43,37 @@ app.include_router(pipeline.router)
 app.include_router(backup.router)
 
 
+@app.on_event("startup")
+async def create_tables():
+    """Auto-create database tables if they don't exist."""
+    from .models import Base
+    from .database import engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "publisher"}
+
+
+@app.get("/api/backup/drive/auth/callback")
+async def drive_auth_callback(code: str, state: str = ""):
+    """Handle Google's OAuth2 redirect — no auth required (Google redirects here)."""
+    from fastapi.responses import HTMLResponse
+    from .gdrive import complete_auth
+
+    result = complete_auth(auth_code=code, state=state)
+    if "error" in result:
+        return HTMLResponse(f"<h2>❌ {result['error']}</h2>", status_code=400)
+
+    return HTMLResponse(
+        "<html><body style='font-family:system-ui;text-align:center;padding:60px'>"
+        "<h1>✅ Google Drive Connected</h1>"
+        "<p style='color:#666'>You can close this tab and return to the publisher.</p>"
+        "<script>setTimeout(()=>window.close(),3000)</script>"
+        "</body></html>"
+    )
 
 
 # ── Serve frontend static files in production ────────────────

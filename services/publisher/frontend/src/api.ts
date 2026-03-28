@@ -70,9 +70,22 @@ export interface Stats {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  // Get Supabase session token for backend auth
+  const { supabase } = await import('./lib/supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -110,6 +123,12 @@ export const api = {
 
   deleteArticle: (id: string) =>
     request<{ status: string; id: string }>(`/articles/${id}`, { method: 'DELETE' }),
+
+  batchArticles: (ids: string[], action: 'approve' | 'reject' | 'delete') =>
+    request<{ success: number; failed: number; errors: string[] }>('/articles/batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids, action }),
+    }),
 
   getStats: () => request<Stats>('/stats'),
 
@@ -292,6 +311,13 @@ export const api = {
     }>('/pipeline/sources/tags'),
 
   // Composer
+  scrapeOnly: (url: string) =>
+    request<ComposeResponse>('/pipeline/compose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, models: [] }),
+    }),
+
   composeArticle: (url: string, models: string[], language?: string) =>
     request<ComposeResponse>('/pipeline/compose', {
       method: 'POST',
@@ -337,9 +363,15 @@ export const api = {
     request<{ status: string; filename: string; size_mb: number; stats: { raw_articles: number; articles: number }; drive?: { action?: string; error?: string } | null }>('/backup/export', { method: 'POST' }),
 
   importBackup: async (file: File) => {
+    const { supabase } = await import('./lib/supabase');
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${BASE}/backup/import`, { method: 'POST', body: formData });
+    const res = await fetch(`${BASE}/backup/import`, { method: 'POST', body: formData, headers });
     if (!res.ok) throw new Error(await res.text());
     return res.json() as Promise<{ status: string; imported: { raw_articles: number; articles: number; skipped: number } }>;
   },
@@ -374,6 +406,12 @@ export const api = {
 
   getDriveRevisions: (fileId: string) =>
     request<{ revisions: { revision_id: string; modified_at: string; size_mb: number }[]; total: number }>(`/backup/drive/revisions/${encodeURIComponent(fileId)}`),
+
+  restoreFromDrive: (fileId: string) =>
+    request<{ status: string; file_id: string; filename: string; imported: { raw_articles: number; articles: number; skipped: number } }>(`/backup/drive/restore/${encodeURIComponent(fileId)}`, { method: 'POST' }),
+
+  startDriveAuth: () =>
+    request<{ auth_url?: string; error?: string }>('/backup/drive/auth/start'),
 };
 
 export interface PipelineConfig {

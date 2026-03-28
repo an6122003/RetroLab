@@ -27,7 +27,7 @@ export default function BackupPage() {
   const { data: driveFiles, isLoading: driveFilesLoading } = useQuery({
     queryKey: ['drive-files'],
     queryFn: api.listDriveFiles,
-    enabled: !!driveConfig?.enabled && !!driveConfig?.folder_id,
+    enabled: !!driveConfig?.folder_id,
     refetchInterval: 30_000,
   });
 
@@ -120,6 +120,17 @@ export default function BackupPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const driveRestoreMutation = useMutation({
+    mutationFn: (fileId: string) => api.restoreFromDrive(fileId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['backup-list'] });
+      toast.success(
+        `Restored from Drive: ${data.imported.raw_articles} raw + ${data.imported.articles} articles (${data.imported.skipped} skipped)`,
+      );
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const handleImport = () => {
     fileInputRef.current?.click();
   };
@@ -133,7 +144,7 @@ export default function BackupPage() {
   };
 
   const handleDownload = (filename: string) => {
-    window.open(`http://localhost:8001/api/backup/download/${encodeURIComponent(filename)}`, '_blank');
+    window.open(`/api/backup/download/${encodeURIComponent(filename)}`, '_blank');
   };
 
   // ── Header ──
@@ -220,7 +231,7 @@ export default function BackupPage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-outline uppercase tracking-widest mb-2 block">Keep Max</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest mb-2 block" title="Maximum number of local backup files to keep. When a new backup is created, the oldest files beyond this limit are automatically deleted.">Keep Last (files)</label>
               <input
                 type="number"
                 min={1}
@@ -344,13 +355,35 @@ export default function BackupPage() {
               </div>
             </div>
 
-            <p className="mt-3 text-xs text-on-surface-variant">
-              Share your Drive folder with the SA email above (as Editor). The folder ID is the last part of the folder URL.
-            </p>
+            {/* Auth row */}
+            <div className="mt-4 flex items-center justify-between px-1">
+              <p className="text-xs text-on-surface-variant">
+                Share your Drive folder with the SA email above (as Editor). The folder ID is the last part of the folder URL.
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    const result = await api.startDriveAuth();
+                    if (result.auth_url) {
+                      window.open(result.auth_url, '_blank');
+                      toast.success('Complete authentication in the new tab, then refresh this page.');
+                    } else {
+                      toast.error(result.error || 'Failed to generate auth URL');
+                    }
+                  } catch (err: any) {
+                    toast.error(err.message);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 font-semibold rounded-lg text-xs hover:bg-amber-100 transition-colors whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[16px]">key</span>
+                Re‑Authenticate
+              </button>
+            </div>
           </div>
 
           {/* Drive files list */}
-          {isDriveEnabled && currentFolderId && (
+          {currentFolderId && (
             <div className="border-t border-outline-variant/15 p-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-sm text-on-surface flex items-center gap-2">
@@ -401,17 +434,31 @@ export default function BackupPage() {
                           </div>
                         </div>
                       </div>
-                      {f.web_link && (
-                        <a
-                          href={f.web_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Open in Drive"
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Restore ${f.name} from Drive?\nThis will import all articles (existing records are safely skipped).`))
+                              driveRestoreMutation.mutate(f.file_id);
+                          }}
+                          disabled={driveRestoreMutation.isPending}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50 text-xs font-semibold"
+                          title="Restore from Drive"
                         >
-                          <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                        </a>
-                      )}
+                          <span className="material-symbols-outlined text-[16px]">cloud_download</span>
+                          {driveRestoreMutation.isPending ? 'Restoring…' : 'Restore'}
+                        </button>
+                        {f.web_link && (
+                          <a
+                            href={f.web_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Open in Drive"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

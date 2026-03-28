@@ -96,7 +96,7 @@ async function ArticleContent({ slug }: { slug: string }) {
         </div>
 
         {/* Like / Save / Share actions */}
-        <ArticleActions postSlug={slug} />
+        <ArticleActions postSlug={slug} postTitle={post.title} />
 
         {/* Article Body */}
         <div 
@@ -120,7 +120,7 @@ async function ArticleContent({ slug }: { slug: string }) {
         )}
 
         {/* Bottom actions — for readers who finish the article */}
-        <ArticleActions postSlug={slug} />
+        <ArticleActions postSlug={slug} postTitle={post.title} />
 
         {/* Footer Category */}
         <div className="flex items-center gap-2 border-t border-gray-200 pt-6 mt-10 mb-10">

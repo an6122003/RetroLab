@@ -19,5 +19,7 @@ notion-client>=3.0
 anthropic>=0.84
 google-genai>=1.67
 google-api-python-client>=2.193
+google-auth-oauthlib>=1.2
+psutil>=5.9
 trafilatura>=2.0
 playwright>=1.58

@@ -7,6 +7,8 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from ..auth import require_admin
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +16,7 @@ from ..database import get_db
 from ..models import Article
 from ..schemas import ArticleListOut, ArticleOut, ArticleUpdate, StatsOut
 
-router = APIRouter(prefix="/api", tags=["articles"])
+router = APIRouter(prefix="/api", tags=["articles"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/articles", response_model=list[ArticleListOut])
@@ -144,6 +146,61 @@ async def delete_article(
     await db.delete(article)
     await db.commit()
     return {"status": "deleted", "id": str(article_id)}
+
+
+@router.post("/articles/batch")
+async def batch_action(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Batch approve, reject, or delete articles.
+    
+    Body: { "ids": ["uuid1", ...], "action": "approve" | "reject" | "delete" }
+    """
+    from ..models import RawArticle
+
+    ids = payload.get("ids", [])
+    action = payload.get("action", "")
+    if not ids or action not in ("approve", "reject", "delete"):
+        raise HTTPException(status_code=400, detail="ids and action (approve|reject|delete) required")
+
+    results = {"success": 0, "failed": 0, "errors": []}
+
+    for id_str in ids:
+        try:
+            uid = UUID(id_str)
+            result = await db.execute(select(Article).where(Article.id == uid))
+            article = result.scalar_one_or_none()
+            if not article:
+                results["failed"] += 1
+                results["errors"].append(f"{id_str}: not found")
+                continue
+
+            if action == "approve":
+                if not article.slug or not article.selected_image:
+                    results["failed"] += 1
+                    results["errors"].append(f"{id_str}: missing slug or image")
+                    continue
+                article.status = "approved"
+            elif action == "reject":
+                article.status = "rejected"
+            elif action == "delete":
+                if article.raw_article_id:
+                    raw_result = await db.execute(
+                        select(RawArticle).where(RawArticle.id == article.raw_article_id)
+                    )
+                    raw = raw_result.scalar_one_or_none()
+                    if raw:
+                        await db.delete(raw)
+                await db.delete(article)
+
+            results["success"] += 1
+        except Exception as e:
+            results["failed"] += 1
+            results["errors"].append(f"{id_str}: {str(e)}")
+
+    await db.commit()
+    return results
 
 
 @router.get("/stats", response_model=StatsOut)

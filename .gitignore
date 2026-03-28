@@ -45,3 +45,5 @@ flew/
 views/
 public/
 !public/avatars/
+# ── Deployment & Credentials Manager ──
+credentials/

@@ -71,10 +71,18 @@ def _get_drive_service():
 
         # Refresh if expired
         if creds.expired and creds.refresh_token:
-            from google.auth.transport.requests import Request
-            creds.refresh(Request())
-            # Save refreshed token
-            _TOKEN_PATH.write_text(creds.to_json())
+            try:
+                from google.auth.transport.requests import Request
+                creds.refresh(Request())
+                # Save refreshed token
+                _TOKEN_PATH.write_text(creds.to_json())
+            except Exception as e:
+                # Token revoked or invalid — delete it so user can re-auth
+                logger.warning(f"OAuth token refresh failed: {e}. Removing stale token.")
+                _TOKEN_PATH.unlink(missing_ok=True)
+                raise FileNotFoundError(
+                    "OAuth token expired or revoked. Please re-authenticate via the Drive settings panel."
+                ) from e
 
         return build("drive", "v3", credentials=creds, cache_discovery=False)
 
@@ -88,8 +96,7 @@ def _get_drive_service():
         return build("drive", "v3", credentials=credentials, cache_discovery=False)
 
     raise FileNotFoundError(
-        "No Drive credentials found. Run the auth setup first: "
-        "python -m backend.gdrive_auth"
+        "No Drive credentials found. Please authenticate via the Drive settings panel."
     )
 
 
@@ -134,14 +141,12 @@ def get_auth_status() -> dict:
 
 # ── OAuth2 Setup ─────────────────────────────────────────────────
 
-def generate_auth_url() -> dict[str, str]:
-    """Generate an OAuth2 authorization URL for the user to visit."""
-    if not _SA_KEY_PATH.exists():
-        return {"error": "SA key file needed for OAuth client credentials"}
-
-    sa_data = json.loads(_SA_KEY_PATH.read_text())
-    # We need OAuth client credentials, not SA credentials
-    # Check if we have a separate oauth client file
+def generate_auth_url(redirect_uri: str) -> dict[str, str]:
+    """Generate an OAuth2 authorization URL.
+    
+    redirect_uri should be the publisher's callback URL, e.g.
+    http://localhost:9001/api/backup/drive/auth/callback
+    """
     oauth_path = _SA_KEY_PATH.parent / "gdrive-oauth.json"
     if not oauth_path.exists():
         return {
@@ -150,29 +155,51 @@ def generate_auth_url() -> dict[str, str]:
                      f"Save as {oauth_path}"
         }
 
-    from google_auth_oauthlib.flow import InstalledAppFlow
+    from google_auth_oauthlib.flow import Flow
+    import secrets as _secrets
 
-    flow = InstalledAppFlow.from_client_secrets_file(str(oauth_path), SCOPES)
-    flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
+    flow = Flow.from_client_secrets_file(str(oauth_path), scopes=SCOPES, redirect_uri=redirect_uri)
+    state = _secrets.token_urlsafe(32)
 
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         prompt="consent",
+        state=state,
     )
 
-    return {"auth_url": auth_url}
+    # Store state + code_verifier + redirect_uri in Redis for the callback
+    r = _redis()
+    data = json.dumps({
+        "redirect_uri": redirect_uri,
+        "code_verifier": flow.code_verifier,
+    })
+    r.setex(f"oauth:state:{state}", 600, data)  # 10 min expiry
+
+    return {"auth_url": auth_url, "state": state}
 
 
-def complete_auth(auth_code: str) -> dict[str, str]:
-    """Complete the OAuth2 flow with the authorization code."""
+def complete_auth(auth_code: str, state: str) -> dict[str, str]:
+    """Complete the OAuth2 flow with the authorization code from Google's redirect."""
     oauth_path = _SA_KEY_PATH.parent / "gdrive-oauth.json"
     if not oauth_path.exists():
         return {"error": "OAuth client config not found"}
 
-    from google_auth_oauthlib.flow import InstalledAppFlow
+    # Retrieve stored state data from Redis
+    r = _redis()
+    stored = r.get(f"oauth:state:{state}")
+    if not stored:
+        return {"error": "OAuth state expired or invalid. Please try again."}
+    
+    state_data = json.loads(stored.decode())
+    r.delete(f"oauth:state:{state}")
+    
+    redirect_uri = state_data["redirect_uri"]
+    code_verifier = state_data.get("code_verifier")
 
-    flow = InstalledAppFlow.from_client_secrets_file(str(oauth_path), SCOPES)
-    flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
+    from google_auth_oauthlib.flow import Flow
+
+    flow = Flow.from_client_secrets_file(str(oauth_path), scopes=SCOPES, redirect_uri=redirect_uri)
+    flow.code_verifier = code_verifier
     flow.fetch_token(code=auth_code)
 
     creds = flow.credentials
@@ -278,7 +305,7 @@ def upload_to_drive(filepath: Path, folder_id: str) -> dict[str, Any]:
 def list_drive_backups(folder_id: str) -> list[dict]:
     """List backup files in the Drive folder."""
     service = _get_drive_service()
-    query = f"'{folder_id}' in parents and trashed = false and mimeType = 'application/json'"
+    query = f"'{folder_id}' in parents and trashed = false"
     results = service.files().list(
         q=query,
         fields="files(id, name, size, modifiedTime, version, webViewLink)",
@@ -320,6 +347,31 @@ def get_file_revisions(file_id: str) -> list[dict]:
         }
         for rev in results.get("revisions", [])
     ]
+
+
+def download_from_drive(file_id: str, dest_path: Path) -> Path:
+    """Download a file from Google Drive to a local path."""
+    import io
+    from googleapiclient.http import MediaIoBaseDownload
+
+    service = _get_drive_service()
+
+    # Get file metadata for the name
+    meta = service.files().get(
+        fileId=file_id, fields="name", supportsAllDrives=True,
+    ).execute()
+    filename = meta["name"]
+    filepath = dest_path / filename
+
+    request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+    with open(filepath, "wb") as f:
+        downloader = MediaIoBaseDownload(f, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+
+    logger.info(f"Downloaded {filename} from Drive ({filepath.stat().st_size} bytes)")
+    return filepath
 
 
 # ── Test connection ──────────────────────────────────────────────
