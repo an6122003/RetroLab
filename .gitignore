@@ -21,6 +21,7 @@ Thumbs.db
 
 # ── Secrets & credentials ──
 **/secrets/
+credentials/
 *-sa-key.json
 *.json.key
 .env
