@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Facebook, Twitter, Youtube, Mail } from 'lucide-react';
 
@@ -9,14 +10,8 @@ export default function Footer() {
 
           {/* About Section */}
           <div className="flex flex-col gap-6">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#2563eb] flex items-center justify-center relative">
-                <div className="w-2 h-2 bg-[#facc15] rounded-full absolute top-1.5 right-1.5"></div>
-              </div>
-              <span className="text-xl font-black tracking-tighter">
-                <span className="text-gray-900">Retro</span>
-                <span className="text-[#2563eb]">Lab</span>
-              </span>
+            <Link href="/" className="flex items-center">
+              <Image src="/logo.svg" alt="RetroLab Logo" width={150} height={32} className="h-8 w-auto" />
             </Link>
             <p className="text-sm leading-relaxed text-gray-500">
               Bắt trọn mọi chuyển động của thế giới số tại RetroLab. Trạm tin tức tổng hợp đa nguồn về Công Nghệ, AI cho đến thế giới Game và Giả Lập.

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import UserMenu from '@/components/auth/UserMenu';
@@ -21,14 +22,8 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
         
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 cursor-pointer">
-          <div className="w-8 h-8 rounded-full bg-[#2563eb] flex items-center justify-center relative">
-            <div className="w-2 h-2 bg-[#facc15] rounded-full absolute top-1.5 right-1.5"></div>
-          </div>
-          <div className="text-xl font-black tracking-tighter flex items-center">
-            <span className="text-gray-900">Retro</span>
-            <span className="text-[#2563eb]">Lab</span>
-          </div>
+        <Link href="/" className="flex items-center cursor-pointer">
+          <Image src="/logo.svg" alt="RetroLab Logo" width={150} height={32} className="h-8 w-auto" priority />
         </Link>
 
         {/* Navigation */}
