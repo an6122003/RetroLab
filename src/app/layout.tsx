@@ -9,7 +9,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "RetroLab - Tạp chí Công nghệ",
-  description: "RetroLab là tạp chí công nghệ dành cho những người yêu thích sự giao thoa giữa giá trị hoài cổ và sức mạnh của tương lai.",
+  description: "Bắt trọn mọi chuyển động của thế giới số tại RetroLab. Trạm tin tức tổng hợp đa nguồn về Công Nghệ, AI cho đến thế giới Game và Giả Lập.",
 };
 
 export default function RootLayout({
@@ -18,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
-      <body className="min-h-screen flex flex-col">
+    <html lang="vi" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col" suppressHydrationWarning>
         <AuthProvider>
           <Suspense fallback={null}>
             <NavigationProgress />

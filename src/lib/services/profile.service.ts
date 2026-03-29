@@ -41,15 +41,16 @@ export async function updateProfile(
 ) {
   const { data, error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', userId)
+    .upsert(
+      { id: userId, ...updates, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    )
     .select('id, display_name, avatar_id, bio')
     .single();
 
   if (error) throw error;
 
   const profile = data as Profile;
-  // Update cache with fresh data immediately
   cacheSet(cacheKeys.profile(userId), profile, TTL.PROFILE);
   return profile;
 }
@@ -83,8 +84,10 @@ export async function updateUserSettings(
 ) {
   const { data, error } = await supabase
     .from('user_settings')
-    .update(updates)
-    .eq('user_id', userId)
+    .upsert(
+      { user_id: userId, ...updates },
+      { onConflict: 'user_id' }
+    )
     .select('user_id, email_notifications, push_notifications, newsletter_subscribed, theme_preference')
     .single();
 

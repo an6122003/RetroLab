@@ -64,16 +64,33 @@ Return a JSON object with exactly these fields:
   * > blockquotes only for actual quotes from people or official statements
   * Do NOT use callouts, code blocks, or excessive headers. Write flowing paragraphs as the primary format.
   * Image placeholders: Include 2-4 images using ![description](PLACEHOLDER_IMAGE_N) syntax.
-    Place each at the CONTEXTUALLY CORRECT position where it relates to surrounding text. 
-    DO NOT put all images at the end.
+    Place each at the CONTEXTUALLY CORRECT position where it relates to surrounding text.
+    The description inside ![...] MUST describe the specific content being discussed at that point
+    (e.g. ![Samsung Galaxy S26 Ultra design](PLACEHOLDER_IMAGE_1), NOT ![image](PLACEHOLDER_IMAGE_1)).
+    DO NOT put all images at the end — distribute them naturally throughout the article.
   Focus on compelling, insightful writing. Elaborate on the original content to add value, but do not hallucinate facts.
+  * Length & Detail: If the source article is very short (under 300 words), expand it into a comprehensive article by explaining the underlying concepts, background context, or historical significance. Do NOT simply translate a brief snippet.
+  * Fact Accuracy: If you are expanding the article, ONLY state facts you are highly confident about. If the topic is very new or niche and you are unsure, do not guess or hallucinate details. Stick to the provided text.
+  * Category Adaptation: The news post could be from various categories (hardware, software, AI, casual gaming, enterprise IT). Adapt your writing style and tone to perfectly suit the specific category of the source article.
 - "summary": 2-3 sentences in {lang}, professional tone.
-- "perspective": 2 sentences of editorial opinion in {lang}.
+- "perspective": 2 sentences of editorial opinion in {lang}. IMPORTANT: When stating an opinion or evaluating, you MUST refer to yourself as "RetroLab", "Đội ngũ RetroLab", "Team RetroLab", or "RetroLab chúng mình" (e.g. "Theo đánh giá của RetroLab...", "Đội ngũ RetroLab nhận thấy..."). NEVER use "Tôi nghĩ", "Theo tôi", "Chúng tôi", or other generic pronouns.
 - "category": REQUIRED. An array of one or more categories from EXACTLY this list: ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]. Pick the most relevant. Most articles belong to at least 1-2 categories. General tech news = ["Tin tức", "Công Nghệ"]. AI-related = must include "AI". Gaming/emulation/retro gaming = must include "Game & Giả Lập". Programming/software dev/IT = must include "Công nghệ thông tin".
 - "image_keywords": 4-6 English phrases for high-quality hero image search.
-- "inline_image_keywords": a JSON array of search phrases for each placeholder (must match # of placeholders in body).
+- "inline_image_keywords": a JSON array of search phrases for each placeholder (must match # of placeholders in body). Each phrase should describe the specific subject at that point in the article.
 - "tags": 5-10 topic tags in {lang}. ALL tags must be in Vietnamese (e.g. "điện thoại", "trí tuệ nhân tạo", "đánh giá", "bảo mật", "phần mềm"). The ONLY exception: keep product/brand names in English (e.g. "Samsung", "iPhone", "ChatGPT"). Do NOT use English words for concepts — translate them.
 - "reading_time_minutes": estimated reading time as an integer.
+
+CRITICAL — CONTENT CLEANING RULES:
+The source article may contain advertisements, affiliate links, promotional content, and other non-article material.
+You MUST completely strip and NEVER include any of the following in your rewritten article:
+  * Affiliate links or product recommendation sections (e.g. Amazon links, "Buy now" buttons, "Best accessories" lists)
+  * FTC disclaimers (e.g. "We use income-earning auto affiliate links")
+  * Social media follow/subscribe calls-to-action (e.g. "Follow us on Twitter", "Subscribe to our YouTube")
+  * Reader engagement prompts (e.g. "Share your thoughts in the comments", "What do you think?")
+  * Cross-promotion sections (e.g. "Visit our homepage for more", "Check out our exclusive stories")
+  * Newsletter signup prompts
+  * Any content that is clearly advertising or not part of the actual news article
+Focus ONLY on the factual news content and editorial substance.
 
 Rules: Write in a premium, authoritative tech journalism voice. 
 Keep product names in English. Use markdown architecture to make the article highly readable and professional.
@@ -119,7 +136,7 @@ async def _call_anthropic(
 
     message = await client.messages.create(
         model=settings.anthropic_model,
-        max_tokens=2000,
+        max_tokens=8000,
         temperature=settings.llm_temperature,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],

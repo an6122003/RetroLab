@@ -18,18 +18,20 @@ from typing import Any
 from uuid import UUID
 
 import redis
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+
+from ..auth import require_admin
 from fastapi.responses import FileResponse
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..gdrive import DriveConfig, get_sa_email, get_auth_status, list_drive_backups, test_drive_connection, upload_to_drive, get_file_revisions
+from ..gdrive import DriveConfig, get_sa_email, get_auth_status, list_drive_backups, test_drive_connection, upload_to_drive, get_file_revisions, download_from_drive, generate_auth_url, complete_auth
 from ..models import Article, RawArticle
 from ..settings import settings
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/backup", tags=["backup"])
+router = APIRouter(prefix="/api/backup", tags=["backup"], dependencies=[Depends(require_admin)])
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -381,6 +383,18 @@ async def test_drive() -> dict[str, Any]:
     return test_drive_connection(config["folder_id"])
 
 
+@router.get("/drive/auth/start")
+async def start_drive_auth(request: Request) -> dict[str, Any]:
+    """Generate OAuth2 authorization URL. User opens this to authenticate with Google."""
+    # Build callback URL from the current request origin
+    base_url = str(request.base_url).rstrip("/")
+    callback_url = f"{base_url}/api/backup/drive/auth/callback"
+    result = generate_auth_url(redirect_uri=callback_url)
+    return result
+
+
+
+
 @router.get("/drive/files")
 async def list_drive_files() -> dict[str, Any]:
     """List backup files on Google Drive."""
@@ -417,6 +431,68 @@ async def get_drive_revisions(file_id: str) -> dict[str, Any]:
         return {"revisions": revisions, "total": len(revisions)}
     except Exception as e:
         return {"revisions": [], "error": str(e)}
+
+
+@router.post("/drive/restore/{file_id}")
+async def restore_from_drive(
+    file_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Download a backup from Google Drive and import it into the database."""
+    try:
+        # Download to local backup dir
+        filepath = download_from_drive(file_id, _backup_dir())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Drive download failed: {e}")
+
+    # Read and import
+    try:
+        data = json.loads(filepath.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid backup file: {e}")
+
+    if "raw_articles" not in data or "articles" not in data:
+        raise HTTPException(status_code=400, detail="Missing required keys in backup")
+
+    imported = {"raw_articles": 0, "articles": 0, "skipped": 0}
+
+    for raw in data["raw_articles"]:
+        existing = await db.execute(
+            select(RawArticle).where(RawArticle.id == raw["id"])
+        )
+        if existing.scalar_one_or_none():
+            imported["skipped"] += 1
+            continue
+        for dt_field in ["published_at", "scraped_at", "created_at"]:
+            if raw.get(dt_field) and isinstance(raw[dt_field], str):
+                raw[dt_field] = datetime.fromisoformat(raw[dt_field])
+        db.add(RawArticle(**raw))
+        imported["raw_articles"] += 1
+
+    await db.flush()
+
+    for art in data["articles"]:
+        existing = await db.execute(
+            select(Article).where(Article.id == art["id"])
+        )
+        if existing.scalar_one_or_none():
+            imported["skipped"] += 1
+            continue
+        for dt_field in ["source_published_at", "published_to_notion_at", "created_at"]:
+            if art.get(dt_field) and isinstance(art[dt_field], str):
+                art[dt_field] = datetime.fromisoformat(art[dt_field])
+        db.add(Article(**art))
+        imported["articles"] += 1
+
+    await db.commit()
+
+    return {
+        "status": "restored",
+        "source": "google_drive",
+        "file_id": file_id,
+        "filename": filepath.name,
+        "imported": imported,
+    }
 
 
 # ── Cleanup ──────────────────────────────────────────────────────

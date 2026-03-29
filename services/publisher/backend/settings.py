@@ -24,6 +24,19 @@ class Settings(BaseSettings):
     NOTION_DATABASE_ID: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # ── Supabase (for admin JWT verification) ──
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+
+    # ── Admin access control ──
+    # Comma-separated list of allowed admin emails
+    ADMIN_EMAILS: str = "tinfood.rmit@gmail.com"
+
+    @property
+    def admin_emails_list(self) -> list[str]:
+        """Parse comma-separated ADMIN_EMAILS into a list."""
+        return [e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()]
+
     @property
     def pipeline_dir(self) -> Path:
         """Path to the news-pipeline service root.

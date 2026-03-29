@@ -1,0 +1,110 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RetroLab — Server Deployment
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Runs pipeline + publisher on the same Linux server.
+# Usage:  docker compose -f docker-compose.server.yml up -d --build
+# Logs:   docker compose -f docker-compose.server.yml logs -f
+# Stop:   docker compose -f docker-compose.server.yml down
+
+x-pipeline-common: &pipeline-common
+  build:
+    context: ./services/news-pipeline
+    dockerfile: Dockerfile
+  env_file: ./services/news-pipeline/.env
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  volumes:
+    - ./services/news-pipeline/config:/app/config
+
+services:
+  # ── Infrastructure (internal only, no host ports) ──────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pipeline_secret}
+      POSTGRES_DB: news_pipeline
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Pipeline: migrations (run once) ────────────────────────
+  migrate:
+    <<: *pipeline-common
+    command: >
+      sh -c "alembic upgrade head"
+    restart: "no"
+
+  # ── Pipeline: Celery worker ────────────────────────────────
+  worker:
+    <<: *pipeline-common
+    command: >
+      celery -A workers.celery_app worker
+      -Q scraper_queue,rewriter_queue,image_search_queue,default
+      --loglevel=info
+      --concurrency=4
+
+  # ── Pipeline: Celery beat scheduler ────────────────────────
+  beat:
+    <<: *pipeline-common
+    command: >
+      celery -A workers.celery_app beat
+      --loglevel=info
+
+  # ── Pipeline: FastAPI review API ───────────────────────────
+  pipeline-api:
+    <<: *pipeline-common
+    command: >
+      uvicorn pipeline.api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "9002:8000"
+
+  # ── Publisher: FastAPI + React frontend ────────────────────
+  publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile.publisher
+      args:
+        VITE_SUPABASE_URL: ${SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+        VITE_ADMIN_EMAILS: ${ADMIN_EMAILS}
+    env_file: ./services/publisher/.env
+    environment:
+      # Override localhost URLs from .env with Docker service names
+      DATABASE_URL: postgresql+asyncpg://pipeline:${POSTGRES_PASSWORD:-pipeline_secret}@postgres:5432/news_pipeline
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "9001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./services/publisher/secrets:/app/secrets
+      - publisher-backups:/app/backups
+
+volumes:
+  pgdata:
+  redisdata:
+  publisher-backups:

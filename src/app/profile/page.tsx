@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import {
-  User, Heart, MessageSquare, Settings, LogOut,
-  Clock, Trash2, Bookmark, Bell, Lock, Check
+import { User, Heart, MessageSquare, Settings, LogOut,
+  Clock, Trash2, Bookmark, Bell, Lock, Check, ExternalLink, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { getAvatar, AVATARS, type AvatarOption } from '@/constants/avatars';
 import { getProfile, updateProfile, getUserSettings, updateUserSettings } from '@/lib/services/profile.service';
+import { deleteUserAccountAction } from './actions';
 import { getUserLikedSlugs } from '@/lib/services/likes.service';
 import { getUserSavedSlugs, unsavePost } from '@/lib/services/saves.service';
 import { unlikePost } from '@/lib/services/likes.service';
@@ -46,6 +46,7 @@ export default function ProfilePage() {
   // UI states
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Load user data
   const loadUserData = useCallback(async () => {
@@ -88,7 +89,7 @@ export default function ProfilePage() {
     setSaveSuccess(false);
 
     try {
-      await Promise.all([
+      const [updatedProfile] = await Promise.all([
         updateProfile(user.id, {
           display_name: editName,
           bio: editBio,
@@ -101,10 +102,10 @@ export default function ProfilePage() {
         }),
       ]);
       setSaveSuccess(true);
-      await refresh();
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save settings:', err);
+      alert('Không thể lưu thay đổi. Vui lòng thử lại.');
     } finally {
       setSaving(false);
     }
@@ -125,6 +126,27 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     await logout();
     router.push('/');
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setSaving(true);
+      const res = await deleteUserAccountAction();
+      if (res.success) {
+        setShowDeleteConfirm(false);
+        // Ngắt phiên đăng nhập & đẩy về trang chủ
+        await logout();
+        router.push('/');
+      } else {
+        alert(`Lỗi hệ thống: ${res.error}`);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err: any) {
+      alert(`Đã xảy ra lỗi không mong muốn.`);
+      setShowDeleteConfirm(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Loading state
@@ -159,20 +181,28 @@ export default function ProfilePage() {
       <div className="w-full md:w-1/4 shrink-0 flex flex-col gap-6">
         {/* User Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col items-center text-center">
-          <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-4 relative border-4 border-white shadow-sm overflow-hidden">
-            <Image
-              src={currentAvatar.src}
-              alt={currentAvatar.label}
-              width={96}
-              height={96}
-              className="w-full h-full object-cover"
-            />
-            <div className="w-4 h-4 bg-green-500 border-2 border-white rounded-full absolute bottom-1 right-1"></div>
+          <div className="relative mb-4">
+            <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center border-4 border-white shadow-sm overflow-hidden">
+              <Image
+                src={currentAvatar.src}
+                alt={currentAvatar.label}
+                width={96}
+                height={96}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="w-5 h-5 bg-green-500 border-[3px] border-white rounded-full absolute bottom-1 right-2 z-10 shadow-sm" title="Đang trực tuyến"></div>
           </div>
           <h2 className="text-xl font-bold text-gray-900">
             {profile?.display_name || user?.email || 'User'}
           </h2>
-          <p className="text-sm text-gray-500 mb-4">{user?.email}</p>
+          <p className="text-sm text-gray-500 mb-2">{user?.email}</p>
+          {profile?.created_at && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1 rounded-full mb-4">
+              <Clock size={12} />
+              <span>Thành viên từ {new Date(profile.created_at).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}</span>
+            </div>
+          )}
           <div className="w-full flex justify-between text-sm border-t border-gray-100 pt-4 mt-2 px-2">
             <div className="flex flex-col items-center">
               <span className="font-bold text-gray-900 text-lg">{savedSlugs.length}</span>
@@ -187,6 +217,14 @@ export default function ProfilePage() {
               <span className="text-gray-500 text-[10px] uppercase tracking-wider">Bình luận</span>
             </div>
           </div>
+          
+          <Link
+            href={`/u/${user?.id}`}
+            className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 text-[#2563eb] text-sm font-semibold rounded-md hover:bg-blue-50 transition-colors border border-gray-100"
+          >
+            <ExternalLink size={16} />
+            Xem hồ sơ công khai
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -501,9 +539,60 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+
+            {/* Danger Zone Section */}
+            <div className="mt-8 bg-white border border-red-200 rounded-lg overflow-hidden">
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-red-600 mb-2 flex items-center gap-2">
+                  <Trash2 size={18} />
+                  Hiểm họa: Xóa tài khoản
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Một khi bạn xóa tài khoản, toàn bộ dữ liệu hiển thị (bao gồm ảnh đại diện, tiểu sử, lượt thích, đã lưu, và bình luận) sẽ bị xóa sạch khỏi hệ thống RetroLab vĩnh viễn. Hành động này không thể hoàn tác.
+                </p>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Xóa toàn bộ dữ liệu và tài khoản
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Xóa tài khoản vĩnh viễn?</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Bạn đang chuẩn bị xóa hoàn toàn tài khoản <span className="font-semibold text-gray-900">{profile?.display_name || user?.email}</span>. Tất cả dữ liệu của bạn bao gồm bài viết đã lưu, lượt thích, cài đặt, và thông tin cá nhân sẽ bị xóa sạch khỏi hệ thống. Hành động này tuyệt đối không thể hoàn tác.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3 rounded-b-xl">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {saving ? 'Đang xử lý...' : 'Vâng, xóa tài khoản'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

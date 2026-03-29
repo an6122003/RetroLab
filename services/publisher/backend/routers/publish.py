@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+
+from ..auth import require_admin
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +18,7 @@ from ..models import Article
 from ..notion import push_to_notion
 from ..schemas import ArticleOut
 
-router = APIRouter(prefix="/api", tags=["publish"])
+router = APIRouter(prefix="/api", tags=["publish"], dependencies=[Depends(require_admin)])
 
 
 @router.post("/articles/{article_id}/publish", response_model=ArticleOut)

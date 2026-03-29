@@ -14,12 +14,14 @@ from typing import Any
 
 import yaml
 from celery import Celery
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
+
+from ..auth import require_admin
 from pydantic import BaseModel
 
 from ..settings import settings
 
-router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
+router = APIRouter(prefix="/api/pipeline", tags=["pipeline"], dependencies=[Depends(require_admin)])
 
 # ── Celery client (sends tasks only — does NOT run workers) ──────
 
@@ -67,9 +69,12 @@ def _get_engine():
     global _engine
     if _engine is None:
         from sqlalchemy import create_engine
-        # Read DB URL from pipeline .env — convert asyncpg to sync psycopg2
-        env = _read_env_config()
-        db_url = env.get("DATABASE_URL", "postgresql://pipeline:pipeline@localhost:5432/news_pipeline")
+        import os
+        # Prefer container env (has Docker network hostnames) over .env file (has localhost)
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            env = _read_env_config()
+            db_url = env.get("DATABASE_URL", "postgresql://pipeline:pipeline@localhost:5432/news_pipeline")
         # Strip +asyncpg for sync engine
         db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
         _engine = create_engine(db_url)
@@ -537,19 +542,35 @@ _spawned_workers: dict[str, dict[str, Any]] = {}
 
 
 def _find_celery_cmd() -> str:
-    """Locate the celery executable (venv or PATH)."""
-    pipeline_dir = settings.pipeline_dir
-    venv_celery_exe = pipeline_dir / ".venv" / "Scripts" / "celery.exe"
-    venv_celery_unix = pipeline_dir / ".venv" / "Scripts" / "celery"
-    venv_celery_bin = pipeline_dir / ".venv" / "bin" / "celery"
+    """Locate the celery executable (venv or system PATH).
 
-    if venv_celery_exe.exists():
-        return str(venv_celery_exe)
-    elif venv_celery_unix.exists():
-        return str(venv_celery_unix)
-    elif venv_celery_bin.exists():
-        return str(venv_celery_bin)
-    return "celery"
+    In Docker, the venv scripts are stale copies and won't run —
+    we verify the candidate is actually executable before using it.
+    """
+    import shutil
+
+    pipeline_dir = settings.pipeline_dir
+    candidates = [
+        pipeline_dir / ".venv" / "Scripts" / "celery.exe",
+        pipeline_dir / ".venv" / "Scripts" / "celery",
+        pipeline_dir / ".venv" / "bin" / "celery",
+    ]
+
+    for c in candidates:
+        if c.exists():
+            # Verify the script's shebang Python actually exists
+            try:
+                first_line = c.read_text(errors="replace").split("\n")[0]
+                if first_line.startswith("#!"):
+                    interp = first_line[2:].strip().split()[0]
+                    if not Path(interp).exists():
+                        continue  # stale venv — skip
+                return str(c)
+            except Exception:
+                continue
+
+    # Fallback: system-installed celery
+    return shutil.which("celery") or "celery"
 
 
 def _check_redis() -> tuple[bool, str]:
@@ -654,14 +675,22 @@ async def restart_worker() -> dict[str, str]:
     log_file = logs_dir / f"{worker_name}.log"
 
     try:
+        import os
         log_fh = open(log_file, "w", encoding="utf-8")
-        proc = subprocess.Popen(
-            cmd,
-            cwd=str(pipeline_dir),
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-        )
+        # Build creation kwargs — Windows vs Linux differ
+        popen_kwargs: dict[str, Any] = {
+            "cwd": str(pipeline_dir),
+            "stdout": log_fh,
+            "stderr": subprocess.STDOUT,
+            "env": {**os.environ},  # inherit container env (DATABASE_URL, REDIS_URL etc.)
+        }
+        # Windows-only process group flags
+        if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        else:
+            popen_kwargs["start_new_session"] = True
+
+        proc = subprocess.Popen(cmd, **popen_kwargs)
         _spawned_workers[worker_name] = {
             "pid": proc.pid,
             "log_file": str(log_file),
@@ -669,7 +698,7 @@ async def restart_worker() -> dict[str, str]:
             "started_at": time.time(),
             "cmd": cmd,
         }
-        return {"status": "restarted", "message": f"Old workers stopped, new worker '{worker_name}' spawned (PID {proc.pid})"}
+        return {"status": "restarted", "message": f"Worker '{worker_name}' started successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start worker: {e}")
 
@@ -776,14 +805,20 @@ async def spawn_worker(req: SpawnWorkerRequest) -> dict[str, Any]:
     log_file = logs_dir / f"{worker_name}.log"
 
     try:
+        import os
         log_fh = open(log_file, "w", encoding="utf-8")
-        proc = subprocess.Popen(
-            cmd,
-            cwd=str(pipeline_dir),
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-        )
+        popen_kwargs: dict[str, Any] = {
+            "cwd": str(pipeline_dir),
+            "stdout": log_fh,
+            "stderr": subprocess.STDOUT,
+            "env": {**os.environ},
+        }
+        if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        else:
+            popen_kwargs["start_new_session"] = True
+
+        proc = subprocess.Popen(cmd, **popen_kwargs)
 
         # Track the spawned process
         _spawned_workers[worker_name] = {
@@ -800,7 +835,7 @@ async def spawn_worker(req: SpawnWorkerRequest) -> dict[str, Any]:
             "queues": queues_str,
             "pid": proc.pid,
             "log_file": str(log_file),
-            "message": f"Worker '{worker_name}' spawned (PID {proc.pid}) on queues: {queues_str}",
+            "message": f"Worker '{worker_name}' started successfully",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to spawn worker: {e}")
@@ -1078,7 +1113,7 @@ def _set_cached_scrape(url: str, data: dict) -> None:
 
 class ComposeRequest(BaseModel):
     url: str
-    models: list[str]  # e.g. ["qwen3:14b", "gemma3:12b"]
+    models: list[str] = []  # Empty = scrape only
     language: str = "Vietnamese"
 
 
@@ -1105,7 +1140,7 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "gzip, deflate",
                 "Cache-Control": "no-cache",
                 "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24", "Google Chrome";v="131"',
                 "Sec-Ch-Ua-Mobile": "?0",
@@ -1132,18 +1167,18 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
         except Exception:
             html = ""
 
-    # Tier 3: Playwright browser (run sync in threadpool to avoid event loop conflicts with uvicorn)
+    # Tier 3: Playwright headless browser
     if not html:
-        scrape_method = "playwright"
+        scrape_method = "playwright-headless"
         import concurrent.futures
         import time as _time
 
-        def _scrape_with_playwright(target_url: str) -> str:
+        def _scrape_with_playwright(target_url: str, headless: bool = True) -> str:
             from playwright.sync_api import sync_playwright
             pw = sync_playwright().start()
             browser = pw.chromium.launch(
-                headless=False,
-                args=["--disable-blink-features=AutomationControlled"],
+                headless=headless,
+                args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
             )
             ctx = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -1172,17 +1207,73 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
         try:
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                html = await loop.run_in_executor(pool, _scrape_with_playwright, req.url)
+                html = await loop.run_in_executor(pool, _scrape_with_playwright, req.url, True)
+        except Exception:
+            html = ""
+
+    # Check if Tier 3 headless got blocked (empty body or bot challenge page)
+    if html and scrape_method == "playwright-headless":
+        _extracted_check = trafilatura.extract(html, include_comments=False, output_format="txt")
+        if not _extracted_check or len(_extracted_check) < 100:
+            html = ""  # Reset — headless was likely blocked
+
+    # Tier 4: Playwright headed (non-headless) via xvfb virtual display
+    # This bypasses aggressive anti-bot that detects headless mode
+    if not html:
+        scrape_method = "playwright-headed"
+        import subprocess as _sp
+        import concurrent.futures
+        import time as _time
+
+        def _scrape_headed_xvfb(target_url: str) -> str:
+            """Run Playwright in headed mode using xvfb-run for a virtual display."""
+            script = f'''
+import time
+from playwright.sync_api import sync_playwright
+pw = sync_playwright().start()
+browser = pw.chromium.launch(
+    headless=False,
+    args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
+)
+ctx = browser.new_context(
+    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    viewport={{"width": 1920, "height": 1080}},
+)
+page = ctx.new_page()
+page.add_init_script('Object.defineProperty(navigator, "webdriver", {{get: () => undefined}})')
+try:
+    page.goto("{target_url}", wait_until="domcontentloaded", timeout=60000)
+except Exception:
+    pass
+for _ in range(5):
+    time.sleep(3)
+    title = page.title()
+    if "just a moment" not in title.lower() and "checking" not in title.lower() and "attention" not in title.lower():
+        break
+print(page.content())
+browser.close()
+pw.stop()
+'''
+            result = _sp.run(
+                ["xvfb-run", "--auto-servernum", "python", "-c", script],
+                capture_output=True, text=True, timeout=90,
+            )
+            return result.stdout
+
+        try:
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                html = await loop.run_in_executor(pool, _scrape_headed_xvfb, req.url)
         except Exception as e:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to fetch URL: All scraping methods failed (including Playwright). Error: {e}"
+                detail=f"Failed to fetch URL: All scraping tiers failed (httpx → trafilatura → headless → headed). Error: {e}"
             )
 
     if not html:
         raise HTTPException(
             status_code=400, 
-            detail="Failed to fetch URL: Scraping methods returned empty content."
+            detail="Failed to fetch URL: All scraping methods returned empty content."
         )
 
     # Extract plain text for the LLM
@@ -1196,7 +1287,29 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
     )
     body_text = extracted or ""
     if not body_text or len(body_text) < 100:
-        raise HTTPException(status_code=400, detail="Could not extract article content from URL")
+        # Fallback: try BeautifulSoup raw text extraction
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, 'html.parser')
+            # Remove script, style, nav, footer, header, aside elements
+            for tag in soup.find_all(['script', 'style', 'nav', 'footer', 'header', 'aside', 'form']):
+                tag.decompose()
+            # Try to find article body
+            article_el = soup.find('article') or soup.find(class_=re_mod.compile(r'article|post|entry|content', re_mod.I)) or soup.find('main')
+            if article_el:
+                body_text = article_el.get_text(separator='\n', strip=True)
+            else:
+                body_text = soup.get_text(separator='\n', strip=True)
+            # Clean up excessive whitespace
+            body_text = re_mod.sub(r'\n{3,}', '\n\n', body_text).strip()
+        except Exception:
+            pass
+
+    if not body_text or len(body_text) < 100:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Could not extract article content from URL (scrape method: {scrape_method}, html length: {len(html)})"
+        )
 
     # Extract images from article HTML
     from urllib.parse import urljoin
@@ -1278,54 +1391,51 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
         "original_images": original_images[:20],  # Cap at 20 images
         "author": author,
         "sitename": sitename,
+        "scrape_method": scrape_method,
     }
 
-    # ── Prompts (inlined from pipeline/rewriter.py) ──
-    SYSTEM_PROMPT = (
-        "You are an editorial AI for a {lang} tech news website. "
-        "You receive English-language tech news articles and rewrite them "
-        "entirely in {lang}. Write naturally for a {lang}-speaking audience "
-        "— do not translate word-for-word, rewrite with your own editorial "
-        "voice and added perspective. Keep technical terms, product names, "
-        "and brand names in their original English form (e.g. 'Samsung "
-        "Galaxy S26 Ultra', 'Snapdragon 8 Elite', 'Android 16'). "
-        "Return valid JSON only — no markdown fences, no preamble."
-    )
-
-    USER_PROMPT = """\
-Rewrite the following article in {lang}.
-Title, body, summary, perspective, and tags → {lang}.
-image_keywords and inline_image_keywords → English always (for image search APIs).
-
-SOURCE ARTICLE:
-Title: {title}
-Body:
-{body_text}
-
----
-
-Return a JSON object with exactly these fields:
-- "title": rewritten headline in {lang}
-- "body": Full article in Markdown, in {lang}. Write naturally as a professional journalist.
-  Use markdown formatting only when it genuinely improves readability.
-  Focus on compelling, insightful writing.
-- "summary": 2-3 sentences in {lang}, professional tone.
-- "perspective": 2 sentences of editorial opinion in {lang}.
-- "image_keywords": 4-6 English phrases for hero image search.
-- "tags": 5-10 lowercase topic tags in {lang}. Keep product/brand names in English.
-- "reading_time_minutes": estimated reading time as an integer.
-
-Rules: Write in a premium, authoritative tech journalism voice.
-Keep product names in English.
-"""
+    # Import the shared prompts from the pipeline rewriter
+    import sys as _sys
+    if '/app/pipeline' not in _sys.path:
+        _sys.path.insert(0, '/app/pipeline')
+    from pipeline.rewriter import SYSTEM_PROMPT_TEMPLATE, USER_PROMPT_TEMPLATE
 
     lang = req.language
-    system_prompt = SYSTEM_PROMPT.format(lang=lang)
-    user_prompt = USER_PROMPT.format(
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(lang=lang)
+
+    # Decode HTML entities in title (e.g. &#039; -> ')
+    import html as html_mod
+    clean_title = html_mod.unescape(scraped["title"])
+    scraped["title"] = clean_title
+
+    user_prompt = USER_PROMPT_TEMPLATE.format(
         lang=lang,
-        title=scraped["title"],
+        title=clean_title,
+        author=scraped.get("author", "Unknown"),
+        source_name=scraped.get("sitename", ""),
+        published_at="Unknown",
         body_text=scraped["body_text"],
     )
+
+    # Cache scraped data (available for retry/rewrite later)
+    _set_cached_scrape(req.url, scraped)
+
+    # If no models selected, return scrape-only result
+    if not req.models:
+        return {
+            "url": req.url,
+            "scraped": {
+                "title": scraped.get("title", ""),
+                "word_count": scraped.get("word_count", 0),
+                "body_text": scraped.get("body_text", ""),
+                "body_preview": (scraped.get("body_text", ""))[:500],
+                "original_images": scraped.get("original_images", []),
+                "author": scraped.get("author", ""),
+                "sitename": scraped.get("sitename", ""),
+                "scrape_method": scraped.get("scrape_method", "unknown"),
+            },
+            "results": [],
+        }
 
     # 3. Read env config
     env = _read_env_config()
@@ -1504,10 +1614,12 @@ Keep product names in English.
         "scraped": {
             "title": scraped.get("title", ""),
             "word_count": scraped.get("word_count", 0),
+            "body_text": scraped.get("body_text", ""),
             "body_preview": (scraped.get("body_text", ""))[:500],
             "original_images": scraped.get("original_images", []),
             "author": scraped.get("author", ""),
             "sitename": scraped.get("sitename", ""),
+            "scrape_method": scraped.get("scrape_method", "unknown"),
         },
         "results": results,
     }

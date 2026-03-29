@@ -372,13 +372,22 @@ function ArticleListCard({ article, onClick, onDelete }: {
         <StatusBadge status={article.status} />
         <div className="flex gap-2">
           {isRejected ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); onClick(); }}
-              className="p-2 text-on-surface-variant hover:text-primary transition-colors"
-              title="View history"
-            >
-              <span className="material-symbols-outlined">history</span>
-            </button>
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+                className="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                title="View history"
+              >
+                <span className="material-symbols-outlined">history</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="p-2 text-on-surface-variant hover:text-error transition-colors"
+                title="Delete"
+              >
+                <span className="material-symbols-outlined">delete</span>
+              </button>
+            </>
           ) : (
             <>
               <button

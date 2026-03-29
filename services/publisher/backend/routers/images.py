@@ -12,6 +12,8 @@ from urllib.parse import quote_plus
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from ..auth import require_admin
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +21,7 @@ from ..database import get_db
 from ..models import Article
 from ..schemas import ArticleOut
 
-router = APIRouter(prefix="/api", tags=["images"])
+router = APIRouter(prefix="/api", tags=["images"], dependencies=[Depends(require_admin)])
 
 _SCRAPE_HEADERS = {
     "User-Agent": (

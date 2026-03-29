@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="bg-white text-gray-600 pt-16 pb-8 font-sans border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-          
+
           {/* About Section */}
           <div className="flex flex-col gap-6">
             <div className="flex items-center gap-2">
@@ -18,7 +18,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm leading-relaxed text-gray-500">
-              RetroLab là tạp chí công nghệ dành cho những người yêu thích sự giao thoa giữa giá trị hoài cổ và sức mạnh của tương lai.
+              Bắt trọn mọi chuyển động của thế giới số tại RetroLab. Trạm tin tức tổng hợp đa nguồn về Công Nghệ, AI cho đến thế giới Game và Giả Lập.
             </p>
             <div className="flex gap-3 mt-2">
               <a href="#" className="w-10 h-10 rounded-full bg-[#f0f4ff] text-[#2563eb] flex items-center justify-center hover:bg-[#2563eb] hover:text-white transition-colors">

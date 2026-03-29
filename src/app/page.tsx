@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Clock, PlayCircle, ArrowRight, ShieldCheck, MonitorPlay, BrainCircuit } from "lucide-react";
 import Ticker from "@/components/ui/Ticker";
 import NewsletterSection from "@/components/ui/NewsletterSection";
+import AdBanner from "@/components/ui/AdBanner";
 import * as Cards from "@/components/ui/ArticleCards";
 
 export const revalidate = 3600;
@@ -79,6 +80,9 @@ export default async function Home() {
 
       {/* 2. TICKER 1 */}
       <Ticker articles={tickerArticles} />
+
+      {/* Ad: Leaderboard after ticker */}
+      <AdBanner size="leaderboard" />
 
       {/* 3. FEATURED MAGAZINE LAYOUT */}
       <div className="flex flex-col w-full mb-16 pb-12 relative">
@@ -161,21 +165,13 @@ export default async function Home() {
         {/* Sidebar */}
         <aside className="w-full lg:w-[300px] shrink-0">
           <div className="sticky top-28">
-            <div className="text-[10px] text-gray-300 uppercase tracking-wider mb-2 text-center font-bold">Advertisement</div>
-            <div className="w-full rounded-xl overflow-hidden bg-white/40 backdrop-blur-sm border border-white/60 aspect-[3/4] flex items-center justify-center relative shadow-sm">
-               {/* Glassmorphic Ad Placeholder */}
-               <div className="absolute inset-0 bg-gradient-to-br from-gray-50/80 to-gray-100/80 flex items-center justify-center text-center p-6">
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest leading-loose">
-                    Không gian <br/> Quảng cáo <br/> 300x400
-                  </span>
-               </div>
-            </div>
+            <AdBanner size="sidebar" />
           </div>
         </aside>
       </div>
 
       {/* 5. NOTABLE GRID WITH TABS ("Đáng chú ý") */}
-      <div className="mb-16 bg-white/70 backdrop-blur-md rounded-2xl p-6 md:p-10 border border-gray-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+      <div className="mb-4 bg-white/70 backdrop-blur-md rounded-2xl p-6 md:p-10 border border-gray-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between border-b border-gray-200/70 pb-4 mb-10">
           <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-widest">Đáng chú ý</h2>
           <div className="hidden md:flex gap-8 overflow-x-auto whitespace-nowrap">
@@ -200,6 +196,9 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* Ad: Leaderboard between Notable and Video */}
+      <AdBanner size="leaderboard" />
+
       {/* 6. DARK MODE VIDEO PANE ("Video Mới") */}
       <div className="mb-16 bg-gray-950 rounded-xl p-6 md:p-10 text-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-10">
@@ -216,7 +215,7 @@ export default async function Home() {
       </div>
 
       {/* 7. EDITOR'S PICKS ("Lựa chọn của Editor") */}
-      <div className="mb-12 bg-white/70 backdrop-blur-md rounded-2xl p-6 md:p-10 border border-gray-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+      <div className="mb-4 bg-white/70 backdrop-blur-md rounded-2xl p-6 md:p-10 border border-gray-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
         <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-widest border-b border-gray-200/70 pb-4 mb-10">
           Lựa chọn của Editor
         </h2>
@@ -224,6 +223,9 @@ export default async function Home() {
           {editorPicks.map(post => <Cards.EditorCard key={`editor-${post.id}`} article={post} />)}
         </div>
       </div>
+
+      {/* Ad: Banner before newsletter */}
+      <AdBanner size="banner" />
 
       {/* 8. NEWSLETTER SECTION */}
       <NewsletterSection />

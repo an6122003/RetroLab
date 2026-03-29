@@ -80,7 +80,7 @@
    ═══════════════════════════════════════════ */
 .ticker-wrapper {
   position: relative;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
   border-radius: 8px;
   overflow: hidden;
   background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);

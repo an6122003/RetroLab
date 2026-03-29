@@ -4,14 +4,14 @@ import { Mail } from 'lucide-react';
 
 export default function NewsletterSection() {
   return (
-    <div className="bg-[#2563eb] rounded-lg p-10 md:p-16 text-center flex flex-col items-center shadow-xl mb-12">
-      <div className="w-16 h-16 bg-[#facc15] rounded-lg flex items-center justify-center mb-6 shadow-lg">
-        <Mail size={32} className="text-[#2563eb]" />
+    <div className="bg-[#2563eb] rounded-lg p-8 md:p-10 text-center flex flex-col items-center shadow-xl mb-12">
+      <div className="w-12 h-12 bg-[#facc15] rounded-lg flex items-center justify-center mb-4 shadow-lg">
+        <Mail size={24} className="text-[#2563eb]" />
       </div>
-      <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
         Đừng bỏ lỡ bất kỳ cập nhật nào
       </h2>
-      <p className="text-blue-100 text-lg max-w-2xl mb-10">
+      <p className="text-blue-100 text-base max-w-2xl mb-6">
         Nhận bản tin công nghệ hàng tuần, đánh giá sản phẩm mới nhất và các thủ thuật AI độc quyền trực tiếp vào hộp thư của bạn.
       </p>
       
@@ -19,12 +19,12 @@ export default function NewsletterSection() {
         <input 
           type="email" 
           placeholder="Email của bạn..." 
-          className="flex-grow px-6 py-4 rounded-full text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-400"
+          className="flex-grow px-5 py-3 rounded-full text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-400"
           required
         />
         <button 
           type="submit" 
-          className="bg-[#facc15] text-gray-900 font-bold px-8 py-4 rounded-full hover:bg-yellow-500 transition-colors whitespace-nowrap"
+          className="bg-[#facc15] text-gray-900 font-bold px-6 py-3 rounded-full hover:bg-yellow-500 transition-colors whitespace-nowrap"
         >
           Đăng ký ngay
         </button>

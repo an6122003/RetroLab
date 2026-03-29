@@ -21,6 +21,7 @@ Thumbs.db
 
 # ── Secrets & credentials ──
 **/secrets/
+credentials/
 *-sa-key.json
 *.json.key
 .env
@@ -45,3 +46,5 @@ flew/
 views/
 public/
 !public/avatars/
+# ── Deployment & Credentials Manager ──
+credentials/
