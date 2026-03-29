@@ -28,11 +28,11 @@
 SHELL := /bin/bash
 
 .PHONY: help all dev web pipeline publisher pub-back pub-front \
-		stop stop-pipeline status logs-pipeline install clean \
+		stop stop-dev stop-pipeline status logs-pipeline install clean \
 		build-web build-publisher build-pipeline build-all \
 		push-web deploy-web \
 		deploy-server stop-server logs-server \
-		gcp-setup
+		nuke gcp-setup
 
 .DEFAULT_GOAL := help
 
@@ -63,6 +63,23 @@ define kill-port
 	fi
 endef
 
+# ── Helper: stop local dev processes ──────────────────────────
+define stop-dev-processes
+	@for pidfile in /tmp/retrolab-web.pid /tmp/retrolab-pub-back.pid /tmp/retrolab-pub-front.pid; do \
+		if [ -f "$$pidfile" ]; then \
+			p=$$(cat "$$pidfile"); \
+			kill "$$p" 2>/dev/null && echo "  Killed PID $$p ($$pidfile)" || true; \
+			rm -f "$$pidfile"; \
+		fi; \
+	done
+	@for port in 3000 3001 8001; do \
+		p=$$(lsof -ti :$$port 2>/dev/null); \
+		if [ -n "$$p" ]; then \
+			kill $$p 2>/dev/null && echo "  Killed PID $$p on port $$port" || true; \
+		fi; \
+	done
+endef
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  LOCAL DEV
@@ -70,8 +87,10 @@ endef
 
 all: ## Start everything (web + publisher + pipeline)
 	@echo ""
-	@echo "  Starting ALL RetroLab Services"
+	@echo "  Starting ALL RetroLab Services (local dev)"
 	@echo "  ============================================"
+	@echo "  >> Stopping server deploy if running..."
+	@-docker compose -f docker-compose.server.yml down 2>/dev/null || true
 	@$(MAKE) -s web
 	@$(MAKE) -s publisher
 	@$(MAKE) -s pipeline
@@ -131,31 +150,48 @@ pipeline: ## Start news pipeline via Docker Compose
 #  MANAGE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-stop: ## Stop ALL services (Docker + dev servers)
+stop: ## Stop ALL services (local dev + server deploy)
 	@echo "  Stopping ALL RetroLab Services"
 	@echo "  ============================================"
-	@echo "  >> Stopping pipeline containers..."
+	@echo "  >> Stopping local pipeline containers..."
+	@-cd $(PIPELINE) && docker compose down 2>/dev/null || true
+	@echo "  >> Stopping server deploy containers..."
+	@-docker compose -f docker-compose.server.yml down 2>/dev/null || true
+	@echo "  >> Killing dev server processes..."
+	$(call stop-dev-processes)
+	@echo "  [OK] All services stopped."
+
+stop-dev: ## Stop only local dev services (not server deploy)
+	@echo "  Stopping local dev services"
+	@echo "  ============================================"
+	@echo "  >> Stopping local pipeline containers..."
 	@-cd $(PIPELINE) && docker compose down 2>/dev/null || true
 	@echo "  >> Killing dev server processes..."
-	@for pidfile in /tmp/retrolab-web.pid /tmp/retrolab-pub-back.pid /tmp/retrolab-pub-front.pid; do \
-		if [ -f "$$pidfile" ]; then \
-			p=$$(cat "$$pidfile"); \
-			kill "$$p" 2>/dev/null && echo "  Killed PID $$p ($$pidfile)" || true; \
-			rm -f "$$pidfile"; \
-		fi; \
-	done
-	@for port in 3000 3001 8001; do \
-		p=$$(lsof -ti :$$port 2>/dev/null); \
-		if [ -n "$$p" ]; then \
-			kill $$p 2>/dev/null && echo "  Killed PID $$p on port $$port" || true; \
-		fi; \
-	done
-	@echo "  [OK] All services stopped."
+	$(call stop-dev-processes)
+	@echo "  [OK] Local dev stopped."
 
 stop-pipeline: ## Stop only pipeline Docker containers
 	@echo "  >> Stopping pipeline containers..."
 	@cd $(PIPELINE) && docker compose down
 	@echo "  [OK] Pipeline stopped."
+
+nuke: ## Deep cleanup: remove ALL Docker containers, networks, and zombie proxies
+	@echo "  ⚠️  Deep Docker Cleanup"
+	@echo "  ============================================"
+	@echo "  >> Stopping all compose stacks..."
+	@-cd $(PIPELINE) && docker compose down 2>/dev/null || true
+	@-docker compose -f docker-compose.server.yml down 2>/dev/null || true
+	@echo "  >> Killing dev server processes..."
+	$(call stop-dev-processes)
+	@echo "  >> Removing ALL Docker containers..."
+	@-docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+	@echo "  >> Pruning unused Docker networks..."
+	@-docker network prune -f 2>/dev/null || true
+	@echo "  >> Pruning unused Docker volumes..."
+	@-docker volume prune -f 2>/dev/null || true
+	@echo ""
+	@echo "  [OK] Docker environment is clean."
+	@echo "  Run 'make dev' or 'make deploy-server' to start fresh."
 
 status: ## Check which services are running
 	@echo ""
@@ -246,6 +282,10 @@ deploy-server: ## Build & run pipeline + publisher on this server
 	@echo ""
 	@echo "  Deploying Server Services (Pipeline + Publisher)"
 	@echo "  ============================================"
+	@echo "  >> Stopping local dev if running..."
+	@-cd $(PIPELINE) && docker compose down 2>/dev/null || true
+	$(call stop-dev-processes)
+	@echo "  >> Building and starting server containers..."
 	@set -a && . $(PUB_ROOT)/.env && set +a && \
 		docker compose -f docker-compose.server.yml up -d --build
 	@echo ""
@@ -262,7 +302,8 @@ deploy-server: ## Build & run pipeline + publisher on this server
 		docker compose -f docker-compose.server.yml ps
 
 stop-server: ## Stop all server services
-	docker compose -f docker-compose.server.yml down
+	@set -a && . $(PUB_ROOT)/.env 2>/dev/null && set +a; \
+		docker compose -f docker-compose.server.yml down
 	@echo "  [OK] Server services stopped."
 
 logs-server: ## Tail all server service logs
@@ -289,6 +330,7 @@ install: ## Install all dependencies (npm + pip + .env setup)
 	@echo "  >> Creating .env files from templates..."
 	@test -f $(ROOT)/.env     || (cp $(ROOT)/.env.example $(ROOT)/.env 2>/dev/null && echo "  Created .env") || true
 	@test -f $(PUB_ROOT)/.env || (cp $(PUB_ROOT)/.env.example $(PUB_ROOT)/.env 2>/dev/null && echo "  Created services/publisher/.env") || true
+	@test -f $(PUB_FRONT)/.env || (cp $(PUB_FRONT)/.env.example $(PUB_FRONT)/.env 2>/dev/null && echo "  Created services/publisher/frontend/.env") || true
 	@test -f $(PIPELINE)/.env || (cp $(PIPELINE)/.env.example $(PIPELINE)/.env 2>/dev/null && echo "  Created services/news-pipeline/.env") || true
 	@echo ""
 	@echo "  [OK] All dependencies installed!"
@@ -325,21 +367,21 @@ help: ## Show this help
 	@echo ""
 	@echo "  LOCAL DEV"
 	@grep -E '^(all|dev|web|publisher|pub-back|pub-front|pipeline):.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
+		sed 's/^Makefile://' | awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  MANAGE"
-	@grep -E '^(stop|stop-pipeline|status|logs-pipeline|install|clean):.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
+	@grep -E '^(stop|stop-dev|stop-pipeline|nuke|status|logs-pipeline|install|clean):.*?## .*$$' $(MAKEFILE_LIST) | \
+		sed 's/^Makefile://' | awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  DOCKER BUILD"
 	@grep -E '^build-.*:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
+		sed 's/^Makefile://' | awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  DEPLOY"
 	@grep -E '^(deploy-web|deploy-server|stop-server|logs-server):.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
+		sed 's/^Makefile://' | awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  SETUP"
 	@grep -E '^(gcp-setup):.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
+		sed 's/^Makefile://' | awk 'BEGIN {FS = ":.*?## "}; {printf "    %-20s %s\n", $$1, $$2}'
 	@echo ""
