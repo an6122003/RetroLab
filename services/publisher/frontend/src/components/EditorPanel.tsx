@@ -13,6 +13,8 @@ interface EditorActions {
   saveStatus: 'idle' | 'saving' | 'saved';
   canReject: boolean;
   canApprove: boolean;
+  approveReady: boolean;
+  approveMissing: string[];
   canPublish: boolean;
   isPublished: boolean;
   onSave: () => void;
@@ -185,8 +187,8 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
     onSuccess: (updated) => {
       setArticle(updated);
       queryClient.invalidateQueries({ queryKey: ['articles'] });
+      queryClient.invalidateQueries({ queryKey: ['article', article.id] });
       toast.success('Article approved ✓');
-      onNavigateNext?.();
     },
     onError: (err) => toast.error((err as Error).message),
   });
@@ -198,8 +200,8 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
       setArticle(updated);
       setShowRejectConfirm(false);
       queryClient.invalidateQueries({ queryKey: ['articles'] });
+      queryClient.invalidateQueries({ queryKey: ['article', article.id] });
       toast('Article rejected', { icon: '🗑️' });
-      onNavigateNext?.();
     },
     onError: (err) => toast.error((err as Error).message),
   });
@@ -215,26 +217,38 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
     onError: (err) => toast.error((err as Error).message),
   });
 
-  const canApprove = !!(article.slug && article.selected_image && article.category);
-  const isEditable = ['draft', 'image_pending'].includes(article.status);
+  const approveReady = !!(article.slug && article.selected_image && article.category);
+  const isEditable = !['published', 'rejected'].includes(article.status);
+  const approveMissing: string[] = [];
+  if (!article.slug) approveMissing.push('slug');
+  if (!article.selected_image) approveMissing.push('image');
+  if (!article.category) approveMissing.push('category');
 
   // Expose actions to parent for header buttons
   useEffect(() => {
     onActionsReady?.({
       saveStatus,
       canReject: isEditable,
-      canApprove: isEditable && canApprove,
+      canApprove: isEditable,
+      approveReady,
+      approveMissing,
       canPublish: article.status === 'approved',
       isPublished: article.status === 'published',
       onSave: () => saveMutation.mutate({}),
       onReject: () => rejectMutation.mutate(),
-      onApprove: () => approveMutation.mutate(),
+      onApprove: () => {
+        if (!approveReady) {
+          toast.error(`Cannot approve: missing ${approveMissing.join(', ')}`);
+          return;
+        }
+        approveMutation.mutate();
+      },
       onPublish: () => publishMutation.mutate(),
       isApproving: approveMutation.isPending,
       isRejecting: rejectMutation.isPending,
       isPublishing: publishMutation.isPending,
     });
-  }, [saveStatus, article.status, article.slug, article.selected_image, canApprove, isEditable, approveMutation.isPending, rejectMutation.isPending, publishMutation.isPending]);
+  }, [saveStatus, article.status, article.slug, article.selected_image, article.category, approveReady, isEditable, approveMutation.isPending, rejectMutation.isPending, publishMutation.isPending]);
 
   return (
     <div className="flex flex-col h-full animate-fade-in-up">

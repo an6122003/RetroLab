@@ -274,7 +274,8 @@ export default function ArticleEditorPage() {
   // ── Editor action state (populated by EditorPanel via callback) ──
   const [editorActions, setEditorActions] = useState<{
     saveStatus: 'idle' | 'saving' | 'saved';
-    canReject: boolean; canApprove: boolean; canPublish: boolean; isPublished: boolean;
+    canReject: boolean; canApprove: boolean; approveReady: boolean; approveMissing: string[];
+    canPublish: boolean; isPublished: boolean;
     onSave: () => void; onReject: () => void; onApprove: () => void; onPublish: () => void;
     isApproving: boolean; isRejecting: boolean; isPublishing: boolean;
   } | null>(null);
@@ -329,8 +330,13 @@ export default function ArticleEditorPage() {
             {editorActions.canApprove && (
               <button
                 onClick={editorActions.onApprove}
-                disabled={editorActions.isApproving}
-                className="px-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                disabled={editorActions.isApproving || !editorActions.approveReady}
+                title={!editorActions.approveReady ? `Missing: ${editorActions.approveMissing.join(', ')}` : 'Approve article'}
+                className={`px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                  editorActions.approveReady
+                    ? 'text-primary hover:text-primary/80'
+                    : 'text-on-surface-variant cursor-not-allowed'
+                }`}
               >
                 {editorActions.isApproving ? 'Approving…' : 'Approve'}
               </button>
