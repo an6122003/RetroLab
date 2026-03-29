@@ -641,7 +641,7 @@ function renderMarkdownPreview(md: string): string {
     .replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
 
   // Wrap loose <li> in <ul>
-  html = html.replace(/(<li>.*<\/li>)/gms, '<ul class="list-disc list-inside my-6 space-y-2 text-on-surface-variant">$1</ul>');
+  html = html.replace(/(<li>[\s\S]*?<\/li>)/gm, '<ul class="list-disc list-inside my-6 space-y-2 text-on-surface-variant">$1</ul>');
   
   // Horizontal rule
   html = html.replace(/^---$/gm, '<hr class="border-outline-variant/15 my-10" />')

@@ -6,18 +6,19 @@ import { createClient } from '@/lib/supabase/server';
 import { getAvatar } from '@/constants/avatars';
 
 type Props = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function generateMetadata(
   { params }: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from('profiles')
     .select('display_name, bio')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!profile) {
@@ -31,12 +32,13 @@ export async function generateMetadata(
 }
 
 export default async function PublicProfilePage({ params }: Props) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('id, display_name, avatar_id, bio, created_at')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (error || !profile) {
