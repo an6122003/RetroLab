@@ -44,7 +44,5 @@ package-lock.json
 # ── Legacy / unused directories ──
 flew/
 views/
-public/
-!public/avatars/
 # ── Deployment & Credentials Manager ──
 credentials/
