@@ -10,6 +10,16 @@
   }
 }
 
+/* Hide scrollbar for carousel containers */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Carousel page transition */
+@keyframes carousel-fade-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 /* ═══════════════════════════════════════════
    Animations — fade-in for dropdowns/modals
    ═══════════════════════════════════════════ */

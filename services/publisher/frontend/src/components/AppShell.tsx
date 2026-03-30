@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { path: '/workers',   label: 'WORKERS',   icon: 'engineering' },
   { path: '/finops',    label: 'FINOPS',    icon: 'monitoring' },
   { path: '/backup',    label: 'BACKUP',    icon: 'cloud_sync' },
+  { path: '/youtube',   label: 'YOUTUBE',   icon: 'smart_display' },
 ];
 
 interface AppShellProps {
@@ -44,11 +45,13 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
         <div className="mb-10">
           <button
             onClick={() => navigate('/')}
-            className="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center text-white text-sm font-black shadow-sm hover:scale-105 transition-transform relative overflow-hidden"
+            className="flex items-center justify-center hover:scale-105 transition-transform"
             title="RetroLab Publisher"
           >
-            R
-            <div className="w-2 h-2 bg-[#facc15] rounded-full absolute top-1.5 right-1.5" />
+            <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="16" fill="#2563EB" />
+              <circle cx="22" cy="10" r="4" fill="#FACC15" />
+            </svg>
           </button>
         </div>
 

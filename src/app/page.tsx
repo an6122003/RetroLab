@@ -1,5 +1,6 @@
 import { getPosts, formatDate } from "@/lib/notion";
 import type { ArticleData } from "@/lib/notion";
+import { getLatestYoutubeVideos } from "@/lib/youtube";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, PlayCircle, ArrowRight, ShieldCheck, MonitorPlay, BrainCircuit } from "lucide-react";
@@ -24,6 +25,7 @@ function getCircular(arr: any[], start: number, count: number) {
 
 export default async function Home() {
   const allPosts = await getPosts();
+  const youtubeVideos = await getLatestYoutubeVideos();
 
   if (allPosts.length === 0) {
     return (
@@ -184,10 +186,12 @@ export default async function Home() {
           {notableGrid.map((post, idx) => {
             const icons = [<ShieldCheck key="i1" size={14} />, <MonitorPlay key="i2" size={14} />, <BrainCircuit key="i3" size={14} />];
             return (
-              <div key={`notable-${post.id}`} className="flex flex-col">
-                <Cards.GridCard article={post} />
+              <div key={`notable-${post.id}`} className="flex flex-col h-full bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex-grow">
+                  <Cards.GridCard article={post} />
+                </div>
                 {/* Manual icon injection for visual parity with mockup */}
-                <div className="flex items-center gap-2 text-[11px] text-gray-400 uppercase tracking-wider -mt-10 mb-12">
+                <div className="flex items-center gap-2 text-[11px] text-gray-400 uppercase tracking-wider mt-5">
                    {icons[idx % 3]} <span>{post.category}</span>
                 </div>
               </div>
@@ -203,15 +207,22 @@ export default async function Home() {
       <div className="mb-16 bg-gray-950 rounded-xl p-6 md:p-10 text-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-10">
           <h2 className="text-2xl font-bold uppercase tracking-widest flex items-center gap-3">
-            <PlayCircle className="text-[#2563eb]" size={28} /> Video Mới
+            <PlayCircle className="text-[#ff0000]" size={28} /> Video Mới
           </h2>
-          <Link href="/category/video" className="text-gray-400 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors">
+          <a href="#" className="text-gray-400 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors">
             Xem tất cả <ArrowRight size={16} />
-          </Link>
+          </a>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {videoGrid.map(post => <Cards.VideoCard key={`video-${post.id}`} article={post} />)}
-        </div>
+        {youtubeVideos.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {youtubeVideos.map(video => <Cards.YoutubeVideoCard key={`yt-${video.id}`} video={video} />)}
+          </div>
+        ) : (
+          <div className="text-gray-500 py-10 text-center flex flex-col items-center">
+             <PlayCircle size={48} className="mb-4 opacity-20" />
+             <p>Chưa có video nào. Hãy thêm Kênh YouTube ở giao diện Publisher.</p>
+          </div>
+        )}
       </div>
 
       {/* 7. EDITOR'S PICKS ("Lựa chọn của Editor") */}

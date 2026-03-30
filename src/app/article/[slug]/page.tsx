@@ -7,6 +7,8 @@ import type { Metadata } from 'next';
 import { Suspense } from "react";
 import { ArticleSkeleton } from "@/components/ui/Skeletons";
 import ArticleActions from "@/components/post/ArticleActions";
+import AdBanner from "@/components/ui/AdBanner";
+import RelatedPostsCarousel from "@/components/post/RelatedPostsCarousel";
 
 export const revalidate = 3600;
 
@@ -47,7 +49,7 @@ async function ArticleContent({ slug }: { slug: string }) {
   const allPosts = await getPosts();
   const relatedPosts = allPosts
     .filter(p => p.id !== post.id)
-    .slice(0, 6);
+    .slice(0, 12);
 
   return (
     <div className="relative min-h-screen font-sans text-gray-800">
@@ -134,31 +136,13 @@ async function ArticleContent({ slug }: { slug: string }) {
         </div>
       </div>
 
-      {/* You May Also Like */}
-      {relatedPosts.length > 0 && (
-        <div className="w-full bg-white/60 backdrop-blur-sm py-16 mt-8 border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-lg font-sans font-bold uppercase tracking-widest mb-8 text-gray-800">You May Also Like</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
-              {relatedPosts.map(post => (
-                <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex flex-col h-full">
-                  <div className="relative overflow-hidden rounded-lg mb-4 aspect-[16/9]">
-                    <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-[#2563eb] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">{post.category}</span>
-                    </div>
-                  </div>
-                  <h3 className="text-[18px] font-sans font-bold leading-snug mb-3 group-hover:text-[#2563eb] transition-colors text-gray-900">{post.title}</h3>
-                  <div className="flex items-center text-[11px] text-gray-400 gap-2 uppercase tracking-wide mt-auto">
-                    <span>By <span className="font-bold text-gray-700">{post.author.toUpperCase()}</span></span>
-                    <span>🕒 {formatDate(post.date)}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Ad Banner — end of article */}
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-4">
+        <AdBanner size="leaderboard" />
+      </div>
+
+      {/* You May Also Like — Carousel */}
+      <RelatedPostsCarousel posts={relatedPosts} />
     </div>
   );
 }

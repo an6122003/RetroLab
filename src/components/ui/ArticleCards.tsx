@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Clock, ArrowRight, PlayCircle } from 'lucide-react';
 import { ArticleData, formatDate } from '@/lib/notion';
+import { YoutubeVideo } from '@/lib/youtube';
 
 interface CardProps {
   article: ArticleData;
@@ -90,9 +91,9 @@ export function ListCard({ article }: CardProps) {
 
 export function GridCard({ article }: CardProps) {
   return (
-    <div className="group cursor-pointer flex flex-col h-full bg-white">
-      <Link href={`/article/${article.slug}`} className="block">
-        <div className="relative overflow-hidden rounded-lg mb-4 aspect-[16/9]">
+    <div className="group cursor-pointer flex flex-col h-full">
+      <Link href={`/article/${article.slug}`} className="flex flex-col h-full">
+        <div className="relative overflow-hidden rounded-lg mb-4 aspect-[16/9] shrink-0">
           <Image src={article.coverImage} alt={article.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
         </div>
         <div className="flex items-center gap-2 text-[11px] text-gray-400 uppercase tracking-wider mb-3">
@@ -147,5 +148,32 @@ export function VideoCard({ article }: CardProps) {
       <h3 className="text-[15px] font-bold leading-snug mb-1 text-white group-hover:text-blue-400 transition-colors line-clamp-2">{article.title}</h3>
       <div className="text-[12px] text-gray-400">{formatDate(article.date)}</div>
     </Link>
+  );
+}
+
+export function YoutubeVideoCard({ video }: { video: YoutubeVideo }) {
+  // Try parsing published_at (e.g., 2024-03-30T... into a date)
+  const dateObj = new Date(video.publishedAt);
+  const formattedDate = dateObj.toLocaleDateString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+
+  return (
+    <a href={video.url} target="_blank" rel="noopener noreferrer" className="group cursor-pointer flex flex-col bg-gray-900 p-2 rounded-lg hover:bg-gray-800 transition-colors h-full">
+      <div className="relative overflow-hidden rounded-md mb-3 aspect-[16/9] shrink-0">
+        <Image src={video.thumbnail} alt={video.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100" sizes="(max-width: 768px) 100vw, 25vw" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:bg-[#ff0000] transition-colors">
+            <PlayCircle className="text-white" size={24} />
+          </div>
+        </div>
+      </div>
+      <h3 className="text-[15px] font-bold leading-snug mb-1 text-white group-hover:text-red-400 transition-colors line-clamp-2">{video.title}</h3>
+      <div className="text-[12px] text-gray-400 mt-auto pt-2 flex items-center gap-2">
+        <span className="text-gray-300 font-medium">{video.channelName}</span>
+        <span>•</span>
+        <span>{formattedDate}</span>
+      </div>
+    </a>
   );
 }

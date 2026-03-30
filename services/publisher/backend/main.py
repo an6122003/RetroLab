@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routers import articles, backup, images, pipeline, publish
+from .routers import articles, backup, images, pipeline, publish, youtube
 
 app = FastAPI(
     title="Publisher Service",
@@ -41,6 +41,7 @@ app.include_router(publish.router)
 app.include_router(images.router)
 app.include_router(pipeline.router)
 app.include_router(backup.router)
+app.include_router(youtube.router)
 
 
 @app.on_event("startup")
@@ -91,8 +92,15 @@ if _frontend_dist_env:
         if _assets_dir.is_dir():
             app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 
-        # Catch-all: serve index.html for SPA routing
+        # Catch-all: serve specific static files or index.html for SPA routing
         @app.get("/{path:path}")
         async def serve_spa(path: str):
-            """Serve the SPA frontend for any non-API route."""
+            """Serve the SPA frontend for any non-API route, allowing root static files."""
+            file_path = _frontend_dist / path
+            if file_path.is_file():
+                return FileResponse(str(file_path))
+            # Don't return index.html for missing static files to prevent browser parsing errors
+            if path.endswith((".ico", ".svg", ".png", ".jpg", ".css", ".js", ".map")):
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="File not found")
             return FileResponse(str(_frontend_dist / "index.html"))

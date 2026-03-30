@@ -9,6 +9,7 @@ import FinOpsPage from './pages/FinOpsPage';
 import BackupPage from './pages/BackupPage';
 import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import YoutubeConfigPage from './pages/YoutubeConfigPage';
 
 function LoadingScreen() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
       <Route path="/workers" element={<WorkerManagementPage />} />
       <Route path="/finops" element={<FinOpsPage />} />
       <Route path="/backup" element={<BackupPage />} />
+      <Route path="/youtube" element={<YoutubeConfigPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
