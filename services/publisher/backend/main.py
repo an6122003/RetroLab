@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routers import articles, backup, images, pipeline, publish, youtube
+from .routers import articles, backup, images, pipeline, publish, youtube, ads
 
 app = FastAPI(
     title="Publisher Service",
@@ -42,6 +42,7 @@ app.include_router(images.router)
 app.include_router(pipeline.router)
 app.include_router(backup.router)
 app.include_router(youtube.router)
+app.include_router(ads.router)
 
 
 @app.on_event("startup")
@@ -79,28 +80,43 @@ async def drive_auth_callback(code: str, state: str = ""):
 
 # ── Serve frontend static files in production ────────────────
 # When deployed in Docker, the built frontend lives at /app/frontend-dist/
-# Mount it LAST so API routes take priority.
 # Only active in Docker (FRONTEND_DIST_DIR must be explicitly set).
 _frontend_dist_env = os.getenv("FRONTEND_DIST_DIR")
 if _frontend_dist_env:
     _frontend_dist = Path(_frontend_dist_env)
     if (_frontend_dist / "index.html").is_file():
-        from fastapi.responses import FileResponse
+        from starlette.responses import FileResponse as StarletteFileResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from starlette.requests import Request as StarletteRequest
 
         # Serve static assets (JS, CSS, images)
         _assets_dir = _frontend_dist / "assets"
         if _assets_dir.is_dir():
             app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 
-        # Catch-all: serve specific static files or index.html for SPA routing
-        @app.get("/{path:path}")
-        async def serve_spa(path: str):
-            """Serve the SPA frontend for any non-API route, allowing root static files."""
-            file_path = _frontend_dist / path
-            if file_path.is_file():
-                return FileResponse(str(file_path))
-            # Don't return index.html for missing static files to prevent browser parsing errors
-            if path.endswith((".ico", ".svg", ".png", ".jpg", ".css", ".js", ".map")):
-                from fastapi import HTTPException
-                raise HTTPException(status_code=404, detail="File not found")
-            return FileResponse(str(_frontend_dist / "index.html"))
+        class SPAMiddleware(BaseHTTPMiddleware):
+            """Serve the SPA frontend for non-API GET requests that don't match a route."""
+            async def dispatch(self, request: StarletteRequest, call_next):
+                response = await call_next(request)
+
+                # Only intercept 404s for GET requests on non-API paths
+                if (
+                    response.status_code == 404
+                    and request.method == "GET"
+                    and not request.url.path.startswith("/api/")
+                    and request.url.path != "/health"
+                ):
+                    path = request.url.path.lstrip("/")
+                    # Try serving a static file from frontend-dist
+                    file_path = _frontend_dist / path
+                    if path and file_path.is_file():
+                        return StarletteFileResponse(str(file_path))
+                    # Don't serve index.html for missing static assets
+                    if path.endswith((".ico", ".svg", ".png", ".jpg", ".css", ".js", ".map")):
+                        return response
+                    # SPA fallback — serve index.html
+                    return StarletteFileResponse(str(_frontend_dist / "index.html"))
+
+                return response
+
+        app.add_middleware(SPAMiddleware)

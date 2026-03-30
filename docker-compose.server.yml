@@ -103,8 +103,10 @@ services:
     volumes:
       - ./services/publisher/secrets:/app/secrets
       - publisher-backups:/app/backups
+      - publisher-data:/app/data
 
 volumes:
   pgdata:
   redisdata:
   publisher-backups:
+  publisher-data:

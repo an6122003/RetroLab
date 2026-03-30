@@ -10,24 +10,51 @@ export interface YoutubeVideo {
   channelName: string;
 }
 
-const YOUTUBE_CONFIG_FILE = path.join(process.cwd(), 'src/data/youtube_channels.json');
-
-export async function getLatestYoutubeVideos(): Promise<YoutubeVideo[]> {
-  let channels: { id: string; name: string }[] = [];
+/**
+ * Load YouTube channel list.
+ * Priority:
+ *   1. Fetch from Publisher API (production — admin.retrolab.com.vn)
+ *   2. Fallback to local file (dev)
+ */
+async function getChannels(): Promise<{ id: string; name: string }[]> {
+  // Try publisher API first
+  const publisherUrl = process.env.PUBLISHER_API_URL || 'https://admin.retrolab.com.vn';
   try {
-    if (fs.existsSync(YOUTUBE_CONFIG_FILE)) {
-      const data = fs.readFileSync(YOUTUBE_CONFIG_FILE, 'utf8');
-      channels = JSON.parse(data);
+    const res = await fetch(`${publisherUrl}/api/youtube/`, {
+      next: { revalidate: 3600 }, // Cache for 1 hour
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('[YouTube] Could not reach publisher API, falling back to local file:', (e as Error).message);
+  }
+
+  // Fallback: local file
+  const localFile = path.join(process.cwd(), 'src/data/youtube_channels.json');
+  try {
+    if (fs.existsSync(localFile)) {
+      const data = fs.readFileSync(localFile, 'utf8');
+      return JSON.parse(data);
     }
   } catch (e) {
     console.error("Failed to read youtube channels config", e);
   }
+
+  return [];
+}
+
+export async function getLatestYoutubeVideos(): Promise<YoutubeVideo[]> {
+  const channels = await getChannels();
 
   if (channels.length === 0) {
     return [];
   }
 
   const allVideos: YoutubeVideo[] = [];
+
+  // Livestream detection: title keywords + description hints
+  const LIVESTREAM_TITLE = /live|livestream|trực tiếp|phát sóng|🔴|\[live\]|\(live\)|đang phát|stream|phát trực tiếp/i;
 
   // Fetch all RSS feeds in parallel
   await Promise.allSettled(
@@ -61,6 +88,20 @@ export async function getLatestYoutubeVideos(): Promise<YoutubeVideo[]> {
               .replace(/&quot;/g, '"')
               .replace(/&#39;/g, "'");
 
+            // Skip livestreams by title
+            if (LIVESTREAM_TITLE.test(title)) continue;
+
+            // Skip livestreams by description (RSS includes media:description)
+            const descMatch = entryXml.match(/<media:description>([\s\S]*?)<\/media:description>/);
+            if (descMatch) {
+              const desc = descMatch[1];
+              if (/streamed live|đang phát trực tiếp|live stream/i.test(desc)) continue;
+            }
+
+            // Skip if views=0 in media:statistics (likely ongoing stream)
+            const viewsMatch = entryXml.match(/views="(\d+)"/);
+            if (viewsMatch && viewsMatch[1] === '0') continue;
+
             allVideos.push({
               id: videoId,
               title: title,
@@ -69,7 +110,6 @@ export async function getLatestYoutubeVideos(): Promise<YoutubeVideo[]> {
               thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
               channelName: c.name
             });
-            break; // We only need the latest 1 video per channel for this UI (or let's collect all and sort)
           }
         }
       } catch (e) {
@@ -77,10 +117,28 @@ export async function getLatestYoutubeVideos(): Promise<YoutubeVideo[]> {
       }
     })
   );
+  // Group videos by channel, sorted by date within each channel
+  const byChannel = new Map<string, YoutubeVideo[]>();
+  for (const v of allVideos) {
+    if (!byChannel.has(v.channelName)) byChannel.set(v.channelName, []);
+    byChannel.get(v.channelName)!.push(v);
+  }
+  // Sort each channel's videos by date (newest first)
+  for (const vids of Array.from(byChannel.values())) {
+    vids.sort((a: YoutubeVideo, b: YoutubeVideo) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  }
 
-  // Sort by published descending
-  allVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-  
-  // Return top 4 since the pane usually shows 4
-  return allVideos.slice(0, 4);
+  // Round-robin interleave: take 1 video from each channel in turn
+  const interleaved: YoutubeVideo[] = [];
+  const channelQueues = Array.from(byChannel.values());
+  let maxLen = Math.max(...channelQueues.map(q => q.length), 0);
+  for (let i = 0; i < maxLen; i++) {
+    for (const queue of channelQueues) {
+      if (i < queue.length) {
+        interleaved.push(queue[i]);
+      }
+    }
+  }
+
+  return interleaved.slice(0, 100);
 }

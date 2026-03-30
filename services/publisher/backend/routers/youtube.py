@@ -7,9 +7,12 @@ from bs4 import BeautifulSoup
 from typing import List
 from ..auth import require_admin
 
-router = APIRouter(prefix="/api/youtube", tags=["youtube"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api/youtube", tags=["youtube"])
 
-YOUTUBE_CONFIG_FILE = "/home/an6122003/projects/RetroLab/src/data/youtube_channels.json"
+YOUTUBE_CONFIG_FILE = os.getenv(
+    "YOUTUBE_CONFIG_FILE",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "youtube_channels.json")
+)
 
 class YoutubeChannel(BaseModel):
     id: str
@@ -19,6 +22,7 @@ class YoutubeChannel(BaseModel):
 
 @router.get("/")
 def get_channels() -> List[YoutubeChannel]:
+    """Public endpoint — the website needs to fetch channels without auth."""
     if not os.path.exists(YOUTUBE_CONFIG_FILE):
         return []
     try:
@@ -30,7 +34,7 @@ def get_channels() -> List[YoutubeChannel]:
 class AddChannelRequest(BaseModel):
     url: str
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(require_admin)])
 async def add_channel(request: AddChannelRequest):
     url = request.url.strip()
     if not url.startswith("http"):
@@ -41,8 +45,8 @@ async def add_channel(request: AddChannelRequest):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url, headers=headers)
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers, timeout=15)
             resp.raise_for_status()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch YouTube URL: {e}")
@@ -87,7 +91,7 @@ async def add_channel(request: AddChannelRequest):
 
     return new_channel
 
-@router.delete("/{channel_id}")
+@router.delete("/{channel_id}", dependencies=[Depends(require_admin)])
 def delete_channel(channel_id: str):
     channels = get_channels()
     filtered = [c for c in channels if c["id"] != channel_id]

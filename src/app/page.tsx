@@ -7,6 +7,7 @@ import { Clock, PlayCircle, ArrowRight, ShieldCheck, MonitorPlay, BrainCircuit }
 import Ticker from "@/components/ui/Ticker";
 import NewsletterSection from "@/components/ui/NewsletterSection";
 import AdBanner from "@/components/ui/AdBanner";
+import YoutubeCarousel from "@/components/ui/YoutubeCarousel";
 import * as Cards from "@/components/ui/ArticleCards";
 
 export const revalidate = 3600;
@@ -84,7 +85,7 @@ export default async function Home() {
       <Ticker articles={tickerArticles} />
 
       {/* Ad: Leaderboard after ticker */}
-      <AdBanner size="leaderboard" />
+      <AdBanner size="leaderboard" slotId="home-after-ticker" />
 
       {/* 3. FEATURED MAGAZINE LAYOUT */}
       <div className="flex flex-col w-full mb-16 pb-12 relative">
@@ -167,7 +168,7 @@ export default async function Home() {
         {/* Sidebar */}
         <aside className="w-full lg:w-[300px] shrink-0">
           <div className="sticky top-28">
-            <AdBanner size="sidebar" />
+            <AdBanner size="sidebar" slotId="home-sidebar" />
           </div>
         </aside>
       </div>
@@ -201,7 +202,7 @@ export default async function Home() {
       </div>
 
       {/* Ad: Leaderboard between Notable and Video */}
-      <AdBanner size="leaderboard" />
+      <AdBanner size="leaderboard" slotId="home-before-video" />
 
       {/* 6. DARK MODE VIDEO PANE ("Video Mới") */}
       <div className="mb-16 bg-gray-950 rounded-xl p-6 md:p-10 text-white shadow-2xl">
@@ -214,9 +215,7 @@ export default async function Home() {
           </a>
         </div>
         {youtubeVideos.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {youtubeVideos.map(video => <Cards.YoutubeVideoCard key={`yt-${video.id}`} video={video} />)}
-          </div>
+          <YoutubeCarousel videos={youtubeVideos} />
         ) : (
           <div className="text-gray-500 py-10 text-center flex flex-col items-center">
              <PlayCircle size={48} className="mb-4 opacity-20" />
@@ -236,7 +235,7 @@ export default async function Home() {
       </div>
 
       {/* Ad: Banner before newsletter */}
-      <AdBanner size="banner" />
+      <AdBanner size="banner" slotId="home-before-newsletter" />
 
       {/* 8. NEWSLETTER SECTION */}
       <NewsletterSection />

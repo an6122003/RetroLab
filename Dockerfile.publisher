@@ -61,8 +61,8 @@ COPY --from=frontend /app/frontend/dist ./frontend-dist/
 
 # Don't run as root
 RUN useradd --system --uid 1001 publisher && \
-    mkdir -p /app/backups /app/secrets /app/pipeline/logs && \
-    chown -R publisher:publisher /app/backups /app/secrets /app/pipeline/logs /root/.cache/ms-playwright
+    mkdir -p /app/backups /app/secrets /app/pipeline/logs /app/data && \
+    chown -R publisher:publisher /app/backups /app/secrets /app/pipeline/logs /app/data /root/.cache/ms-playwright
 USER publisher
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright

@@ -138,7 +138,7 @@ async function ArticleContent({ slug }: { slug: string }) {
 
       {/* Ad Banner — end of article */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-4">
-        <AdBanner size="leaderboard" />
+        <AdBanner size="leaderboard" slotId="article-after-content" />
       </div>
 
       {/* You May Also Like — Carousel */}

@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { path: '/workers',   label: 'WORKERS',   icon: 'engineering' },
   { path: '/finops',    label: 'FINOPS',    icon: 'monitoring' },
   { path: '/backup',    label: 'BACKUP',    icon: 'cloud_sync' },
-  { path: '/youtube',   label: 'YOUTUBE',   icon: 'smart_display' },
+  { path: '/config',    label: 'CONFIG',    icon: 'settings' },
 ];
 
 interface AppShellProps {

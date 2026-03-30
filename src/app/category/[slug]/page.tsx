@@ -51,25 +51,25 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   }
 
   if (slug === 'ai') {
-    return <Layouts.AILayout categoryName={categoryName} posts={categoryPosts} />;
+    return <Layouts.AILayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
   }
 
   if (slug === 'tin-tuc') {
-    return <Layouts.NewsLayout categoryName={categoryName} posts={categoryPosts} />;
+    return <Layouts.NewsLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
   }
 
   if (slug === 'cong-nghe') {
-    return <Layouts.MagazineLayout categoryName={categoryName} posts={categoryPosts} />;
+    return <Layouts.MagazineLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
   }
 
   if (slug === 'game-gia-lap') {
-    return <Layouts.AlternateLayout categoryName={categoryName} posts={categoryPosts} />;
+    return <Layouts.AlternateLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
   }
 
   if (slug === 'it') {
-    return <Layouts.ITLayout categoryName={categoryName} posts={categoryPosts} />;
+    return <Layouts.ITLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
   }
 
   // Default layout
-  return <Layouts.DefaultCategoryLayout categoryName={categoryName} posts={categoryPosts} />;
+  return <Layouts.DefaultCategoryLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
 }
