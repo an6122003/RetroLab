@@ -6,13 +6,14 @@ import AdBanner from "@/components/ui/AdBanner";
 
 interface LayoutProps {
   categoryName: string;
+  slug: string;
   posts: ArticleData[];
 }
 
 /**
  * Layout 1: Tin Tức / News Style (Breaking news header + hero + sidebar)
  */
-export function NewsLayout({ categoryName, posts }: LayoutProps) {
+export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
   const heroPost = posts[0];
   const featuredStrip = posts.slice(1, 4);
   const editorPick = posts[4];
@@ -165,7 +166,7 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
 
       {/* Ad: Leaderboard after Tin nóng */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <AdBanner size="leaderboard" />
+        <AdBanner size="leaderboard" slotId={`${slug}-top`} />
       </div>
 
       {/* Main Content + Sidebar */}
@@ -230,7 +231,7 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
             )}
 
             {/* Ad: Leaderboard between grid and list */}
-            <AdBanner size="leaderboard" />
+            <AdBanner size="leaderboard" slotId={`${slug}-mid`} />
 
             {/* Remaining Posts — compact list */}
             {remainingPosts.length > 0 && (
@@ -292,7 +293,7 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
               )}
 
               {/* Ad: Sidebar rectangle */}
-              <AdBanner size="sidebar" />
+              <AdBanner size="sidebar" slotId={`${slug}-sidebar`} />
 
               {/* News Topics Tag Cloud */}
               <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -347,7 +348,7 @@ export function NewsLayout({ categoryName, posts }: LayoutProps) {
 /**
  * Layout 2: Game & Giả Lập Style (Cinematic hero + featured strip + sidebar layout)
  */
-export function AlternateLayout({ categoryName, posts }: LayoutProps) {
+export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
   const heroPost = posts[0];
   const stripPosts = posts.slice(1, 5);
   const spotlightPost = posts[5];
@@ -427,7 +428,7 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
 
       {/* Ad: Leaderboard after featured strip */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <AdBanner size="leaderboard" />
+        <AdBanner size="leaderboard" slotId={`${slug}-top`} />
       </div>
 
       {/* Main Content: 2-Column + Sidebar */}
@@ -492,7 +493,7 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
             )}
 
             {/* Ad: Leaderboard between grid and list */}
-            <AdBanner size="leaderboard" />
+            <AdBanner size="leaderboard" slotId={`${slug}-mid`} />
 
             {/* Remaining Posts — compact horizontal cards */}
             {remainingPosts.length > 0 && (
@@ -553,7 +554,7 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
               )}
 
               {/* Ad: Sidebar rectangle */}
-              <AdBanner size="sidebar" />
+              <AdBanner size="sidebar" slotId={`${slug}-sidebar`} />
 
               {/* Gaming Newsletter CTA */}
               <div className="bg-gradient-to-br from-[#1a0a2e] to-[#2d1650] rounded-xl p-6 text-center border border-[#8b5cf6]/20">
@@ -573,7 +574,7 @@ export function AlternateLayout({ categoryName, posts }: LayoutProps) {
 /**
  * Layout 3: Technology / Dense News Style (Hero Bento + Dense Grid + Sidebar)
  */
-export function MagazineLayout({ categoryName, posts }: LayoutProps) {
+export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
   const heroMain = posts[0];
   const heroSide = posts.slice(1, 3);
   const gridPosts = posts.slice(3, 9);
@@ -721,7 +722,7 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
         )}
 
         {/* Ad: Leaderboard after bento */}
-        <AdBanner size="leaderboard" />
+        <AdBanner size="leaderboard" slotId={`${slug}-top`} />
 
         {/* Main Content + Sidebar */}
         <div className="flex flex-col lg:flex-row gap-10">
@@ -764,7 +765,7 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
             )}
 
             {/* Ad: Leaderboard between grid and list */}
-            <AdBanner size="leaderboard" />
+            <AdBanner size="leaderboard" slotId={`${slug}-mid`} />
 
             {/* Compact List for Remaining Posts */}
             {listPosts.length > 0 && (
@@ -824,7 +825,7 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
               )}
 
               {/* Ad: Sidebar rectangle */}
-              <AdBanner size="sidebar" />
+              <AdBanner size="sidebar" slotId={`${slug}-sidebar`} />
 
               {/* Tech Newsletter CTA */}
               <div className="bg-gradient-to-br from-[#0f172a] to-[#1e3a5f] rounded-xl p-6 text-center border border-[#2563eb]/20 relative overflow-hidden">
@@ -879,7 +880,7 @@ export function MagazineLayout({ categoryName, posts }: LayoutProps) {
 /**
  * Layout 4: Default / Featured Grid Style
  */
-export function DefaultCategoryLayout({ categoryName, posts }: LayoutProps) {
+export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps) {
   const featured = posts.slice(0, 5);
   const listItems = posts.slice(5);
 
@@ -998,7 +999,7 @@ export function DefaultCategoryLayout({ categoryName, posts }: LayoutProps) {
 /**
  * Layout 5: IT / Công Nghệ Thông Tin Style (Teal accent, circuit pattern, editorial grid)
  */
-export function ITLayout({ categoryName, posts }: LayoutProps) {
+export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
   const heroPost = posts[0];
   const featuredStrip = posts.slice(1, 4);
   const mainGrid = posts.slice(4, 10);
@@ -1096,7 +1097,7 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
 
       {/* Ad: Leaderboard after featured strip */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <AdBanner size="leaderboard" />
+        <AdBanner size="leaderboard" slotId={`${slug}-top`} />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
@@ -1133,7 +1134,7 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
             )}
 
             {/* Ad: Leaderboard between grid and list */}
-            <AdBanner size="leaderboard" />
+            <AdBanner size="leaderboard" slotId={`${slug}-mid`} />
 
             {/* Remaining posts as compact list */}
             {remainingPosts.length > 0 && (
@@ -1187,7 +1188,7 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
                   ))}
                 </div>
               </div>
-              <AdBanner size="sidebar" />
+              <AdBanner size="sidebar" slotId={`${slug}-sidebar`} />
             </aside>
           )}
         </div>
@@ -1199,7 +1200,7 @@ export function ITLayout({ categoryName, posts }: LayoutProps) {
 /**
  * Layout 6: AI Style (Neural mesh header + AI-themed cards + sidebar)
  */
-export function AILayout({ categoryName, posts }: LayoutProps) {
+export function AILayout({ categoryName, slug, posts }: LayoutProps) {
   const heroPost = posts[0];
   const featuredStrip = posts.slice(1, 4);
   const spotlightPost = posts[4];
@@ -1362,7 +1363,7 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
 
       {/* Ad: Leaderboard after featured strip */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <AdBanner size="leaderboard" />
+        <AdBanner size="leaderboard" slotId={`${slug}-top`} />
       </div>
 
       {/* Main Content + Sidebar */}
@@ -1434,7 +1435,7 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
             )}
 
             {/* Ad: Leaderboard between grid and list */}
-            <AdBanner size="leaderboard" />
+            <AdBanner size="leaderboard" slotId={`${slug}-mid`} />
 
             {/* Remaining Posts  */}
             {remainingPosts.length > 0 && (
@@ -1495,7 +1496,7 @@ export function AILayout({ categoryName, posts }: LayoutProps) {
               )}
 
               {/* Ad: Sidebar rectangle */}
-              <AdBanner size="sidebar" />
+              <AdBanner size="sidebar" slotId={`${slug}-sidebar`} />
 
               {/* AI Topics Tag Cloud */}
               <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">

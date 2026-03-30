@@ -412,6 +412,19 @@ export const api = {
 
   startDriveAuth: () =>
     request<{ auth_url?: string; error?: string }>('/backup/drive/auth/start'),
+
+  // ── YouTube Config ──
+  getYoutubeChannels: () =>
+    request<{ id: string; url: string; name: string; avatarUrl: string }[]>('/youtube/'),
+
+  addYoutubeChannel: (url: string) =>
+    request<{ id: string; url: string; name: string; avatarUrl: string }>('/youtube/', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+
+  deleteYoutubeChannel: (id: string) =>
+    request<{ status: string }>(`/youtube/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 export interface PipelineConfig {

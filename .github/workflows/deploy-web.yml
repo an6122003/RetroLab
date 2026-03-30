@@ -36,6 +36,7 @@ jobs:
             --build-arg NOTION_DATABASE_ID="${{ secrets.NOTION_DATABASE_ID }}" \
             --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            --build-arg NEXT_PUBLIC_SITE_URL="https://retrolab.com.vn" \
             -t ${{ env.IMAGE }}:latest \
             -t ${{ env.IMAGE }}:${{ github.sha }} \
             .
@@ -59,4 +60,5 @@ jobs:
             --set-env-vars "NOTION_DATABASE_ID=${{ secrets.NOTION_DATABASE_ID }}" \
             --set-env-vars "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
             --set-env-vars "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            --set-env-vars "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+            --set-env-vars "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            --set-env-vars "NEXT_PUBLIC_SITE_URL=https://retrolab.com.vn"

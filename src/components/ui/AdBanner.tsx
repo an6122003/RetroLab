@@ -2,8 +2,12 @@ import Link from 'next/link';
 import { Target } from 'lucide-react';
 
 /**
- * Ad banner placeholder component.
- * Renders a stylized placeholder inviting sponsorships when no actual ad is present.
+ * Ad banner component.
+ * Fetches config from publisher API to determine what to render:
+ * - affiliate: image + click link
+ * - network: raw HTML/JS code
+ * - placeholder: default "advertise with us" CTA
+ * - disabled: renders nothing
  */
 
 const sizes = {
@@ -15,8 +19,81 @@ const sizes = {
 
 type AdSize = keyof typeof sizes;
 
-export default function AdBanner({ size = 'leaderboard' }: { size?: AdSize }) {
+interface AdSlotConfig {
+  enabled: boolean;
+  type: 'affiliate' | 'network' | 'placeholder';
+  size: string;
+  imageUrl?: string;
+  clickUrl?: string;
+  alt?: string;
+  code?: string;
+}
+
+async function getSlotConfig(slotId: string): Promise<AdSlotConfig | null> {
+  if (!slotId) return null;
+  try {
+    const publisherUrl = process.env.PUBLISHER_API_URL || 'https://admin.retrolab.com.vn';
+    const res = await fetch(`${publisherUrl}/api/ads/${slotId}`, {
+      next: { revalidate: 300 } // Cache for 5 minutes
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // Silently fail — show placeholder
+  }
+  return null;
+}
+
+export default async function AdBanner({ size = 'leaderboard', slotId = '' }: { size?: AdSize; slotId?: string }) {
   const cfg = sizes[size];
+  const slotConfig = slotId ? await getSlotConfig(slotId) : null;
+
+  // If slot is explicitly disabled, render nothing
+  if (slotConfig && slotConfig.enabled === false) {
+    return null;
+  }
+
+  // Affiliate: image + click link
+  if (slotConfig && slotConfig.type === 'affiliate' && slotConfig.imageUrl) {
+    return (
+      <div className="w-full flex flex-col items-center mt-0 mb-4 relative z-10">
+        <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-2 select-none">
+          Quảng cáo
+        </span>
+        <a
+          href={slotConfig.clickUrl || '#'}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          style={{ maxWidth: cfg.width }}
+          className="w-full block rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={slotConfig.imageUrl}
+            alt={slotConfig.alt || 'Advertisement'}
+            style={{ width: '100%', height: cfg.height, objectFit: 'cover' }}
+          />
+        </a>
+      </div>
+    );
+  }
+
+  // Network: raw HTML/JS (e.g. Google AdSense, Adsterra)
+  if (slotConfig && slotConfig.type === 'network' && slotConfig.code) {
+    return (
+      <div className="w-full flex flex-col items-center mt-0 mb-4 relative z-10">
+        <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-2 select-none">
+          Quảng cáo
+        </span>
+        <div
+          style={{ maxWidth: cfg.width, minHeight: cfg.height }}
+          className="w-full"
+          dangerouslySetInnerHTML={{ __html: slotConfig.code }}
+        />
+      </div>
+    );
+  }
+
+  // Default: Placeholder CTA
   const isSmall = size === 'banner';
   const isRect = size === 'rectangle';
   const isSidebar = size === 'sidebar';
