@@ -11,18 +11,14 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/';
   
-  // Determine the real origin. Priority:
-  // 1. NEXT_PUBLIC_SITE_URL env var (most reliable for production)
-  // 2. x-forwarded-host header (reverse proxy)
-  // 3. host header
-  // 4. request.nextUrl.origin (fallback — often wrong behind proxy)
+  // Determine the real origin
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
   const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
   const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
   
   let origin: string;
   if (siteUrl) {
-    origin = siteUrl.replace(/\/$/, ''); // Use env var, strip trailing slash
+    origin = siteUrl.replace(/\/$/, '');
   } else if (forwardedHost) {
     const proto = forwardedHost.includes('localhost') ? 'http' : forwardedProto;
     origin = `${proto}://${forwardedHost}`;
@@ -30,13 +26,20 @@ export async function GET(request: NextRequest) {
     origin = request.nextUrl.origin;
   }
 
+  console.log('[auth/callback] origin:', origin, '| code present:', !!code, '| url:', request.nextUrl.toString());
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      console.log('[auth/callback] session exchange OK, redirecting to:', `${origin}${next}`);
       return NextResponse.redirect(`${origin}${next}`);
     }
+
+    console.error('[auth/callback] exchangeCodeForSession error:', error.message, '| status:', error.status);
+  } else {
+    console.error('[auth/callback] No code parameter in callback URL');
   }
 
   // If something went wrong, redirect to login with error
