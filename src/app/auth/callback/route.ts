@@ -30,13 +30,20 @@ export async function GET(request: NextRequest) {
     origin = request.nextUrl.origin;
   }
 
+  console.log('[auth/callback] origin:', origin, '| code present:', !!code);
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      console.log('[auth/callback] OK — redirecting to:', `${origin}${next}`);
       return NextResponse.redirect(`${origin}${next}`);
     }
+
+    console.error('[auth/callback] exchangeCodeForSession FAILED:', error.message);
+  } else {
+    console.error('[auth/callback] No code param in URL. Full URL:', request.nextUrl.toString());
   }
 
   // If something went wrong, redirect to login with error
