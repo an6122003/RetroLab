@@ -1,0 +1,32 @@
+# RetroLab - Tạp chí Công nghệ Việt Nam
+
+> RetroLab là tạp chí công nghệ trực tuyến bằng tiếng Việt, tổng hợp tin tức đa nguồn về Công Nghệ, Trí Tuệ Nhân Tạo (AI), Công Nghệ Thông Tin (IT), Game và Giả Lập.
+
+## Giới thiệu
+
+RetroLab được thành lập với sứ mệnh "Bắt trọn mọi chuyển động của thế giới số". Chúng tôi cung cấp tin tức, đánh giá, và phân tích chuyên sâu về:
+
+- **AI & Machine Learning**: Các đột phá trong trí tuệ nhân tạo, mô hình ngôn ngữ lớn, ứng dụng AI trong đời sống
+- **Công Nghệ**: Điện thoại, laptop, gadgets, phần mềm và xu hướng công nghệ mới nhất
+- **IT**: Lập trình, DevOps, cloud computing, cybersecurity, và các công nghệ doanh nghiệp
+- **Game & Giả Lập**: Tin tức gaming, đánh giá game, giả lập retro, và văn hóa gaming
+
+## Thông tin kỹ thuật
+
+- Website: https://retrolab.com.vn
+- Ngôn ngữ: Tiếng Việt (Vietnamese)
+- RSS Feed: https://retrolab.com.vn/feed.xml
+- Sitemap: https://retrolab.com.vn/sitemap.xml
+
+## Liên hệ
+
+- Email: contact@retrolab.com.vn
+- Quảng cáo: https://retrolab.com.vn/lien-he-quang-cao
+
+## Chuyên mục
+
+- Tin tức: https://retrolab.com.vn/category/tin-tuc
+- AI: https://retrolab.com.vn/category/ai
+- Công Nghệ: https://retrolab.com.vn/category/cong-nghe
+- IT: https://retrolab.com.vn/category/it
+- Game & Giả Lập: https://retrolab.com.vn/category/game-gia-lap

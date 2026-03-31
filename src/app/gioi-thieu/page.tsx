@@ -3,9 +3,17 @@ import Link from 'next/link';
 import { Scale, ArrowRight, Cpu } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Giới thiệu | RetroLab',
+  title: 'Giới thiệu RetroLab - Trạm tin tức tổng hợp công nghệ',
   description:
-    'RetroLab - Trạm tin tức tổng hợp đa nguồn từ IT, AI cho đến thế giới Game và Giả Lập.',
+    'RetroLab là trạm tin tức tổng hợp đa nguồn, sử dụng AI để chắt lọc tin tức IT, AI, Game và Giả Lập cho bạn đọc.',
+  alternates: { canonical: 'https://retrolab.com.vn/gioi-thieu' },
+  openGraph: {
+    title: 'Giới thiệu RetroLab',
+    description: 'Trạm tin tức tổng hợp đa nguồn từ IT, AI cho đến thế giới Game và Giả Lập.',
+    url: 'https://retrolab.com.vn/gioi-thieu',
+    siteName: 'RetroLab',
+    locale: 'vi_VN',
+  },
 };
 
 export default function AboutPage() {

@@ -241,13 +241,26 @@ export async function searchPostsByTag(tag: string): Promise<ArticleData[]> {
  * Lightweight metadata-only lookup. Skips the expensive markdown→HTML conversion.
  * Used by generateMetadata so it resolves fast and doesn't block loading.tsx.
  */
-export async function getPostMetadataBySlug(slug: string): Promise<{ title: string; excerpt: string; coverImage: string } | null> {
+export interface PostMetadata {
+  title: string;
+  excerpt: string;
+  coverImage: string;
+  category: string;
+  author: string;
+  date: string;
+  tags: string;
+}
+
+export async function getPostMetadataBySlug(slug: string): Promise<PostMetadata | null> {
   // Check if the full article is already cached — if so, reuse it
   const fullCached = getCached<ArticleDetail>(`article-${slug}`);
-  if (fullCached) return { title: fullCached.title, excerpt: fullCached.excerpt, coverImage: fullCached.coverImage };
+  if (fullCached) return {
+    title: fullCached.title, excerpt: fullCached.excerpt, coverImage: fullCached.coverImage,
+    category: fullCached.category, author: fullCached.author, date: fullCached.date, tags: fullCached.tags,
+  };
 
   const metaCacheKey = `meta-${slug}`;
-  const cached = getCached<{ title: string; excerpt: string; coverImage: string }>(metaCacheKey);
+  const cached = getCached<PostMetadata>(metaCacheKey);
   if (cached) return cached;
 
   let page: any = null;
@@ -284,10 +297,14 @@ export async function getPostMetadataBySlug(slug: string): Promise<{ title: stri
 
   if (!page) return null;
 
-  const meta = {
+  const meta: PostMetadata = {
     title: extractProperty(page, 'Title', 'title', 'Untitled'),
     excerpt: extractProperty(page, 'Excerpt', 'rich_text', 'Chưa có mô tả.'),
     coverImage: page.cover?.external?.url || page.cover?.file?.url || 'https://picsum.photos/seed/default/800/450',
+    category: extractProperty(page, 'Category', 'select', 'Tin tức'),
+    author: extractProperty(page, 'Author', 'select', 'RetroLab'),
+    date: extractProperty(page, 'Date', 'date', page.created_time),
+    tags: extractProperty(page, 'Tags', 'multi_select', ''),
   };
 
   setCache(metaCacheKey, meta);
