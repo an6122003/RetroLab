@@ -76,9 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await authSignOut();
+    try {
+      await authSignOut();
+    } catch (e) {
+      // Sign-out can fail if session is already invalid — that's OK
+      console.warn('Sign-out error (ignored):', e);
+    }
     cacheClearAll(); // Clear all cached user data
     setUser(null);
+    setLoading(false);
   }, []);
 
   return (

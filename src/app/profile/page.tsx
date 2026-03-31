@@ -149,8 +149,8 @@ export default function ProfilePage() {
     }
   };
 
-  // Loading state
-  if (authLoading || (!user && !authLoading)) {
+  // Loading state — only while auth is initializing
+  if (authLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-1/4 shrink-0 flex flex-col gap-6">
@@ -170,6 +170,9 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  // Not logged in — redirect is happening via useEffect
+  if (!user) return null;
 
   const currentAvatar = getAvatar(editAvatarId);
 
