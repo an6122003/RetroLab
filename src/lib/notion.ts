@@ -256,6 +256,9 @@ export async function getPostMetadataBySlug(slug: string): Promise<{ title: stri
     if (slug && slug.length >= 32) {
       try {
         page = await notion.pages.retrieve({ page_id: slug });
+        // Check if status is Live
+        const status = page?.properties?.Status?.status?.name;
+        if (status && status !== 'Live') page = null;
       } catch (e) {
         // Not a valid ID, continue
       }
@@ -264,7 +267,12 @@ export async function getPostMetadataBySlug(slug: string): Promise<{ title: stri
     if (!page) {
       const response = await notion.databases.query({
         database_id: databaseId,
-        filter: { property: 'Slug', rich_text: { equals: slug } }
+        filter: {
+          and: [
+            { property: 'Slug', rich_text: { equals: slug } },
+            { property: 'Status', status: { equals: 'Live' } }
+          ]
+        }
       });
       if (response.results.length > 0) {
         page = response.results[0];
@@ -299,21 +307,27 @@ export async function getPostBySlug(slug: string): Promise<ArticleDetail | null>
     if (slug && slug.length >= 32) {
       try {
         page = await notion.pages.retrieve({ page_id: slug });
-        if (page) pageId = page.id;
+        // Reject if not Live
+        const status = page?.properties?.Status?.status?.name;
+        if (status && status !== 'Live') {
+          page = null;
+        } else if (page) {
+          pageId = page.id;
+        }
       } catch (e) {
         // Not a valid ID, continue to slug query
       }
     }
 
-    // 2. Try querying by the 'Slug' property
+    // 2. Try querying by the 'Slug' property — only Live posts
     if (!page) {
       const response = await notion.databases.query({
         database_id: databaseId,
         filter: {
-          property: 'Slug',
-          rich_text: {
-            equals: slug
-          }
+          and: [
+            { property: 'Slug', rich_text: { equals: slug } },
+            { property: 'Status', status: { equals: 'Live' } }
+          ]
         }
       });
       
