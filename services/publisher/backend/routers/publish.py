@@ -41,6 +41,8 @@ async def publish_article(
     try:
         notion_page_id = await push_to_notion(article)
     except Exception as exc:
+        import logging
+        logging.exception("Notion Publish Failed")
         raise HTTPException(
             status_code=502,
             detail=f"Failed to push to Notion: {exc}",
