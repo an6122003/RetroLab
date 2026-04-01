@@ -3,31 +3,39 @@
 Automated news scraping, LLM rewriting, and editorial review pipeline.
 
 Discovers articles from 18 tech news sources (RSS feeds + page crawlers),
-scrapes and extracts content, rewrites with Claude AI for editorial voice,
-finds relevant images, and stores finished articles as `draft` for review
-via a built-in FastAPI review API.
+scrapes and extracts content, then **pauses for human curation**.
+Only approved articles proceed through LLM rewriting, image search,
+and land as `draft` for final review.
 
 > **Note:** Notion publishing is handled by a separate service (not included here).
 > This pipeline's job ends when an article reaches `status = 'draft'`.
+>
+> **Curation UI** is available at `http://localhost:8000/curation`.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────┐    ┌────────────┐    ┌─────────────┐    ┌──────────────┐    ┌────────────────┐
-│  Discovery   │───▶│  Scraper   │───▶│  Rewriter   │───▶│ Image Search │───▶│  status=draft  │
-│ (RSS/Crawl)  │    │(trafilatura│    │ (Claude AI)  │    │(Unsplash/    │    │ (pipeline done)│
-│  30m cycle   │    │ +Playwright│    │              │    │ Pexels/DALL·E│    │                │
-└──────────────┘    └────────────┘    └─────────────┘    └──────────────┘    └────────────────┘
-       │                  │                 │                   │                      │
-       └──────────────────┴─────────────────┴───────────────────┴──────────────────────┘
-                          PostgreSQL (state) + Redis (queues) + FastAPI (review)
+┌──────────────┐    ┌────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌────────────────┐
+│  Discovery   │───▶│  Scraper   │───▶│ CURATION UI │───▶│  Rewriter   │───▶│ Image Search │───▶│  status=draft  │
+│ (RSS/Crawl)  │    │(trafilatura│    │  (user pick  │    │ (Claude AI)  │    │(Unsplash/    │    │ (pipeline done)│
+│  30m cycle   │    │ +Playwright│    │  or discard) │    │              │    │ Pexels/DALL·E│    │                │
+└──────────────┘    └────────────┘    └─────────────┘    └─────────────┘    └──────────────┘    └────────────────┘
+       │                  │                 │                   │                  │                      │
+       └──────────────────┴─────────────────┴───────────────────┴──────────────────┴──────────────────────┘
+                              PostgreSQL (state) + Redis (queues) + FastAPI (review + curation)
 ```
 
 ## Article Status Lifecycle
 
 ```
+# Raw article lifecycle (scrape-first curation):
+new → scraped → processing → done
+           ↘ discarded
+      scrape_failed (terminal)
+
+# Rewritten article lifecycle:
 image_pending → draft → approved → published
                      ↘ rejected
 rewrite_failed (terminal)
@@ -93,14 +101,42 @@ uvicorn pipeline.api:app --reload --port 8000
 
 ---
 
-## Review API Endpoints
+## API Endpoints
+
+### Curation (raw articles)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/raw-articles?status=scraped&limit=100` | List raw articles (filterable) |
+| `GET` | `/raw-articles/{id}` | Get single raw article |
+| `GET` | `/raw-articles/stats` | Count by status |
+| `POST` | `/raw-articles/approve` | Approve selected → enqueue rewrite |
+| `POST` | `/raw-articles/discard` | Discard selected |
+| `POST` | `/raw-articles/approve-all` | Approve all scraped |
+| `POST` | `/raw-articles/discard-all` | Discard all scraped |
+
+### Review (rewritten articles)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/articles?status=draft&limit=20&offset=0` | List articles (newest first) |
 | `GET` | `/articles/{id}` | Get single article |
 | `PATCH` | `/articles/{id}` | Update article fields |
-| `GET` | `/health` | Health check + draft count |
+
+### UI & Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/curation` | Curation dashboard UI |
+| `GET` | `/health` | Health check + draft/scraped counts |
+
+### POST /raw-articles/approve — request body
+
+```json
+{
+  "ids": ["uuid-1", "uuid-2", "uuid-3"]
+}
+```
 
 ### PATCH /articles/{id} — accepted fields
 
@@ -208,10 +244,11 @@ pytest -v
 |-------|--------|-------|-------------|
 | 1a | `pipeline/discovery/feed_poller.py` | `default` | RSS/Atom feed polling |
 | 1b | `pipeline/discovery/page_crawler.py` | `default` | Page crawling + link extraction |
-| 2 | `pipeline/scraper.py` | `scraper_queue` | Article content extraction |
-| 3 | `pipeline/rewriter.py` | `rewriter_queue` | Claude AI rewriting |
+| 2 | `pipeline/scraper.py` | `scraper_queue` | Article content extraction → `scraped` |
+| — | **Curation UI** (`/curation`) | — | **User picks articles to rewrite** |
+| 3 | `pipeline/rewriter.py` | `rewriter_queue` | Claude AI rewriting (only approved) |
 | 4 | `pipeline/image_search.py` | `image_search_queue` | Image search (final stage) |
-| — | `pipeline/api.py` | — | FastAPI review API |
+| — | `pipeline/api.py` | — | FastAPI review + curation API |
 
 ---
 

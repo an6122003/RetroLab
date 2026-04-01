@@ -441,6 +441,37 @@ export const api = {
 
   deleteYoutubeChannel: (id: string) =>
     request<{ status: string }>(`/youtube/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // ── Curation ──────────────────────────────────────────────────
+
+  getCurationArticles: (status = 'scraped', limit = 200) =>
+    request<{
+      id: string; url: string; source_name: string; source_type: string;
+      category: string; title: string; author: string; body_text: string;
+      word_count: number; language: string; status: string;
+      scraped_at: string | null; created_at: string | null;
+    }[]>(`/pipeline/curation/articles?status=${status}&limit=${limit}`),
+
+  getCurationStats: () =>
+    request<Record<string, number>>('/pipeline/curation/stats'),
+
+  approveCurationArticles: (ids: string[]) =>
+    request<{ approved: number }>('/pipeline/curation/approve', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+
+  discardCurationArticles: (ids: string[]) =>
+    request<{ discarded: number }>('/pipeline/curation/discard', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+
+  approveAllCurationArticles: () =>
+    request<{ approved: number }>('/pipeline/curation/approve-all', { method: 'POST' }),
+
+  discardAllCurationArticles: () =>
+    request<{ discarded: number }>('/pipeline/curation/discard-all', { method: 'POST' }),
 };
 
 export interface PipelineConfig {

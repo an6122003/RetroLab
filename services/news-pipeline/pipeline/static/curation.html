@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Article Curation — News Pipeline</title>
+    <meta name="description" content="Curate scraped articles before LLM rewriting">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset & Base ──────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a26;
+            --bg-card-hover: #22222f;
+            --bg-card-selected: #1a2540;
+            --border-default: #2a2a3a;
+            --border-selected: #3b82f6;
+            --text-primary: #f0f0f5;
+            --text-secondary: #9999aa;
+            --text-muted: #666678;
+            --accent-blue: #3b82f6;
+            --accent-blue-dim: #2563eb;
+            --accent-green: #22c55e;
+            --accent-green-dim: #16a34a;
+            --accent-red: #ef4444;
+            --accent-red-dim: #dc2626;
+            --accent-amber: #f59e0b;
+            --accent-purple: #a855f7;
+            --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            --gradient-green: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+            --gradient-red: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --shadow-card: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-elevated: 0 8px 32px rgba(0,0,0,0.4);
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html, body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ── App Shell ─────────────────────────────────────────── */
+        .app {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 0 16px;
+            padding-bottom: 120px;
+        }
+
+        /* ── Header ────────────────────────────────────────────── */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid var(--border-default);
+            padding: 16px;
+            margin: 0 -16px;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 800;
+            background: var(--gradient-blue);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-fast);
+            font-size: 18px;
+        }
+
+        .refresh-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Stats row ─────────────────────────────────────────── */
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-bottom: 2px;
+        }
+        .stats-row::-webkit-scrollbar { display: none; }
+
+        .stat-chip {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            user-select: none;
+        }
+
+        .stat-chip.active {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent-blue);
+        }
+
+        .stat-chip:hover { border-color: var(--accent-blue); }
+
+        .stat-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .stat-dot.pending { background: var(--accent-amber); }
+        .stat-dot.processing { background: var(--accent-blue); }
+        .stat-dot.done { background: var(--accent-green); }
+        .stat-dot.failed { background: var(--accent-red); }
+        .stat-dot.discarded { background: var(--text-muted); }
+
+        .stat-count {
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* ── Search & Filter ───────────────────────────────────── */
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: var(--transition-fast);
+        }
+
+        .search-box input:focus { border-color: var(--accent-blue); }
+
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .search-icon {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .select-all-btn {
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            white-space: nowrap;
+        }
+
+        .select-all-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .select-all-btn.active {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* ── Article Cards ─────────────────────────────────────── */
+        .articles-list {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .article-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .article-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: transparent;
+            transition: var(--transition-fast);
+        }
+
+        .article-card:hover {
+            background: var(--bg-card-hover);
+            border-color: #3a3a4a;
+        }
+
+        .article-card.selected {
+            background: var(--bg-card-selected);
+            border-color: var(--border-selected);
+        }
+
+        .article-card.selected::before {
+            background: var(--accent-blue);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .card-checkbox {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--border-default);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-fast);
+            margin-top: 1px;
+        }
+
+        .article-card.selected .card-checkbox {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .card-checkbox svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: var(--transition-fast);
+            color: white;
+        }
+
+        .article-card.selected .card-checkbox svg {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .card-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .meta-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            padding: 2px 8px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 4px;
+        }
+
+        .meta-tag.source {
+            color: var(--accent-purple);
+            background: rgba(168, 85, 247, 0.08);
+        }
+
+        .meta-tag.words {
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .meta-tag.time {
+            color: var(--text-muted);
+        }
+
+        .meta-tag.lang {
+            color: var(--accent-green);
+            background: rgba(34, 197, 94, 0.08);
+            text-transform: uppercase;
+        }
+
+        /* ── Preview Drawer ────────────────────────────────────── */
+        .card-preview {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, margin-top 0.3s ease, opacity 0.2s ease;
+            opacity: 0;
+            margin-top: 0;
+        }
+
+        .card-preview.open {
+            max-height: 300px;
+            opacity: 1;
+            margin-top: 10px;
+        }
+
+        .preview-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.04);
+            max-height: 200px;
+            overflow-y: auto;
+            word-break: break-word;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .preview-link {
+            font-size: 12px;
+            color: var(--accent-blue);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .preview-link:hover { text-decoration: underline; }
+
+        /* ── Bottom Action Bar ─────────────────────────────────── */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            background: rgba(10, 10, 15, 0.92);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-top: 1px solid var(--border-default);
+            padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .action-bar.visible {
+            transform: translateY(0);
+        }
+
+        .action-bar-inner {
+            max-width: 680px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .selection-count {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-right: auto;
+            padding: 0 4px;
+        }
+
+        .selection-count span {
+            color: var(--accent-blue);
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.2px;
+        }
+
+        .action-btn:active { transform: scale(0.97); }
+
+        .action-btn.approve {
+            background: var(--gradient-green);
+            color: white;
+            box-shadow: 0 2px 12px rgba(34, 197, 94, 0.3);
+        }
+
+        .action-btn.approve:hover { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4); }
+
+        .action-btn.discard {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .action-btn.discard:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ── Loading & Empty States ────────────────────────────── */
+        .loading-state, .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-default);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .empty-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        /* ── Toast ─────────────────────────────────────────────── */
+        .toast-container {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-elevated);
+            pointer-events: auto;
+            animation: toastIn 0.3s ease forwards;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.success { border-color: var(--accent-green); }
+        .toast.error { border-color: var(--accent-red); }
+        .toast.removing { animation: toastOut 0.3s ease forwards; }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-12px); }
+        }
+
+        /* ── Confirm Dialog ────────────────────────────────────── */
+        .dialog-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .dialog-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .dialog-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: var(--shadow-elevated);
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .dialog-overlay.open .dialog-box { transform: scale(1); }
+
+        .dialog-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .dialog-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .dialog-btn {
+            padding: 9px 18px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .dialog-btn.cancel {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-default);
+        }
+
+        .dialog-btn.cancel:hover { border-color: var(--text-muted); }
+
+        .dialog-btn.confirm-approve {
+            background: var(--gradient-green);
+            color: white;
+        }
+
+        .dialog-btn.confirm-discard {
+            background: var(--gradient-red);
+            color: white;
+        }
+
+        /* ── Article count header ──────────────────────────────── */
+        .list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding: 0 2px;
+        }
+
+        .list-count {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* ── Source filter pills (mobile scroll) ───────────────── */
+        .source-filters {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 12px 0 4px;
+        }
+        .source-filters::-webkit-scrollbar { display: none; }
+
+        .source-pill {
+            flex-shrink: 0;
+            padding: 5px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .source-pill.active {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+            background: rgba(168, 85, 247, 0.1);
+        }
+
+        .source-pill:hover { border-color: var(--accent-purple); }
+
+        /* ── Responsive ────────────────────────────────────────── */
+        @media (max-width: 480px) {
+            .header-title { font-size: 18px; }
+            .article-card { padding: 12px 14px; }
+            .card-title { font-size: 13px; }
+            .action-btn { padding: 10px 14px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- ── Header ──────────────────────────────────────── -->
+        <header class="header">
+            <div class="header-top">
+                <h1 class="header-title">📰 Article Curation</h1>
+                <button class="refresh-btn" id="refreshBtn" title="Refresh">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="stats-row" id="statsRow">
+                <div class="stat-chip active" data-status="scraped">
+                    <div class="stat-dot pending"></div>
+                    Pending <span class="stat-count" id="stat-scraped">0</span>
+                </div>
+                <div class="stat-chip" data-status="processing">
+                    <div class="stat-dot processing"></div>
+                    Processing <span class="stat-count" id="stat-processing">0</span>
+                </div>
+                <div class="stat-chip" data-status="done">
+                    <div class="stat-dot done"></div>
+                    Done <span class="stat-count" id="stat-done">0</span>
+                </div>
+                <div class="stat-chip" data-status="scrape_failed">
+                    <div class="stat-dot failed"></div>
+                    Failed <span class="stat-count" id="stat-failed">0</span>
+                </div>
+                <div class="stat-chip" data-status="discarded">
+                    <div class="stat-dot discarded"></div>
+                    Discarded <span class="stat-count" id="stat-discarded">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ── Toolbar ─────────────────────────────────────── -->
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Search articles…">
+            </div>
+            <button class="select-all-btn" id="selectAllBtn">Select All</button>
+        </div>
+
+        <!-- ── Source Filters ──────────────────────────────── -->
+        <div class="source-filters" id="sourceFilters"></div>
+
+        <!-- ── List Header ─────────────────────────────────── -->
+        <div class="list-header">
+            <span class="list-count" id="listCount"></span>
+        </div>
+
+        <!-- ── Articles ────────────────────────────────────── -->
+        <div id="articlesContainer">
+            <div class="loading-state" id="loadingState">
+                <div class="loading-spinner"></div>
+                <span style="color: var(--text-muted); font-size: 13px;">Loading articles…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Action Bar ──────────────────────────────────────── -->
+    <div class="action-bar" id="actionBar">
+        <div class="action-bar-inner">
+            <div class="selection-count">
+                <span id="selectedCount">0</span> selected
+            </div>
+            <button class="action-btn discard" id="discardBtn" disabled>
+                ✕ Discard
+            </button>
+            <button class="action-btn approve" id="approveBtn" disabled>
+                ✓ Rewrite
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Confirm Dialog ──────────────────────────────────── -->
+    <div class="dialog-overlay" id="dialogOverlay">
+        <div class="dialog-box">
+            <div class="dialog-title" id="dialogTitle"></div>
+            <div class="dialog-message" id="dialogMessage"></div>
+            <div class="dialog-actions">
+                <button class="dialog-btn cancel" id="dialogCancel">Cancel</button>
+                <button class="dialog-btn" id="dialogConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Toasts ──────────────────────────────────────────── -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+    (() => {
+        'use strict';
+
+        // ── State ────────────────────────────────────────────
+        const API_BASE = window.location.origin;
+        let articles = [];
+        let filteredArticles = [];
+        let selectedIds = new Set();
+        let currentStatus = 'scraped';
+        let currentSource = null;
+        let expandedId = null;
+        let isLoading = false;
+
+        // ── DOM refs ─────────────────────────────────────────
+        const $ = id => document.getElementById(id);
+        const container = $('articlesContainer');
+        const actionBar = $('actionBar');
+        const searchInput = $('searchInput');
+        const selectAllBtn = $('selectAllBtn');
+        const approveBtn = $('approveBtn');
+        const discardBtn = $('discardBtn');
+        const refreshBtn = $('refreshBtn');
+        const sourceFilters = $('sourceFilters');
+        const dialogOverlay = $('dialogOverlay');
+        const dialogTitle = $('dialogTitle');
+        const dialogMessage = $('dialogMessage');
+        const dialogCancel = $('dialogCancel');
+        const dialogConfirm = $('dialogConfirm');
+
+        // ── API helpers ──────────────────────────────────────
+        async function api(path, opts = {}) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                headers: { 'Content-Type': 'application/json' },
+                ...opts,
+            });
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            return res.json();
+        }
+
+        // ── Data fetching ────────────────────────────────────
+        async function loadStats() {
+            try {
+                const stats = await api('/raw-articles/stats');
+                $('stat-scraped').textContent = stats.scraped || 0;
+                $('stat-processing').textContent = stats.processing || 0;
+                $('stat-done').textContent = stats.done || 0;
+                $('stat-failed').textContent = stats.scrape_failed || 0;
+                $('stat-discarded').textContent = stats.discarded || 0;
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        async function loadArticles() {
+            if (isLoading) return;
+            isLoading = true;
+            refreshBtn.classList.add('spinning');
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <span style="color: var(--text-muted); font-size: 13px;">Loading articles…</span>
+                </div>
+            `;
+
+            try {
+                articles = await api(`/raw-articles?status=${currentStatus}&limit=200`);
+                selectedIds.clear();
+                expandedId = null;
+                applyFilters();
+                loadStats();
+            } catch (e) {
+                console.error('Failed to load articles:', e);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-title">Connection Error</div>
+                        <div class="empty-desc">Could not reach the API. Make sure the server is running.</div>
+                    </div>
+                `;
+            } finally {
+                isLoading = false;
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        // ── Filtering ────────────────────────────────────────
+        function applyFilters() {
+            const query = searchInput.value.toLowerCase().trim();
+            filteredArticles = articles.filter(a => {
+                if (currentSource && a.source_name !== currentSource) return false;
+                if (query) {
+                    const title = (a.title || '').toLowerCase();
+                    const source = (a.source_name || '').toLowerCase();
+                    const url = (a.url || '').toLowerCase();
+                    if (!title.includes(query) && !source.includes(query) && !url.includes(query)) return false;
+                }
+                return true;
+            });
+
+            // Remove selected IDs that are no longer in filtered set
+            const visibleIds = new Set(filteredArticles.map(a => a.id));
+            for (const id of selectedIds) {
+                if (!visibleIds.has(id)) selectedIds.delete(id);
+            }
+
+            renderArticles();
+            renderSourceFilters();
+            updateActionBar();
+        }
+
+        // ── Source filters ───────────────────────────────────
+        function renderSourceFilters() {
+            const sources = [...new Set(articles.map(a => a.source_name).filter(Boolean))].sort();
+            if (sources.length <= 1) {
+                sourceFilters.innerHTML = '';
+                return;
+            }
+
+            sourceFilters.innerHTML = `
+                <div class="source-pill ${!currentSource ? 'active' : ''}" data-source="">All</div>
+                ${sources.map(s => `
+                    <div class="source-pill ${currentSource === s ? 'active' : ''}" data-source="${s}">
+                        ${s} (${articles.filter(a => a.source_name === s).length})
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        sourceFilters.addEventListener('click', e => {
+            const pill = e.target.closest('.source-pill');
+            if (!pill) return;
+            currentSource = pill.dataset.source || null;
+            applyFilters();
+        });
+
+        // ── Render articles ──────────────────────────────────
+        function renderArticles() {
+            $('listCount').textContent = `${filteredArticles.length} article${filteredArticles.length !== 1 ? 's' : ''}`;
+
+            if (filteredArticles.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">${currentStatus === 'scraped' ? '📭' : '📋'}</div>
+                        <div class="empty-title">${currentStatus === 'scraped' ? 'No articles pending' : 'No articles found'}</div>
+                        <div class="empty-desc">${currentStatus === 'scraped'
+                            ? 'Run the pipeline to discover and scrape new articles. They will appear here for curation.'
+                            : `No articles with status "${currentStatus}" found.`
+                        }</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = `<div class="articles-list">
+                ${filteredArticles.map(a => renderCard(a)).join('')}
+            </div>`;
+            container.innerHTML = html;
+        }
+
+        function renderCard(a) {
+            const isSelected = selectedIds.has(a.id);
+            const isExpanded = expandedId === a.id;
+            const timeAgo = formatTimeAgo(a.scraped_at || a.created_at);
+            const wordCount = a.word_count || 0;
+            const preview = (a.body_text || '').substring(0, 400);
+
+            return `
+                <div class="article-card ${isSelected ? 'selected' : ''}" data-id="${a.id}">
+                    <div class="card-top">
+                        <div class="card-checkbox">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">${escapeHtml(a.title || a.url || 'Untitled')}</div>
+                            <div class="card-meta">
+                                <span class="meta-tag source">${escapeHtml(a.source_name || 'Unknown')}</span>
+                                ${wordCount > 0 ? `<span class="meta-tag words">${wordCount.toLocaleString()} words</span>` : ''}
+                                ${a.language ? `<span class="meta-tag lang">${a.language}</span>` : ''}
+                                <span class="meta-tag time">${timeAgo}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-preview ${isExpanded ? 'open' : ''}">
+                        <div class="preview-text">${escapeHtml(preview)}${preview.length >= 400 ? '…' : ''}</div>
+                        <div class="preview-actions">
+                            <a class="preview-link" href="${escapeHtml(a.url)}" target="_blank" rel="noopener">
+                                🔗 Open original
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── Card interactions ────────────────────────────────
+        container.addEventListener('click', e => {
+            const card = e.target.closest('.article-card');
+            if (!card) return;
+            const id = card.dataset.id;
+
+            // Click on checkbox area → toggle selection
+            const checkbox = e.target.closest('.card-checkbox');
+            if (checkbox) {
+                toggleSelect(id);
+                return;
+            }
+
+            // Click on link → don't toggle
+            if (e.target.closest('a')) return;
+
+            // Click on card → toggle expand (and select if double tap)
+            if (expandedId === id) {
+                // Second tap on expanded card → toggle selection
+                toggleSelect(id);
+            } else {
+                expandedId = id;
+                renderArticles();
+            }
+        });
+
+        function toggleSelect(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            renderArticles();
+            updateActionBar();
+        }
+
+        // ── Select All ───────────────────────────────────────
+        selectAllBtn.addEventListener('click', () => {
+            const allSelected = filteredArticles.every(a => selectedIds.has(a.id));
+            if (allSelected) {
+                filteredArticles.forEach(a => selectedIds.delete(a.id));
+            } else {
+                filteredArticles.forEach(a => selectedIds.add(a.id));
+            }
+            renderArticles();
+            updateActionBar();
+        });
+
+        // ── Action bar ───────────────────────────────────────
+        function updateActionBar() {
+            const count = selectedIds.size;
+            $('selectedCount').textContent = count;
+            actionBar.classList.toggle('visible', count > 0);
+            approveBtn.disabled = count === 0;
+            discardBtn.disabled = count === 0;
+
+            const allSelected = filteredArticles.length > 0 && filteredArticles.every(a => selectedIds.has(a.id));
+            selectAllBtn.classList.toggle('active', allSelected);
+            selectAllBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
+        }
+
+        // ── Approve / Discard ────────────────────────────────
+        approveBtn.addEventListener('click', () => {
+            showDialog(
+                '✓ Approve for Rewriting',
+                `Send ${selectedIds.size} article${selectedIds.size > 1 ? 's' : ''} to the LLM for rewriting? This will consume API credits.`,
+                'confirm-approve',
+                async () => {
+                    try {
+                        approveBtn.disabled = true;
+                        const ids = [...selectedIds];
+                        await api('/raw-articles/approve', {
+                            method: 'POST',
+                            body: JSON.stringify({ ids }),
+                        });
+                        showToast(`✓ ${ids.length} article${ids.length > 1 ? 's' : ''} sent for rewriting`, 'success');
+                        selectedIds.clear();
+                        await loadArticles();
+                    } catch (e) {
+                        showToast('Failed to approve articles', 'error');
+                        approveBtn.disabled = false;
+                    }
+                }
+            );
+        });
+
+        discardBtn.addEventListener('click', () => {
+            showDialog(
+                '✕ Discard Articles',
+                `Discard ${selectedIds.size} article${selectedIds.size > 1 ? 's' : ''}? They won't be rewritten.`,
+                'confirm-discard',
+                async () => {
+                    try {
+                        discardBtn.disabled = true;
+                        const ids = [...selectedIds];
+                        await api('/raw-articles/discard', {
+                            method: 'POST',
+                            body: JSON.stringify({ ids }),
+                        });
+                        showToast(`✕ ${ids.length} article${ids.length > 1 ? 's' : ''} discarded`, 'success');
+                        selectedIds.clear();
+                        await loadArticles();
+                    } catch (e) {
+                        showToast('Failed to discard articles', 'error');
+                        discardBtn.disabled = false;
+                    }
+                }
+            );
+        });
+
+        // ── Status chip switching ────────────────────────────
+        $('statsRow').addEventListener('click', e => {
+            const chip = e.target.closest('.stat-chip');
+            if (!chip) return;
+            const status = chip.dataset.status;
+            if (status === currentStatus) return;
+            currentStatus = status;
+            document.querySelectorAll('.stat-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentSource = null;
+            loadArticles();
+        });
+
+        // ── Search ───────────────────────────────────────────
+        let searchTimer = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applyFilters, 200);
+        });
+
+        // ── Refresh ──────────────────────────────────────────
+        refreshBtn.addEventListener('click', () => loadArticles());
+
+        // ── Dialog ───────────────────────────────────────────
+        let dialogCallback = null;
+
+        function showDialog(title, message, confirmClass, callback) {
+            dialogTitle.textContent = title;
+            dialogMessage.textContent = message;
+            dialogConfirm.className = `dialog-btn ${confirmClass}`;
+            dialogConfirm.textContent = 'Confirm';
+            dialogCallback = callback;
+            dialogOverlay.classList.add('open');
+        }
+
+        dialogCancel.addEventListener('click', () => {
+            dialogOverlay.classList.remove('open');
+            dialogCallback = null;
+        });
+
+        dialogConfirm.addEventListener('click', () => {
+            dialogOverlay.classList.remove('open');
+            if (dialogCallback) {
+                dialogCallback();
+                dialogCallback = null;
+            }
+        });
+
+        dialogOverlay.addEventListener('click', e => {
+            if (e.target === dialogOverlay) {
+                dialogOverlay.classList.remove('open');
+                dialogCallback = null;
+            }
+        });
+
+        // ── Toast ────────────────────────────────────────────
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `${type === 'success' ? '✅' : '❌'} ${escapeHtml(message)}`;
+            $('toastContainer').appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ── Helpers ──────────────────────────────────────────
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
+        function formatTimeAgo(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        // ── Init ─────────────────────────────────────────────
+        loadArticles();
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (document.visibilityState === 'visible' && !isLoading) {
+                loadStats();
+            }
+        }, 30000);
+    })();
+    </script>
+</body>
+</html>

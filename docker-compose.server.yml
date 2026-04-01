@@ -113,6 +113,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./services/publisher/secrets:/app/secrets
+      - ./services/news-pipeline/config:/app/pipeline/config
       - publisher-backups:/app/backups
       - publisher-data:/app/data
       - /etc/localtime:/etc/localtime:ro

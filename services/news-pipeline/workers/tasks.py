@@ -160,7 +160,8 @@ def discover_crawl(self, source_tags=None):
 def scrape_article_task(self, article_info: dict):
     """
     Scrape an article URL and store in raw_articles.
-    Then enqueue for rewriting.
+    Sets status='scraped' and STOPS — user curates via the curation UI
+    before articles proceed to the LLM rewrite stage.
     """
     from db.crud import create_raw_article, update_raw_article
     from pipeline.scraper import scrape_article
@@ -192,6 +193,8 @@ def scrape_article_task(self, article_info: dict):
         # Scrape the article
         scraped = _run_async(scrape_article(url))
 
+        scrape_success = bool(scraped.get("body_text"))
+
         # Update raw article with scraped content
         _run_async(update_raw_article(raw_article_id, {
             "title": scraped.get("title") or article_info.get("title", ""),
@@ -201,30 +204,23 @@ def scrape_article_task(self, article_info: dict):
             "language": scraped.get("language"),
             "original_images": scraped.get("original_images"),
             "scrape_path": scraped.get("scrape_path"),
-            "status": "done" if scraped.get("body_text") else "scrape_failed",
+            "status": "scraped" if scrape_success else "scrape_failed",
             "scraped_at": datetime.now(timezone.utc),
         }))
 
-        if not scraped.get("body_text"):
+        if not scrape_success:
             _log_activity("📰 Scraping", f"Failed: {title_short}", "error")
             logger.warning("scrape_empty_body", url=url, source_name=source_name)
             return {"raw_article_id": raw_article_id, "status": "scrape_failed"}
 
-        # Enqueue for rewriting — pass output_language from discovery
-        if not _is_pipeline_stopped():
-            output_language = article_info.get("output_language", "vi")
-            rewrite_article_task.delay(raw_article_id, source_name, output_language)
-        else:
-            _log_activity("📰 Scraping", f"Scraped but not enqueuing rewrite (stopped)", "error")
-
-        _log_activity("📰 Scraping", f"Done: {title_short} ({scraped.get('word_count', 0)} words)", "done")
+        _log_activity("📰 Scraping", f"Ready for curation: {title_short} ({scraped.get('word_count', 0)} words)", "done")
         logger.info(
             "scrape_task_complete",
             raw_article_id=raw_article_id,
             url=url,
             word_count=scraped.get("word_count", 0),
         )
-        return {"raw_article_id": raw_article_id, "status": "done"}
+        return {"raw_article_id": raw_article_id, "status": "scraped"}
 
     except Exception as exc:
         logger.exception("scrape_task_failed", url=url, source_name=source_name)
@@ -299,11 +295,7 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
             "summary": rewritten["summary"],
             "perspective": rewritten["perspective"],
             "reading_time_minutes": rewritten["reading_time_minutes"],
-            "category": (
-                ", ".join(rewritten["category"])
-                if isinstance(rewritten.get("category"), list) and rewritten["category"]
-                else rewritten.get("category") or "Tin tức"
-            ),
+            "category": rewritten.get("category") or "Tin tức",
             "tags": rewritten["tags"],
             "image_keywords": rewritten["image_keywords"],
             "inline_image_keywords": rewritten.get("inline_image_keywords", []),
@@ -317,8 +309,8 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
             "status": "image_pending",
         }))
 
-        # Mark raw article as processing
-        _run_async(update_raw_article(raw_article_id, {"status": "processing"}))
+        # Mark raw article as done (rewrite complete)
+        _run_async(update_raw_article(raw_article_id, {"status": "done"}))
 
         # Enqueue for image search (unless stopped)
         if not _is_pipeline_stopped():

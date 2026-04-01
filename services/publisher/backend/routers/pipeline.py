@@ -2545,14 +2545,11 @@ async def queue_status() -> dict[str, Any]:
         )).fetchone()
         stuck["raw_new"] = row[0] if row else 0
 
-        # Raw articles at 'done' (scraped but NOT yet rewritten)
-        # Exclude those that already have a corresponding article
+        # Raw articles at 'scraped' — awaiting curation approval
         row = conn.execute(text(
-            "SELECT COUNT(*) FROM raw_articles r "
-            "WHERE r.status = 'done' "
-            "AND r.id NOT IN (SELECT raw_article_id FROM articles WHERE raw_article_id IS NOT NULL)"
+            "SELECT COUNT(*) FROM raw_articles WHERE status = 'scraped'"
         )).fetchone()
-        stuck["raw_done"] = row[0] if row else 0
+        stuck["raw_scraped"] = row[0] if row else 0
 
         # Raw articles stuck at 'processing' (rewrite started but never finished)
         # Exclude those that already have a corresponding article
@@ -2599,7 +2596,8 @@ async def queue_status() -> dict[str, Any]:
 async def retry_stuck(target: str = Body("all", embed=True)) -> dict[str, Any]:
     """Re-enqueue articles stuck in intermediate states.
     
-    target: 'all', 'scrape' (raw new), 'rewrite' (raw done/processing), 'images' (image_pending)
+    target: 'all', 'scrape' (raw new), 'rewrite' (raw processing), 'images' (image_pending)
+    Note: 'scraped' articles are NOT re-enqueued here — they go through the curation UI.
     """
     from sqlalchemy import text
 
@@ -2626,11 +2624,12 @@ async def retry_stuck(target: str = Body("all", embed=True)) -> dict[str, Any]:
                 )
                 counts["scrape"] += 1
 
-        # Re-enqueue raw articles at 'done' or 'processing' → rewrite
+        # Re-enqueue raw articles stuck at 'processing' → rewrite
+        # Note: 'scraped' = awaiting curation (NOT stuck). Only 'processing' is stuck.
         if target in ("all", "rewrite"):
             rows = conn.execute(text(
                 "SELECT id, source_name FROM raw_articles "
-                "WHERE status IN ('done', 'processing') "
+                "WHERE status = 'processing' "
                 "AND id NOT IN (SELECT raw_article_id FROM articles WHERE raw_article_id IS NOT NULL)"
             )).fetchall()
             for row in rows:
@@ -2892,3 +2891,186 @@ async def get_pipeline_status() -> dict[str, Any]:
             "total_raw": sum(raw_counts.values()),
             "total_articles": sum(art_counts.values()),
         }
+
+
+# ── Curation (raw article review before LLM rewrite) ────────────
+
+@router.get("/curation/articles")
+async def list_curation_articles(
+    status: str = "scraped",
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """List raw articles for curation, filterable by status."""
+    from sqlalchemy import text
+    from ..database import get_db
+
+    async for db in get_db():
+        result = await db.execute(
+            text(
+                "SELECT id, url, url_hash, source_name, source_type, category, "
+                "title, author, body_text, word_count, language, status, "
+                "scraped_at, created_at "
+                "FROM raw_articles "
+                "WHERE status = :status "
+                "ORDER BY scraped_at DESC NULLS LAST, created_at DESC "
+                "LIMIT :limit"
+            ),
+            {"status": status, "limit": limit},
+        )
+        rows = result.all()
+        return [
+            {
+                "id": str(row[0]),
+                "url": row[1],
+                "url_hash": row[2],
+                "source_name": row[3],
+                "source_type": row[4],
+                "category": row[5],
+                "title": row[6],
+                "author": row[7],
+                "body_text": row[8],
+                "word_count": row[9],
+                "language": row[10],
+                "status": row[11],
+                "scraped_at": str(row[12]) if row[12] else None,
+                "created_at": str(row[13]) if row[13] else None,
+            }
+            for row in rows
+        ]
+
+
+@router.get("/curation/stats")
+async def curation_stats() -> dict[str, int]:
+    """Count raw articles by status for the curation dashboard."""
+    from sqlalchemy import text
+    from ..database import get_db
+
+    async for db in get_db():
+        result = await db.execute(
+            text("SELECT status, COUNT(*) FROM raw_articles GROUP BY status")
+        )
+        return {row[0]: row[1] for row in result.all()}
+
+
+@router.post("/curation/approve")
+async def approve_curation_articles(
+    body: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Approve selected raw articles → enqueue for LLM rewrite."""
+    from sqlalchemy import text
+    from ..database import get_db
+
+    ids = body.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=422, detail="No article IDs provided")
+
+    celery = _get_celery()
+    approved = 0
+
+    async for db in get_db():
+        for article_id in ids:
+            # Set status to 'processing'
+            await db.execute(
+                text(
+                    "UPDATE raw_articles SET status = 'processing' "
+                    "WHERE id = :id AND status = 'scraped'"
+                ),
+                {"id": article_id},
+            )
+
+            # Get source_name for the rewrite task
+            row = await db.execute(
+                text("SELECT source_name FROM raw_articles WHERE id = :id"),
+                {"id": article_id},
+            )
+            source_row = row.fetchone()
+            source_name = source_row[0] if source_row else ""
+
+            # Enqueue rewrite task
+            celery.send_task(
+                "workers.tasks.rewrite_article_task",
+                args=[str(article_id), source_name, "vi"],
+                queue="rewriter_queue",
+            )
+            approved += 1
+
+        await db.commit()
+
+    return {"approved": approved}
+
+
+@router.post("/curation/discard")
+async def discard_curation_articles(
+    body: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Discard selected raw articles — they won't be rewritten."""
+    from sqlalchemy import text
+    from ..database import get_db
+
+    ids = body.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=422, detail="No article IDs provided")
+
+    async for db in get_db():
+        for article_id in ids:
+            await db.execute(
+                text(
+                    "UPDATE raw_articles SET status = 'discarded' "
+                    "WHERE id = :id AND status = 'scraped'"
+                ),
+                {"id": article_id},
+            )
+        await db.commit()
+
+    return {"discarded": len(ids)}
+
+
+@router.post("/curation/approve-all")
+async def approve_all_curation_articles() -> dict[str, Any]:
+    """Approve ALL scraped raw articles → enqueue for rewrite."""
+    from sqlalchemy import text
+    from ..database import get_db
+
+    celery = _get_celery()
+    approved = 0
+
+    async for db in get_db():
+        result = await db.execute(
+            text("SELECT id, source_name FROM raw_articles WHERE status = 'scraped'")
+        )
+        rows = result.all()
+
+        for row in rows:
+            article_id, source_name = str(row[0]), row[1] or ""
+            await db.execute(
+                text("UPDATE raw_articles SET status = 'processing' WHERE id = :id"),
+                {"id": article_id},
+            )
+            celery.send_task(
+                "workers.tasks.rewrite_article_task",
+                args=[article_id, source_name, "vi"],
+                queue="rewriter_queue",
+            )
+            approved += 1
+
+        await db.commit()
+
+    return {"approved": approved}
+
+
+@router.post("/curation/discard-all")
+async def discard_all_curation_articles() -> dict[str, Any]:
+    """Discard ALL scraped raw articles."""
+    from sqlalchemy import text
+    from ..database import get_db
+
+    async for db in get_db():
+        result = await db.execute(
+            text(
+                "UPDATE raw_articles SET status = 'discarded' "
+                "WHERE status = 'scraped'"
+            )
+        )
+        await db.commit()
+        return {"discarded": result.rowcount}
+

@@ -74,7 +74,7 @@ Return a JSON object with exactly these fields:
   * Category Adaptation: The news post could be from various categories (hardware, software, AI, casual gaming, enterprise IT). Adapt your writing style and tone to perfectly suit the specific category of the source article.
 - "summary": 2-3 sentences in {lang}, professional tone.
 - "perspective": 2 sentences of editorial opinion in {lang}. IMPORTANT: When stating an opinion or evaluating, you MUST refer to yourself as "RetroLab", "Đội ngũ RetroLab", "Team RetroLab", or "RetroLab chúng mình" (e.g. "Theo đánh giá của RetroLab...", "Đội ngũ RetroLab nhận thấy..."). NEVER use "Tôi nghĩ", "Theo tôi", "Chúng tôi", or other generic pronouns.
-- "category": REQUIRED. An array of one or more categories from EXACTLY this list: ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]. Pick the most relevant. Most articles belong to at least 1-2 categories. General tech news = ["Tin tức", "Công Nghệ"]. AI-related = must include "AI". Gaming/emulation/retro gaming = must include "Game & Giả Lập". Programming/software dev/IT = must include "Công nghệ thông tin".
+- "category": REQUIRED. A SINGLE string — pick the ONE BEST-FIT category from this list: ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]. Choose the most specific match. If an article is about AI, pick "AI" (not "Tin tức"). If about gaming/emulation, pick "Game & Giả Lập". If about programming/IT, pick "Công nghệ thông tin". Use "Tin tức" only for general tech news that doesn't fit other categories. Any other relevant categories should go into "tags" instead.
 - "image_keywords": 4-6 English phrases for high-quality hero image search.
 - "inline_image_keywords": a JSON array of search phrases for each placeholder (must match # of placeholders in body). Each phrase should describe the specific subject at that point in the article.
 - "tags": 5-10 topic tags in {lang}. ALL tags must be in Vietnamese (e.g. "điện thoại", "trí tuệ nhân tạo", "đánh giá", "bảo mật", "phần mềm"). The ONLY exception: keep product/brand names in English (e.g. "Samsung", "iPhone", "ChatGPT"). Do NOT use English words for concepts — translate them.
@@ -303,19 +303,38 @@ async def rewrite_article(
             if missing:
                 raise ValueError(f"Missing fields in LLM response: {missing}")
 
-            # Validate and normalize category
-            raw_cats = result.get("category", [])
-            if isinstance(raw_cats, str):
-                raw_cats = [raw_cats]
-            # Keep only valid categories
-            valid = [c for c in raw_cats if c in VALID_CATEGORIES]
-            if not valid:
-                # Fuzzy match: try case-insensitive matching
-                cat_map = {c.lower(): c for c in VALID_CATEGORIES}
-                for c in raw_cats:
-                    if c.lower() in cat_map:
-                        valid.append(cat_map[c.lower()])
-            result["category"] = valid if valid else ["Tin tức"]
+            # Validate and normalize category to a single string
+            raw_cat = result.get("category", "Tin tức")
+            extra_cats = []
+
+            if isinstance(raw_cat, list):
+                # LLM returned an array — take the first valid one, push rest to tags
+                valid_list = [c for c in raw_cat if c in VALID_CATEGORIES]
+                if not valid_list:
+                    cat_map = {c.lower(): c for c in VALID_CATEGORIES}
+                    valid_list = [cat_map[c.lower()] for c in raw_cat if c.lower() in cat_map]
+                if valid_list:
+                    result["category"] = valid_list[0]
+                    extra_cats = valid_list[1:]  # overflow → tags
+                else:
+                    result["category"] = "Tin tức"
+            elif isinstance(raw_cat, str):
+                if raw_cat in VALID_CATEGORIES:
+                    result["category"] = raw_cat
+                else:
+                    # Fuzzy match
+                    cat_map = {c.lower(): c for c in VALID_CATEGORIES}
+                    result["category"] = cat_map.get(raw_cat.lower(), "Tin tức")
+            else:
+                result["category"] = "Tin tức"
+
+            # Merge any extra categories into tags (avoid duplicates)
+            if extra_cats:
+                existing_tags = result.get("tags", []) or []
+                for ec in extra_cats:
+                    if ec not in existing_tags:
+                        existing_tags.append(ec)
+                result["tags"] = existing_tags
 
             # Attach model info for tracking
             result["_model"] = model_name

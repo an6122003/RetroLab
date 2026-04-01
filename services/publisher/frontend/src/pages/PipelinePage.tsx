@@ -248,6 +248,7 @@ function RunTab({
   runningTasks: string[];
   taskStatuses: Record<string, any>;
 }) {
+  const navigate = useNavigate();
   const isRunning = runningTasks.length > 0;
 
   // Live pipeline status from DB — polls every 5s
@@ -376,7 +377,7 @@ function RunTab({
     {
       id: 'full_pipeline',
       label: 'Full Pipeline',
-      desc: 'Discover feeds + crawl pages, then scrape → rewrite → image search',
+      desc: 'Discover feeds + crawl pages, then scrape articles for curation',
       icon: '🚀',
       color: 'from-emerald-500 to-cyan-500',
       shadow: 'shadow-emerald-500/20',
@@ -400,9 +401,11 @@ function RunTab({
   ];
 
   const rawNew = pipelineStatus?.raw_articles?.new ?? 0;
+  const rawScraped = pipelineStatus?.raw_articles?.scraped ?? 0;
   const rawProcessing = pipelineStatus?.raw_articles?.processing ?? 0;
   const rawDone = pipelineStatus?.raw_articles?.done ?? 0;
   const rawFailed = pipelineStatus?.raw_articles?.scrape_failed ?? 0;
+  const rawDiscarded = pipelineStatus?.raw_articles?.discarded ?? 0;
   const totalRaw = pipelineStatus?.total_raw ?? 0;
   const artDraft = pipelineStatus?.articles?.draft ?? 0;
   const artApproved = pipelineStatus?.articles?.approved ?? 0;
@@ -418,6 +421,30 @@ function RunTab({
         <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">Run Pipeline</h2>
         <p className="text-on-surface-variant mt-2 text-lg">Manually trigger the news discovery and processing pipeline.</p>
       </div>
+
+      {/* ── Curation Banner ──────────────────────────────── */}
+      {rawScraped > 0 && (
+        <div
+          className="bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border border-teal-500/30 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer hover:border-teal-500/50 transition-all group"
+          onClick={() => navigate('/curation')}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📋</span>
+            <div>
+              <p className="text-sm font-bold text-on-surface">
+                {rawScraped} article{rawScraped !== 1 ? 's' : ''} awaiting your review
+              </p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Scraped articles need curation before LLM rewriting begins
+              </p>
+            </div>
+          </div>
+          <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 text-white text-sm font-semibold group-hover:bg-teal-600 transition-colors shrink-0">
+            <span className="material-symbols-outlined text-[18px]">rate_review</span>
+            Open Curation
+          </span>
+        </div>
+      )}
 
       {/* ── Pipeline Status Dashboard ──────────────────────── */}
       {pipelineStatus && (
@@ -437,7 +464,7 @@ function RunTab({
           </div>
 
           {/* Stage indicators */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             {/* Raw articles stages */}
             <div className="rounded-xl bg-surface-container/60 p-4 border border-outline-variant/15">
               <div className="flex items-center justify-between mb-1">
@@ -447,21 +474,33 @@ function RunTab({
               <p className="text-2xl font-bold text-blue-600">{rawNew}</p>
               <p className="text-[10px] text-outline mt-1">Awaiting scrape</p>
             </div>
-            <div className="rounded-xl bg-surface-container/60 p-4 border border-outline-variant/15">
+            <div
+              className="rounded-xl bg-surface-container/60 p-4 border border-outline-variant/15 cursor-pointer hover:border-teal-500/40 transition-colors group"
+              onClick={() => navigate('/curation')}
+              title="Open curation UI to review and approve"
+            >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-outline uppercase tracking-wider">Scraping</span>
-                <span className={`material-symbols-outlined text-[16px] text-amber-600 ${rawProcessing > 0 ? 'animate-spin' : ''}`}>sync</span>
+                <span className="text-xs text-outline uppercase tracking-wider">Awaiting Curation</span>
+                <span className="material-symbols-outlined text-[16px] text-teal-600 group-hover:text-teal-500">rate_review</span>
               </div>
-              <p className="text-2xl font-bold text-amber-600">{rawProcessing}</p>
-              <p className="text-[10px] text-outline mt-1">In progress</p>
+              <p className="text-2xl font-bold text-teal-600">{rawScraped}</p>
+              <p className="text-[10px] text-teal-600/70 mt-1 group-hover:underline">Click to curate →</p>
             </div>
             <div className="rounded-xl bg-surface-container/60 p-4 border border-outline-variant/15">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-outline uppercase tracking-wider">Scraped</span>
+                <span className="text-xs text-outline uppercase tracking-wider">Rewriting</span>
+                <span className={`material-symbols-outlined text-[16px] text-purple-600 ${rawProcessing > 0 ? 'animate-spin' : ''}`}>auto_awesome</span>
+              </div>
+              <p className="text-2xl font-bold text-purple-600">{rawProcessing}</p>
+              <p className="text-[10px] text-outline mt-1">LLM in progress</p>
+            </div>
+            <div className="rounded-xl bg-surface-container/60 p-4 border border-outline-variant/15">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-outline uppercase tracking-wider">Articles</span>
                 <span className="material-symbols-outlined text-[16px] text-emerald-600">check_circle</span>
               </div>
-              <p className="text-2xl font-bold text-emerald-600">{rawDone}</p>
-              <p className="text-[10px] text-outline mt-1">Ready for rewrite</p>
+              <p className="text-2xl font-bold text-emerald-600">{totalArticles}</p>
+              <p className="text-[10px] text-outline mt-1">Created from pipeline</p>
             </div>
             <div className="rounded-xl bg-surface-container/60 p-4 border border-outline-variant/15">
               <div className="flex items-center justify-between mb-1">
@@ -477,18 +516,21 @@ function RunTab({
           {totalRaw > 0 && (
             <div>
               <div className="flex justify-between text-[10px] text-outline mb-1">
-                <span>Processing progress</span>
-                <span>{rawDone + rawFailed} / {totalRaw} raw articles</span>
+                <span>Raw articles</span>
+                <span>{rawScraped} awaiting curation • {rawProcessing} rewriting • {totalArticles} articles created • {totalRaw} total raw</span>
               </div>
               <div className="h-2 bg-surface-container rounded-full overflow-hidden flex">
                 {rawDone > 0 && (
                   <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${(rawDone / totalRaw) * 100}%` }} />
                 )}
-                {rawFailed > 0 && (
-                  <div className="bg-error-container0 h-full transition-all duration-500" style={{ width: `${(rawFailed / totalRaw) * 100}%` }} />
+                {rawScraped > 0 && (
+                  <div className="bg-teal-400 h-full transition-all duration-500" style={{ width: `${(rawScraped / totalRaw) * 100}%` }} />
                 )}
                 {rawProcessing > 0 && (
-                  <div className="bg-amber-500 h-full animate-pulse transition-all duration-500" style={{ width: `${(rawProcessing / totalRaw) * 100}%` }} />
+                  <div className="bg-purple-500 h-full animate-pulse transition-all duration-500" style={{ width: `${(rawProcessing / totalRaw) * 100}%` }} />
+                )}
+                {rawFailed > 0 && (
+                  <div className="bg-red-400 h-full transition-all duration-500" style={{ width: `${(rawFailed / totalRaw) * 100}%` }} />
                 )}
               </div>
             </div>
@@ -723,7 +765,7 @@ function RunTab({
         {/* Stuck articles */}
         {queueStatus?.stuck && Object.values(queueStatus.stuck).some(v => v > 0) && (
           <div className="space-y-2">
-            <p className="text-xs text-outline uppercase tracking-wider">Stuck Articles (not in queue)</p>
+            <p className="text-xs text-outline uppercase tracking-wider">Articles Needing Attention</p>
             <div className="flex flex-wrap gap-2">
               {(queueStatus.stuck.raw_new ?? 0) > 0 && (
                 <button
@@ -735,14 +777,14 @@ function RunTab({
                   <span className="text-[10px] text-blue-500">→ retry</span>
                 </button>
               )}
-              {(queueStatus.stuck.raw_done ?? 0) > 0 && (
+              {(queueStatus.stuck.raw_scraped ?? 0) > 0 && (
                 <button
-                  onClick={() => retryMutation.mutate('rewrite')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                  onClick={() => navigate('/curation')}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 hover:bg-teal-500/20 transition-colors"
                 >
-                  <span className="w-2 h-2 rounded-full bg-purple-400" />
-                  <span className="text-xs text-purple-300">{queueStatus.stuck.raw_done} awaiting rewrite</span>
-                  <span className="text-[10px] text-purple-500">→ retry</span>
+                  <span className="w-2 h-2 rounded-full bg-teal-400" />
+                  <span className="text-xs text-teal-600">{queueStatus.stuck.raw_scraped} awaiting curation</span>
+                  <span className="text-[10px] text-teal-500">→ review</span>
                 </button>
               )}
               {(queueStatus.stuck.raw_processing ?? 0) > 0 && (

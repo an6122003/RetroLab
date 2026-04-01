@@ -10,6 +10,7 @@ import BackupPage from './pages/BackupPage';
 import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import ConfigPage from './pages/ConfigPage';
+import CurationPage from './pages/CurationPage';
 
 function LoadingScreen() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
       <Route path="/finops" element={<FinOpsPage />} />
       <Route path="/backup" element={<BackupPage />} />
       <Route path="/config" element={<ConfigPage />} />
+      <Route path="/curation" element={<CurationPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

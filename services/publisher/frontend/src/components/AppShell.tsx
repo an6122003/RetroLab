@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: '/',          label: 'ARTICLES',  icon: 'article' },
   { path: '/composer',  label: 'COMPOSE',   icon: 'auto_awesome' },
   { path: '/pipeline',  label: 'PIPELINE',  icon: 'bolt' },
+  { path: '/curation',  label: 'CURATION',  icon: 'rate_review' },
   { path: '/workers',   label: 'WORKERS',   icon: 'engineering' },
   { path: '/finops',    label: 'FINOPS',    icon: 'monitoring' },
   { path: '/backup',    label: 'BACKUP',    icon: 'cloud_sync' },

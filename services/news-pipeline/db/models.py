@@ -79,7 +79,7 @@ class RawArticle(Base):
         Text,
         nullable=False,
         default="new",
-        comment="new | scrape_failed | paywall | processing | done",
+        comment="new | scraped | scrape_failed | paywall | processing | done | discarded",
     )
     scraped_at = Column(DateTime(timezone=True))
     created_at = Column(

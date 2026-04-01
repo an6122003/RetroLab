@@ -95,6 +95,13 @@ def _quote_block(text: str) -> dict:
     }
 
 
+def _is_valid_image_url(url: str) -> bool:
+    """Check if a URL is a valid http(s) image URL that Notion will accept."""
+    if not url:
+        return False
+    return url.startswith("http://") or url.startswith("https://")
+
+
 def _image_block(url: str) -> dict:
     return {
         "object": "block",
@@ -197,7 +204,10 @@ def markdown_to_blocks(md_text: str) -> list[dict]:
         # ── Image (standalone) ──────────────────────────────
         img_match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", line)
         if img_match:
-            blocks.append(_image_block(img_match.group(2)))
+            img_url = img_match.group(2).strip()
+            if _is_valid_image_url(img_url):
+                blocks.append(_image_block(img_url))
+            # else: skip placeholder/invalid image URLs silently
             i += 1
             continue
 
@@ -340,7 +350,7 @@ async def push_to_notion(article: Article) -> str:
     cover = None
     if article.selected_image and isinstance(article.selected_image, dict):
         img_url = article.selected_image.get("url", "")
-        if img_url:
+        if _is_valid_image_url(img_url):
             cover = {"type": "external", "external": {"url": img_url}}
 
     # ── Body blocks ───────────────────────────────────────────

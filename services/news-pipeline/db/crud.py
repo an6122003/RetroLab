@@ -311,3 +311,110 @@ async def count_articles_by_status(status: str) -> int:
             select(func.count()).select_from(Article).where(Article.status == status)
         )
         return result.scalar() or 0
+
+
+# ── Raw Article read / curation operations ──────────────────────
+
+def _serialize_raw_article(article: RawArticle) -> dict[str, Any]:
+    """Convert a RawArticle ORM object to a dict."""
+    return {
+        "id": str(article.id),
+        "url": article.url,
+        "url_hash": article.url_hash,
+        "source_name": article.source_name,
+        "source_type": article.source_type,
+        "category": article.category,
+        "title": article.title,
+        "author": article.author,
+        "published_at": article.published_at,
+        "body_text": article.body_text,
+        "word_count": article.word_count,
+        "language": article.language,
+        "original_images": article.original_images,
+        "scrape_path": article.scrape_path,
+        "status": article.status,
+        "scraped_at": article.scraped_at,
+        "created_at": article.created_at,
+    }
+
+
+async def list_raw_articles(
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    """List raw articles, newest first. Optionally filter by status."""
+    factory = get_session_factory()
+    async with factory() as session:
+        query = select(RawArticle).order_by(RawArticle.created_at.desc())
+
+        if status:
+            query = query.where(RawArticle.status == status)
+
+        query = query.limit(limit).offset(offset)
+        result = await session.execute(query)
+        articles = result.scalars().all()
+        return [_serialize_raw_article(a) for a in articles]
+
+
+async def count_raw_articles_by_status(status: str) -> int:
+    """Count raw articles with a given status."""
+    from sqlalchemy import func
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(func.count()).select_from(RawArticle).where(RawArticle.status == status)
+        )
+        return result.scalar() or 0
+
+
+async def bulk_update_raw_articles_status(
+    article_ids: list[str],
+    new_status: str,
+) -> int:
+    """Bulk update the status of multiple raw articles. Returns count updated."""
+    from sqlalchemy import update
+
+    if not article_ids:
+        return 0
+
+    uuids = [uuid.UUID(aid) for aid in article_ids]
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            update(RawArticle)
+            .where(RawArticle.id.in_(uuids))
+            .values(status=new_status)
+        )
+        await session.commit()
+        return result.rowcount or 0
+
+
+async def bulk_update_all_raw_articles_status(
+    current_status: str,
+    new_status: str,
+) -> int:
+    """Bulk update ALL raw articles with current_status to new_status."""
+    from sqlalchemy import update
+
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            update(RawArticle)
+            .where(RawArticle.status == current_status)
+            .values(status=new_status)
+        )
+        await session.commit()
+        return result.rowcount or 0
+
+
+async def get_raw_article_ids_by_status(status: str) -> list[str]:
+    """Get all raw article IDs with a given status."""
+    factory = get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(RawArticle.id).where(RawArticle.status == status)
+        )
+        return [str(row[0]) for row in result.fetchall()]
+
