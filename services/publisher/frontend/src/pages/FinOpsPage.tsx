@@ -21,21 +21,21 @@ export default function FinOpsPage() {
 
   const header = (
     <>
-      <div className="flex items-center gap-4">
-        <h1 className="text-3xl font-extrabold tracking-tight font-headline text-primary">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-headline text-primary">
           FinOps
         </h1>
-        <div className="flex items-center gap-2 ml-4">
-          <span className="text-sm text-on-surface-variant">LLM Cost Intelligence</span>
+        <div className="flex items-center gap-2 sm:ml-4">
+          <span className="text-xs sm:text-sm text-on-surface-variant">LLM Cost Intelligence</span>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-xs text-outline">Auto-refreshes every 30s</span>
+        <span className="hidden sm:inline text-xs text-outline">Auto-refreshes every 30s</span>
         {/* Currency toggle */}
         <div className="flex items-center bg-surface-container rounded-lg p-0.5 border border-outline-variant/15">
           <button
             onClick={() => setCurrency('USD')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-bold transition-all ${
               currency === 'USD'
                 ? 'bg-primary text-on-primary shadow-sm'
                 : 'text-on-surface-variant hover:text-on-surface'
@@ -45,7 +45,7 @@ export default function FinOpsPage() {
           </button>
           <button
             onClick={() => setCurrency('VND')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-bold transition-all ${
               currency === 'VND'
                 ? 'bg-primary text-on-primary shadow-sm'
                 : 'text-on-surface-variant hover:text-on-surface'
@@ -60,7 +60,7 @@ export default function FinOpsPage() {
 
   return (
     <AppShell header={header}>
-      <div className="p-12 max-w-[1400px] mx-auto space-y-8 animate-fade-in-up">
+      <div className="p-4 md:p-6 lg:p-12 max-w-[1400px] mx-auto space-y-6 md:space-y-8 animate-fade-in-up">
         {isLoading ? <SkeletonDashboard /> : data ? <FinOpsDashboard data={data} currency={currency} /> : null}
       </div>
     </AppShell>
@@ -72,7 +72,7 @@ export default function FinOpsPage() {
 function SkeletonDashboard() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-28 rounded-2xl bg-surface-container-low animate-pulse" />
         ))}
@@ -114,7 +114,7 @@ function FinOpsDashboard({ data, currency }: { data: any; currency: Currency }) 
   return (
     <>
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           icon="article"
           label="Total Rewrites"
@@ -154,7 +154,7 @@ function FinOpsDashboard({ data, currency }: { data: any; currency: Currency }) 
           <span className="material-symbols-outlined text-[18px]">pie_chart</span>
           Provider Breakdown
         </h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Object.entries(providers || {}).map(([prov, stats]: [string, any]) => (
             <ProviderCard
               key={prov}
@@ -167,7 +167,7 @@ function FinOpsDashboard({ data, currency }: { data: any; currency: Currency }) 
             />
           ))}
           {Object.keys(providers || {}).length === 0 && (
-            <div className="col-span-3 text-center py-8 text-outline">No data yet</div>
+            <div className="col-span-1 md:col-span-3 text-center py-8 text-outline">No data yet</div>
           )}
         </div>
       </div>

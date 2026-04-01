@@ -55,6 +55,8 @@ async def crawl_pages(source_tags: list[str] | None = None) -> list[dict[str, An
     Args:
         source_tags: Optional list of tags to filter sources.
     """
+    import random
+
     settings = get_settings()
     sources = get_enabled_sources(source_type="crawl")
     
@@ -63,8 +65,13 @@ async def crawl_pages(source_tags: list[str] | None = None) -> list[dict[str, An
         tag_set = set(source_tags)
         sources = [s for s in sources if tag_set.intersection(s.get("tags", []))]
     
+    # Randomize source order if enabled
+    if settings.randomize_sources:
+        random.shuffle(sources)
+
     new_articles: list[dict[str, Any]] = []
     max_per_run = settings.max_articles_per_run
+    max_per_source = settings.max_articles_per_source
 
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         for source in sources:
@@ -91,8 +98,15 @@ async def crawl_pages(source_tags: list[str] | None = None) -> list[dict[str, An
             # Extract links using simple HTML parsing
             links = _extract_links(html, seed_url, url_pattern)
 
+            # Randomize link order if enabled
+            if settings.randomize_sources:
+                random.shuffle(links)
+
+            source_article_count = 0
             for link_url in links:
                 if len(new_articles) >= max_per_run:
+                    break
+                if source_article_count >= max_per_source:
                     break
 
                 url_hash = hash_url(link_url)
@@ -117,6 +131,7 @@ async def crawl_pages(source_tags: list[str] | None = None) -> list[dict[str, An
                     "output_language": source.get("output_language", settings.output_language),
                 })
 
+                source_article_count += 1
                 logger.info(
                     "new_article_discovered",
                     source_name=source_name,

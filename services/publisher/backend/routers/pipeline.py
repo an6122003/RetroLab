@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+import redis as _redis_lib
+
 import yaml
 from celery import Celery
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -112,6 +114,19 @@ class PipelineConfig(BaseModel):
     max_articles_per_run: int = 50
     scraper_delay_seconds: float = 2.0
     enable_dalle_fallback: bool = False
+    max_articles_per_source: int = 10
+    randomize_sources: bool = True
+    # Auto-Approval
+    auto_approve: bool = False
+    auto_approve_select_image: bool = True
+    # Scheduler
+    scheduler_enabled: bool = False
+    scheduler_mode: str = "interval"
+    scheduler_time_of_day: str = "08:00, 16:00"
+    scheduler_interval_minutes: int = 60
+    scheduler_task: str = "full_pipeline"
+    scheduler_quiet_hours_start: int = -1
+    scheduler_quiet_hours_end: int = -1
 
 
 class RunRequest(BaseModel):
@@ -438,10 +453,17 @@ async def update_source(
 
 
 
-# ── Pipeline config ──────────────────────────────────────────────
+# ── Pipeline config (Redis-backed, .env as initial fallback) ─────
 
-def _read_env_config() -> dict[str, str]:
-    """Read key=value pairs from the pipeline .env file."""
+_REDIS_CONFIG_KEY = "pipeline:config"
+
+
+def _get_redis():
+    return _redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+
+
+def _read_env_file() -> dict[str, str]:
+    """Read key=value pairs from the pipeline .env file (read-only fallback)."""
     path = _env_path()
     config: dict[str, str] = {}
     if not path.exists():
@@ -452,42 +474,42 @@ def _read_env_config() -> dict[str, str]:
             continue
         if "=" in line:
             key, _, value = line.partition("=")
-            config[key.strip()] = value.strip()
+            # Strip surrounding quotes from .env values (e.g. "08:00, 16:00" -> 08:00, 16:00)
+            value = value.strip()
+            if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                value = value[1:-1]
+            config[key.strip()] = value
     return config
 
 
+def _read_env_config() -> dict[str, str]:
+    """Read pipeline config: Redis first, then .env file as fallback."""
+    try:
+        r = _get_redis()
+        raw = r.get(_REDIS_CONFIG_KEY)
+        if raw:
+            redis_config = json.loads(raw)
+            # Merge: .env file values as defaults, Redis overrides
+            file_config = _read_env_file()
+            file_config.update(redis_config)
+            return file_config
+    except Exception:
+        pass
+    return _read_env_file()
+
+
 def _write_env_config(config: dict[str, str]) -> None:
-    """Write key=value pairs back to the pipeline .env file, preserving comments."""
-    path = _env_path()
-    existing_lines: list[str] = []
-    if path.exists():
-        existing_lines = path.read_text(encoding="utf-8").splitlines()
-
-    # Track which keys we've updated
-    updated_keys: set[str] = set()
-    new_lines: list[str] = []
-
-    for line in existing_lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            new_lines.append(line)
-            continue
-        if "=" in stripped:
-            key = stripped.split("=", 1)[0].strip()
-            if key in config:
-                new_lines.append(f"{key}={config[key]}")
-                updated_keys.add(key)
-            else:
-                new_lines.append(line)
-        else:
-            new_lines.append(line)
-
-    # Append any new keys that weren't in the original file
-    for key, value in config.items():
-        if key not in updated_keys:
-            new_lines.append(f"{key}={value}")
-
-    path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    """Write pipeline config to Redis. No filesystem writes needed."""
+    try:
+        r = _get_redis()
+        # Merge with existing Redis config
+        existing_raw = r.get(_REDIS_CONFIG_KEY)
+        existing = json.loads(existing_raw) if existing_raw else {}
+        existing.update(config)
+        r.set(_REDIS_CONFIG_KEY, json.dumps(existing))
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to save pipeline config to Redis: {e}")
 
 
 @router.get("/config", response_model=PipelineConfig)
@@ -509,6 +531,17 @@ async def get_config() -> PipelineConfig:
         max_articles_per_run=int(env.get("MAX_ARTICLES_PER_RUN", "50")),
         scraper_delay_seconds=float(env.get("SCRAPER_DELAY_SECONDS", "2.0")),
         enable_dalle_fallback=env.get("ENABLE_DALLE_FALLBACK", "false").lower() == "true",
+        max_articles_per_source=int(env.get("MAX_ARTICLES_PER_SOURCE", "10")),
+        randomize_sources=env.get("RANDOMIZE_SOURCES", "true").lower() == "true",
+        auto_approve=env.get("AUTO_APPROVE", "false").lower() == "true",
+        auto_approve_select_image=env.get("AUTO_APPROVE_SELECT_IMAGE", "true").lower() == "true",
+        scheduler_enabled=env.get("SCHEDULER_ENABLED", "false").lower() == "true",
+        scheduler_mode=env.get("SCHEDULER_MODE", "interval"),
+        scheduler_time_of_day=env.get("SCHEDULER_TIME_OF_DAY", "08:00, 16:00"),
+        scheduler_interval_minutes=int(env.get("SCHEDULER_INTERVAL_MINUTES", "60")),
+        scheduler_task=env.get("SCHEDULER_TASK", "full_pipeline"),
+        scheduler_quiet_hours_start=int(env.get("SCHEDULER_QUIET_HOURS_START", "-1")),
+        scheduler_quiet_hours_end=int(env.get("SCHEDULER_QUIET_HOURS_END", "-1")),
     )
 
 
@@ -530,9 +563,390 @@ async def update_config(config: PipelineConfig = Body(...)) -> dict[str, str]:
         "MAX_ARTICLES_PER_RUN": str(config.max_articles_per_run),
         "SCRAPER_DELAY_SECONDS": str(config.scraper_delay_seconds),
         "ENABLE_DALLE_FALLBACK": str(config.enable_dalle_fallback).lower(),
+        "MAX_ARTICLES_PER_SOURCE": str(config.max_articles_per_source),
+        "RANDOMIZE_SOURCES": str(config.randomize_sources).lower(),
+        "AUTO_APPROVE": str(config.auto_approve).lower(),
+        "AUTO_APPROVE_SELECT_IMAGE": str(config.auto_approve_select_image).lower(),
+        "SCHEDULER_ENABLED": str(config.scheduler_enabled).lower(),
+        "SCHEDULER_MODE": config.scheduler_mode,
+        "SCHEDULER_TIME_OF_DAY": config.scheduler_time_of_day,
+        "SCHEDULER_INTERVAL_MINUTES": str(config.scheduler_interval_minutes),
+        "SCHEDULER_TASK": config.scheduler_task,
+        "SCHEDULER_QUIET_HOURS_START": str(config.scheduler_quiet_hours_start),
+        "SCHEDULER_QUIET_HOURS_END": str(config.scheduler_quiet_hours_end),
     }
     _write_env_config(updates)
+
+    # If scheduler config changed, restart the scheduler
+    _apply_scheduler_config(
+        enabled=config.scheduler_enabled,
+        mode=config.scheduler_mode,
+        time_of_day=config.scheduler_time_of_day,
+        interval=config.scheduler_interval_minutes,
+        task=config.scheduler_task,
+        quiet_start=config.scheduler_quiet_hours_start,
+        quiet_end=config.scheduler_quiet_hours_end,
+    )
+
     return {"status": "saved", "note": "Restart Celery workers for config changes to take effect"}
+
+
+# ── Scheduled Pipeline Runner ────────────────────────────────────
+# Runs as an asyncio background task inside the FastAPI process.
+# Dispatches Celery tasks at the configured interval.
+
+import asyncio
+from datetime import datetime, timezone, timedelta
+
+_scheduler_task: asyncio.Task | None = None
+_scheduler_state: dict[str, Any] = {
+    "enabled": False,
+    "mode": "interval",
+    "time_of_day": "08:00, 16:00",
+    "interval_minutes": 60,
+    "task": "full_pipeline",
+    "quiet_start": -1,
+    "quiet_end": -1,
+    "running": False,
+    "last_run_at": None,
+    "next_run_at": None,
+    "total_runs": 0,
+    "last_error": None,
+}
+
+
+def _is_quiet_hours(quiet_start: int, quiet_end: int) -> bool:
+    """Check if the current local hour falls within quiet hours."""
+    if quiet_start < 0 or quiet_end < 0:
+        return False
+    current_hour = datetime.now().astimezone().hour
+    if quiet_start <= quiet_end:
+        return quiet_start <= current_hour < quiet_end
+    else:
+        # Wraps around midnight, e.g. 22–06
+        return current_hour >= quiet_start or current_hour < quiet_end
+
+
+def _get_next_daily_sleep(now: datetime, time_str: str) -> int:
+    """Calculate seconds until next run time in 'daily' mode (local server time)."""
+    try:
+        times = []
+        # Strip any surrounding/embedded quotes and split on comma
+        cleaned = time_str.replace('"', '').replace("'", '').replace(" ", "")
+        for t in cleaned.split(","):
+            if not t: continue
+            parts = t.split(":")
+            if len(parts) != 2: continue
+            h, m = int(parts[0]), int(parts[1])
+            if 0 <= h <= 23 and 0 <= m <= 59:
+                times.append((h, m))
+            
+        if not times:
+            return 3600 # Fallback 1 hour
+            
+        next_dt = None
+        for h, m in sorted(times):
+            candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            if candidate > now:
+                next_dt = candidate
+                break
+                
+        # wrapped to next day
+        if next_dt is None:
+            first_h, first_m = sorted(times)[0]
+            next_dt = now.replace(hour=first_h, minute=first_m, second=0, microsecond=0) + timedelta(days=1)
+            
+        return int((next_dt - now).total_seconds())
+    except Exception:
+        return 3600
+
+
+async def _scheduler_loop():
+    """Background loop that dispatches pipeline tasks on schedule."""
+    global _scheduler_state
+
+    while _scheduler_state["enabled"]:
+        mode = _scheduler_state.get("mode", "interval")
+        time_of_day = _scheduler_state.get("time_of_day", "08:00")
+        interval = _scheduler_state["interval_minutes"]
+        task_name = _scheduler_state["task"]
+        quiet_start = _scheduler_state["quiet_start"]
+        quiet_end = _scheduler_state["quiet_end"]
+
+        now = datetime.now().astimezone()
+
+        if mode == "daily":
+            sleep_sec = max(0, _get_next_daily_sleep(now, time_of_day))
+            _scheduler_state["next_run_at"] = (now + timedelta(seconds=sleep_sec)).isoformat()
+        else:
+            sleep_sec = interval * 60
+            _scheduler_state["next_run_at"] = (now + timedelta(seconds=sleep_sec)).isoformat()
+
+        try:
+            # Sleep for the calculated duration
+            await asyncio.sleep(sleep_sec)
+
+            # Re-check if still enabled after sleep
+            if not _scheduler_state["enabled"]:
+                break
+
+            # Check quiet hours (mostly makes sense for interval mode)
+            if mode == "interval" and _is_quiet_hours(quiet_start, quiet_end):
+                _log_scheduler_activity("Skipped — quiet hours active")
+                continue
+
+            # Check if pipeline is stopped
+            import redis as _redis_lib
+            try:
+                _r = _redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+                if _r.exists("pipeline:stopped"):
+                    _log_scheduler_activity("Skipped — pipeline is stopped")
+                    continue
+            except Exception:
+                pass
+
+            # Dispatch the task
+            _scheduler_state["running"] = True
+            _log_scheduler_activity(f"Running scheduled {task_name}")
+
+            celery = _get_celery()
+            task_ids = []
+
+            if task_name in ("discover_feeds", "full_pipeline"):
+                result = celery.send_task(
+                    "workers.tasks.discover_feeds",
+                    kwargs={},
+                    queue="default",
+                )
+                task_ids.append(result.id)
+
+            if task_name in ("discover_crawl", "full_pipeline"):
+                result = celery.send_task(
+                    "workers.tasks.discover_crawl",
+                    kwargs={},
+                    queue="default",
+                )
+                task_ids.append(result.id)
+
+            _scheduler_state["last_run_at"] = datetime.now().astimezone().isoformat()
+            _scheduler_state["total_runs"] += 1
+            _scheduler_state["last_error"] = None
+            _scheduler_state["running"] = False
+
+            _log_scheduler_activity(
+                f"Dispatched {len(task_ids)} task(s) for {task_name}",
+                status="done",
+            )
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            _scheduler_state["running"] = False
+            _scheduler_state["last_error"] = str(e)
+            _log_scheduler_activity(f"Error: {str(e)[:100]}", status="error")
+            # Wait a bit before retrying on error
+            await asyncio.sleep(30)
+
+    _scheduler_state["running"] = False
+    _scheduler_state["next_run_at"] = None
+
+
+def _log_scheduler_activity(detail: str, status: str = "running"):
+    """Push a scheduler event to the pipeline activity feed."""
+    import redis as _redis_lib
+    try:
+        _r = _redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+        entry = json.dumps({
+            "ts": datetime.now().astimezone().isoformat(),
+            "step": "⏰ Scheduler",
+            "detail": detail[:120],
+            "status": status,
+        })
+        _r.lpush("pipeline:activity", entry)
+        _r.ltrim("pipeline:activity", 0, 49)
+    except Exception:
+        pass
+
+
+def _apply_scheduler_config(
+    enabled: bool,
+    mode: str,
+    time_of_day: str,
+    interval: int,
+    task: str,
+    quiet_start: int,
+    quiet_end: int,
+):
+    """Apply scheduler configuration — starts or stops the background task."""
+    global _scheduler_task, _scheduler_state
+
+    # Update state
+    _scheduler_state["enabled"] = enabled
+    _scheduler_state["mode"] = mode
+    _scheduler_state["time_of_day"] = time_of_day
+    _scheduler_state["interval_minutes"] = interval
+    _scheduler_state["task"] = task
+    _scheduler_state["quiet_start"] = quiet_start
+    _scheduler_state["quiet_end"] = quiet_end
+
+    # Cancel existing scheduler if running
+    if _scheduler_task is not None and not _scheduler_task.done():
+        _scheduler_task.cancel()
+        _scheduler_task = None
+
+    if enabled:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                _scheduler_task = loop.create_task(_scheduler_loop())
+                msg = f"every {interval}m" if mode == "interval" else f"at {time_of_day} local"
+                _log_scheduler_activity(
+                    f"Started config: {mode} ({msg}) -> {task}",
+                    status="done",
+                )
+        except RuntimeError:
+            # No event loop available (e.g. during import) — will be started on first request
+            pass
+
+
+@router.get("/scheduler/status")
+async def get_scheduler_status() -> dict[str, Any]:
+    """Return the current scheduler state."""
+    return {
+        "enabled": _scheduler_state["enabled"],
+        "mode": _scheduler_state.get("mode", "interval"),
+        "time_of_day": _scheduler_state.get("time_of_day", "08:00"),
+        "interval_minutes": _scheduler_state["interval_minutes"],
+        "task": _scheduler_state["task"],
+        "quiet_hours": {
+            "start": _scheduler_state["quiet_start"],
+            "end": _scheduler_state["quiet_end"],
+        },
+        "running": _scheduler_state["running"],
+        "last_run_at": _scheduler_state["last_run_at"],
+        "next_run_at": _scheduler_state["next_run_at"],
+        "total_runs": _scheduler_state["total_runs"],
+        "last_error": _scheduler_state["last_error"],
+        "is_quiet_hours": _is_quiet_hours(
+            _scheduler_state["quiet_start"],
+            _scheduler_state["quiet_end"],
+        ),
+    }
+
+
+@router.post("/scheduler/start")
+async def start_scheduler() -> dict[str, Any]:
+    """Manually start the scheduler using current config."""
+    env = _read_env_config()
+    _apply_scheduler_config(
+        enabled=True,
+        mode=env.get("SCHEDULER_MODE", "interval"),
+        time_of_day=env.get("SCHEDULER_TIME_OF_DAY", "08:00, 16:00"),
+        interval=int(env.get("SCHEDULER_INTERVAL_MINUTES", "60")),
+        task=env.get("SCHEDULER_TASK", "full_pipeline"),
+        quiet_start=int(env.get("SCHEDULER_QUIET_HOURS_START", "-1")),
+        quiet_end=int(env.get("SCHEDULER_QUIET_HOURS_END", "-1")),
+    )
+    # Also update the .env
+    _write_env_config({"SCHEDULER_ENABLED": "true"})
+    return {"status": "started", "message": "Scheduler started"}
+
+
+@router.post("/scheduler/stop")
+async def stop_scheduler() -> dict[str, Any]:
+    """Stop the scheduler."""
+    global _scheduler_task, _scheduler_state
+    _scheduler_state["enabled"] = False
+    if _scheduler_task is not None and not _scheduler_task.done():
+        _scheduler_task.cancel()
+        _scheduler_task = None
+    _scheduler_state["next_run_at"] = None
+    # Also update the .env
+    _write_env_config({"SCHEDULER_ENABLED": "false"})
+    _log_scheduler_activity("Stopped", status="done")
+    return {"status": "stopped", "message": "Scheduler stopped"}
+
+
+@router.post("/scheduler/run-now")
+async def scheduler_run_now() -> dict[str, Any]:
+    """Trigger an immediate scheduled run (one-shot)."""
+    env = _read_env_config()
+    task_name = env.get("SCHEDULER_TASK", "full_pipeline")
+
+    celery = _get_celery()
+    task_ids = []
+
+    # Clear stop flag
+    import redis as _redis_lib
+    try:
+        _r = _redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+        _r.delete("pipeline:stopped")
+    except Exception:
+        pass
+
+    if task_name in ("discover_feeds", "full_pipeline"):
+        result = celery.send_task(
+            "workers.tasks.discover_feeds",
+            kwargs={},
+            queue="default",
+        )
+        task_ids.append(result.id)
+
+    if task_name in ("discover_crawl", "full_pipeline"):
+        result = celery.send_task(
+            "workers.tasks.discover_crawl",
+            kwargs={},
+            queue="default",
+        )
+        task_ids.append(result.id)
+
+    _scheduler_state["last_run_at"] = datetime.now().astimezone().isoformat()
+    _scheduler_state["total_runs"] += 1
+    _log_scheduler_activity(
+        f"Manual trigger — {task_name} ({len(task_ids)} tasks)",
+        status="done",
+    )
+
+    return {
+        "status": "dispatched",
+        "task_ids": task_ids,
+        "task": task_name,
+        "message": f"Dispatched {len(task_ids)} task(s)",
+    }
+
+
+# ── Auto-initialize scheduler from .env on startup ──────────────
+
+def _init_scheduler_from_env():
+    """Check .env and start scheduler if enabled. Called once on import."""
+    try:
+        env = _read_env_config()
+        if env.get("SCHEDULER_ENABLED", "false").lower() == "true":
+            _scheduler_state["enabled"] = True
+            _scheduler_state["mode"] = env.get("SCHEDULER_MODE", "interval")
+            _scheduler_state["time_of_day"] = env.get("SCHEDULER_TIME_OF_DAY", "08:00, 16:00")
+            _scheduler_state["interval_minutes"] = int(env.get("SCHEDULER_INTERVAL_MINUTES", "60"))
+            _scheduler_state["task"] = env.get("SCHEDULER_TASK", "full_pipeline")
+            _scheduler_state["quiet_start"] = int(env.get("SCHEDULER_QUIET_HOURS_START", "-1"))
+            _scheduler_state["quiet_end"] = int(env.get("SCHEDULER_QUIET_HOURS_END", "-1"))
+            # The actual asyncio task will be created when the first request comes in
+            # (since event loop might not be running at import time)
+    except Exception:
+        pass
+
+
+_init_scheduler_from_env()
+
+
+# Auto-start scheduler on first request if enabled but task not yet created
+@router.get("/scheduler/ensure-started")
+async def ensure_scheduler_started() -> dict[str, str]:
+    """Internal: ensures the scheduler background task is running if enabled."""
+    global _scheduler_task
+    if _scheduler_state["enabled"] and (_scheduler_task is None or _scheduler_task.done()):
+        _scheduler_task = asyncio.get_event_loop().create_task(_scheduler_loop())
+        return {"status": "started"}
+    return {"status": "already_running" if _scheduler_state["enabled"] else "disabled"}
 
 
 # ── Worker Management ────────────────────────────────────────────

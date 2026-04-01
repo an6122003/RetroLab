@@ -39,6 +39,8 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
         source_tags: Optional list of tags to filter sources. Only sources
                      with at least one matching tag are polled.
     """
+    import random
+
     settings = get_settings()
     sources = get_enabled_sources(source_type="rss")
     
@@ -47,7 +49,12 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
         tag_set = set(source_tags)
         sources = [s for s in sources if tag_set.intersection(s.get("tags", []))]
     
+    # Randomize source order if enabled
+    if settings.randomize_sources:
+        random.shuffle(sources)
+
     max_per_run = settings.max_articles_per_run
+    max_per_source = settings.max_articles_per_source
 
     # ── Phase 1: Fetch all feeds in parallel ──────────────────
     source_entries: list[tuple[dict, list]] = []
@@ -60,21 +67,29 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
                 resp = await client.get(feed_url)
                 resp.raise_for_status()
                 feed = feedparser.parse(resp.text)
-                source_entries.append((source, list(feed.entries)))
+                entries = list(feed.entries)
+                # Randomize entries within each source if enabled
+                if settings.randomize_sources:
+                    random.shuffle(entries)
+                source_entries.append((source, entries))
             except Exception:
                 logger.exception("feed_fetch_failed", source_name=source_name, url=feed_url)
                 continue
 
     # ── Phase 2: Round-robin pick 1 per source per pass ───────
     new_articles: list[dict[str, Any]] = []
-    # Track index per source
+    # Track index per source and count per source
     source_idx = [0] * len(source_entries)
+    source_count = [0] * len(source_entries)
 
     while len(new_articles) < max_per_run:
         added_this_round = False
         for si, (source, entries) in enumerate(source_entries):
             if len(new_articles) >= max_per_run:
                 break
+            # Skip sources that have reached their per-source limit
+            if source_count[si] >= max_per_source:
+                continue
             while source_idx[si] < len(entries):
                 entry = entries[source_idx[si]]
                 source_idx[si] += 1
@@ -113,6 +128,7 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
                 )
 
                 new_articles.append(article_info)
+                source_count[si] += 1
                 logger.info(
                     "new_article_discovered",
                     source_name=source["name"],
@@ -122,7 +138,7 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
                 break  # move to next source
 
         if not added_this_round:
-            break  # all sources exhausted
+            break  # all sources exhausted or at per-source limit
 
     logger.info("feed_poll_complete", new_count=len(new_articles))
     return new_articles

@@ -60,7 +60,7 @@ COPY services/news-pipeline/ ./pipeline/
 COPY --from=frontend /app/frontend/dist ./frontend-dist/
 
 # Don't run as root
-RUN useradd --system --uid 1001 publisher && \
+RUN useradd --system --uid 1000 publisher && \
     mkdir -p /app/backups /app/secrets /app/pipeline/logs /app/data && \
     chown -R publisher:publisher /app/backups /app/secrets /app/pipeline/logs /app/data /root/.cache/ms-playwright
 USER publisher
@@ -69,6 +69,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8001
+ENV TZ=Asia/Ho_Chi_Minh
 # Tell the backend where to find pipeline config and frontend dist
 ENV PIPELINE_CONFIG_DIR=/app/pipeline/config
 ENV FRONTEND_DIST_DIR=/app/frontend-dist

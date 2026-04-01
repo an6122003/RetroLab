@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     enable_dalle_fallback: bool = Field(default=False)
     discovery_interval_minutes: int = Field(default=30)
     max_articles_per_run: int = Field(default=50)
+    max_articles_per_source: int = Field(default=10, description="Max articles to discover per source per run")
+    randomize_sources: bool = Field(default=True, description="Randomize the order sources are polled")
     scraper_delay_seconds: float = Field(default=2.0)
     playwright_headless: bool = Field(default=True)
     llm_temperature: float = Field(default=0.7)
@@ -59,6 +61,19 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(default="claude-sonnet-4-6", description="Anthropic model name")
     ollama_think: bool = Field(default=True, description="Enable /think reasoning prefix for Ollama")
     log_level: str = Field(default="INFO")
+
+    # ── Auto-Approval ────────────────────────────────────────────
+    auto_approve: bool = Field(default=False, description="Automatically approve articles after pipeline completes")
+    auto_approve_select_image: bool = Field(default=True, description="Auto-select the first image when auto-approving")
+
+    # ── Scheduled Pipeline ───────────────────────────────────────
+    scheduler_enabled: bool = Field(default=False, description="Enable scheduled automatic pipeline runs")
+    scheduler_mode: str = Field(default="interval", description="Mode: interval or daily")
+    scheduler_time_of_day: str = Field(default="08:00", description="Comma-separated UTC times (e.g. 08:00, 14:00)")
+    scheduler_interval_minutes: int = Field(default=60, description="Interval between scheduled runs in minutes")
+    scheduler_task: str = Field(default="full_pipeline", description="Task to run: full_pipeline, discover_feeds, discover_crawl")
+    scheduler_quiet_hours_start: int = Field(default=-1, description="Start of quiet hours (0-23, -1 = disabled)")
+    scheduler_quiet_hours_end: int = Field(default=-1, description="End of quiet hours (0-23, -1 = disabled)")
 
     # ── Language ─────────────────────────────────────────────────
     output_language: str = Field(default="vi", description="ISO 639-1 code for output language")
@@ -71,10 +86,99 @@ class Settings(BaseSettings):
         return self.database_url.replace("+asyncpg", "+psycopg2")
 
 
+import json as _json
+import time as _time
+
 @lru_cache(maxsize=1)
-def get_settings() -> Settings:
-    """Singleton accessor — cached after first call."""
+def _base_settings() -> Settings:
+    """Load base settings from env vars / .env file (cached forever)."""
     return Settings()  # type: ignore[call-arg]
+
+
+# ── Redis config overlay (reads dashboard changes) ───────────────
+
+_CONFIG_CACHE: dict[str, Any] | None = None
+_CONFIG_CACHE_TS: float = 0.0
+_CONFIG_CACHE_TTL: float = 30.0  # seconds
+_REDIS_CONFIG_KEY = "pipeline:config"
+
+# Map Redis config keys → Settings field names (lowercase)
+_KEY_MAP = {
+    "LLM_PROVIDER": "llm_provider",
+    "GEMINI_MODEL": "gemini_model",
+    "ANTHROPIC_MODEL": "anthropic_model",
+    "OLLAMA_BASE_URL": "ollama_base_url",
+    "OLLAMA_MODEL": "ollama_model",
+    "OLLAMA_NUM_CTX": "ollama_num_ctx",
+    "OLLAMA_THINK": "ollama_think",
+    "LLM_TEMPERATURE": "llm_temperature",
+    "OUTPUT_LANGUAGE": "output_language",
+    "OUTPUT_LANGUAGE_NAME": "output_language_name",
+    "DISCOVERY_INTERVAL_MINUTES": "discovery_interval_minutes",
+    "MAX_ARTICLES_PER_RUN": "max_articles_per_run",
+    "MAX_ARTICLES_PER_SOURCE": "max_articles_per_source",
+    "RANDOMIZE_SOURCES": "randomize_sources",
+    "SCRAPER_DELAY_SECONDS": "scraper_delay_seconds",
+    "ENABLE_DALLE_FALLBACK": "enable_dalle_fallback",
+    "AUTO_APPROVE": "auto_approve",
+    "AUTO_APPROVE_SELECT_IMAGE": "auto_approve_select_image",
+}
+
+
+def _fetch_redis_config() -> dict[str, str]:
+    """Fetch config overrides from Redis with a TTL cache."""
+    global _CONFIG_CACHE, _CONFIG_CACHE_TS
+    now = _time.monotonic()
+    if _CONFIG_CACHE is not None and (now - _CONFIG_CACHE_TS) < _CONFIG_CACHE_TTL:
+        return _CONFIG_CACHE
+    try:
+        import redis
+        base = _base_settings()
+        r = redis.Redis.from_url(base.redis_url, socket_connect_timeout=2)
+        raw = r.get(_REDIS_CONFIG_KEY)
+        _CONFIG_CACHE = _json.loads(raw) if raw else {}
+    except Exception:
+        _CONFIG_CACHE = {}
+    _CONFIG_CACHE_TS = now
+    return _CONFIG_CACHE
+
+
+def _coerce(field_name: str, value: str, settings: Settings) -> Any:
+    """Coerce a string value from Redis to the correct Python type."""
+    current = getattr(settings, field_name, None)
+    if isinstance(current, bool):
+        return value.lower() in ("true", "1", "yes")
+    if isinstance(current, int):
+        return int(value)
+    if isinstance(current, float):
+        return float(value)
+    return value
+
+
+def get_settings() -> Settings:
+    """Return settings with Redis overrides from the admin dashboard.
+    
+    Base config comes from .env / env vars (cached forever).
+    Dashboard overrides from Redis are overlaid with a 30s TTL cache.
+    """
+    settings = _base_settings()
+    redis_cfg = _fetch_redis_config()
+    if not redis_cfg:
+        return settings
+
+    # Create a shallow copy so we don't mutate the cached base
+    overrides: dict[str, Any] = {}
+    for redis_key, value in redis_cfg.items():
+        field_name = _KEY_MAP.get(redis_key)
+        if field_name and hasattr(settings, field_name):
+            try:
+                overrides[field_name] = _coerce(field_name, str(value), settings)
+            except (ValueError, TypeError):
+                pass
+
+    if overrides:
+        return settings.model_copy(update=overrides)
+    return settings
 
 
 # ── Source-config loader ─────────────────────────────────────────

@@ -53,10 +53,10 @@ export default function ConfigPage() {
   const [tab, setTab] = useState<ConfigTab>('youtube');
 
   const headerContent = (
-    <>
-      <div className="flex items-center gap-12">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Site Config</h1>
-        <nav className="flex gap-8">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+      <div className="flex items-center gap-3 sm:gap-12 w-full overflow-hidden">
+        <h1 className="hidden sm:block text-xl sm:text-2xl font-extrabold font-headline tracking-tight text-on-surface shrink-0">Site Config</h1>
+        <nav className="flex gap-4 sm:gap-8 overflow-x-auto no-scrollbar pb-1 sm:pb-0 w-full">
           {([
             { key: 'youtube' as ConfigTab, label: 'YouTube' },
             { key: 'ads' as ConfigTab, label: 'Ads' },
@@ -64,7 +64,7 @@ export default function ConfigPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`font-medium pb-2 transition-all border-b-2 ${
+              className={`font-medium pb-2 transition-all border-b-2 whitespace-nowrap text-sm sm:text-base ${
                 tab === t.key
                   ? 'text-primary border-primary font-bold'
                   : 'text-on-surface-variant border-transparent hover:text-primary'
@@ -75,7 +75,7 @@ export default function ConfigPage() {
           ))}
         </nav>
       </div>
-    </>
+    </div>
   );
 
   const sidebar = (
@@ -105,8 +105,8 @@ export default function ConfigPage() {
 
   return (
     <AppShell header={headerContent} sidebar={sidebar}>
-      <div className="p-12">
-        <div className="max-w-5xl mx-auto space-y-8">
+      <div className="p-4 md:p-6 lg:p-12">
+        <div className="max-w-5xl mx-auto space-y-6 md:space-y-8">
           {tab === 'youtube' && <YoutubeTab />}
           {tab === 'ads' && <AdsTab />}
         </div>
@@ -184,10 +184,10 @@ function AdsTab() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-4 md:space-y-6 animate-fade-in-up">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">Ads Management</h2>
-        <p className="text-on-surface-variant mt-2 text-lg">Configure ad slots across the website. Set affiliate banners, ad network codes, or hide slots.</p>
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-headline text-on-surface">Ads Management</h2>
+        <p className="text-on-surface-variant mt-1 md:mt-2 text-sm md:text-lg">Configure ad slots across the website. Set affiliate banners, ad network codes, or hide slots.</p>
       </div>
 
       {/* ── Global Ad Scripts ── */}
@@ -526,10 +526,10 @@ function YoutubeTab() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-4 md:space-y-6 animate-fade-in-up">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">YouTube Channels</h2>
-        <p className="text-on-surface-variant mt-2 text-lg">Manage YouTube channels displayed on the website&apos;s video section.</p>
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-headline text-on-surface">YouTube Channels</h2>
+        <p className="text-on-surface-variant mt-1 md:mt-2 text-sm md:text-lg">Manage YouTube channels displayed on the website&apos;s video section.</p>
       </div>
 
       {/* Add Channel */}
@@ -538,10 +538,10 @@ function YoutubeTab() {
           <span className="material-symbols-outlined text-[18px]">add_circle</span>
           Add Channel
         </h3>
-        <form onSubmit={handleAdd} className="flex gap-4">
+        <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <input
             type="text"
-            className="flex-1 px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/15 rounded-lg text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+            className="flex-1 w-full px-4 py-2.5 bg-surface-container-lowest border border-outline-variant/15 rounded-lg text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
             placeholder="https://youtube.com/@ChannelName"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -551,7 +551,7 @@ function YoutubeTab() {
           <button
             type="submit"
             disabled={loading || !url.trim()}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-500 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
           >
             <span className="material-symbols-outlined text-[20px]">add_circle</span>
             {loading ? 'Adding...' : 'Add Channel'}

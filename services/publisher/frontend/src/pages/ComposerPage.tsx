@@ -169,14 +169,14 @@ export default function ComposerPage() {
   // ── Top header bar ──
   const headerContent = (
     <>
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Composer</h1>
-        <span className="flex items-center gap-1.5 px-3 py-1 bg-error-container text-on-error-container text-xs font-semibold rounded-full">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <h1 className="text-xl sm:text-2xl font-extrabold font-headline tracking-tight text-on-surface">Composer</h1>
+        <span className="flex items-center gap-1.5 px-3 py-1 bg-error-container text-on-error-container text-[10px] sm:text-xs font-semibold rounded-full w-max">
           <span className="w-1.5 h-1.5 rounded-full bg-error" />
           Drafting Mode
         </span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="hidden sm:flex items-center gap-4">
         {composeData && (
           <span className="text-sm text-on-surface-variant">
             {composeData.results.length} results
@@ -190,54 +190,58 @@ export default function ComposerPage() {
     <AppShell header={headerContent} sidebar={ModelSidebar}>
       <div className="flex-1 overflow-y-auto">
         {/* URL Input Bar */}
-        <div className="sticky top-0 z-10 bg-surface-container-lowest backdrop-blur-xl border-b border-outline-variant/10 px-12 py-4">
-          <div className="max-w-4xl flex gap-3 items-center">
-            <span className="material-symbols-outlined text-outline text-[22px]">link</span>
-            <div className="flex-1 relative">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste URL to Scrape & Rewrite..."
-                className="w-full bg-transparent border-none text-sm text-on-surface placeholder:text-outline focus:outline-none"
-                onKeyDown={(e) => { if (e.key === 'Enter') { if (canRewrite) composeMutation.mutate(); else if (canScrape) scrapeMutation.mutate(); } }}
-              />
+        <div className="sticky top-0 z-10 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/10 px-4 lg:px-12 py-3 lg:py-4">
+          <div className="max-w-4xl flex flex-col md:flex-row gap-3 items-center">
+            <div className="flex w-full items-center gap-3 bg-surface-container-low md:bg-transparent px-3 py-2 md:p-0 rounded-lg md:rounded-none border border-outline-variant/15 md:border-none">
+              <span className="material-symbols-outlined text-outline text-[20px] md:text-[22px]">link</span>
+              <div className="flex-1 relative">
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste URL to Scrape & Rewrite..."
+                  className="w-full bg-transparent border-none text-sm md:text-base text-on-surface placeholder:text-outline focus:outline-none"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { if (canRewrite) composeMutation.mutate(); else if (canScrape) scrapeMutation.mutate(); } }}
+                />
+              </div>
             </div>
-            <button
-              onClick={() => scrapeMutation.mutate()}
-              disabled={!canScrape}
-              className="px-5 py-2.5 rounded-lg bg-surface-container-high text-on-surface text-sm font-semibold hover:bg-surface-container-highest active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 border border-outline-variant/20"
-            >
-              {scrapeMutation.isPending ? (
-                <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                  Scraping...
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]">download</span>
-                  Scrape
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => composeMutation.mutate()}
-              disabled={!canRewrite}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-semibold hover:translate-y-[-2px] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
-              title={!composeData ? 'Scrape first, then rewrite' : ''}
-            >
-              {composeMutation.isPending ? (
-                <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                  Rewriting...
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]">bolt</span>
-                  Rewrite
-                </>
-              )}
-            </button>
+            <div className="flex w-full md:w-auto gap-2 md:gap-3">
+              <button
+                onClick={() => scrapeMutation.mutate()}
+                disabled={!canScrape}
+                className="flex-1 md:flex-initial flex justify-center px-4 md:px-5 py-2.5 rounded-lg bg-surface-container-high text-on-surface text-sm font-semibold hover:bg-surface-container-highest active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all items-center gap-2 border border-outline-variant/20 whitespace-nowrap"
+              >
+                {scrapeMutation.isPending ? (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] md:text-[18px] animate-spin">progress_activity</span>
+                    Scraping...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] md:text-[18px]">download</span>
+                    Scrape 
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => composeMutation.mutate()}
+                disabled={!canRewrite}
+                className="flex-1 md:flex-initial flex justify-center px-4 md:px-5 py-2.5 rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-semibold hover:translate-y-[-2px] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm items-center gap-2 whitespace-nowrap"
+                title={!composeData ? 'Scrape first, then rewrite' : ''}
+              >
+                {composeMutation.isPending ? (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] md:text-[18px] animate-spin">progress_activity</span>
+                    Rewriting...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] md:text-[18px]">bolt</span>
+                    Rewrite
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -245,25 +249,25 @@ export default function ComposerPage() {
         <div className="max-w-7xl mx-auto p-6">
           {/* Empty state */}
           {!composeData && !composeMutation.isPending && (
-            <div className="text-center py-24">
-              <div className="text-5xl mb-4">🎼</div>
-              <h2 className="text-xl font-semibold text-on-surface mb-2">LLM Composer</h2>
-              <p className="text-on-surface-variant text-sm max-w-md mx-auto mb-6">
+            <div className="text-center py-16 md:py-24 px-4">
+              <div className="text-4xl md:text-5xl mb-4">🎼</div>
+              <h2 className="text-lg md:text-xl font-semibold text-on-surface mb-2">LLM Composer</h2>
+              <p className="text-on-surface-variant text-xs md:text-sm max-w-md mx-auto mb-6">
                 Paste an article URL, select models from the sidebar, and compare their rewriting performance side by side.
               </p>
-              <div className="flex items-center justify-center gap-6 text-on-surface-variant text-xs">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-on-surface-variant text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-6 h-6 rounded bg-surface-container text-on-surface-variant flex items-center justify-center font-medium">1</span>
+                  <span className="w-5 h-5 md:w-6 md:h-6 rounded bg-surface-container text-on-surface-variant flex items-center justify-center font-medium">1</span>
                   Paste URL
                 </div>
-                <span>→</span>
+                <span className="hidden sm:inline">→</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-6 h-6 rounded bg-surface-container text-on-surface-variant flex items-center justify-center font-medium">2</span>
+                  <span className="w-5 h-5 md:w-6 md:h-6 rounded bg-surface-container text-on-surface-variant flex items-center justify-center font-medium">2</span>
                   Pick models
                 </div>
-                <span>→</span>
+                <span className="hidden sm:inline">→</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-6 h-6 rounded bg-surface-container text-on-surface-variant flex items-center justify-center font-medium">3</span>
+                  <span className="w-5 h-5 md:w-6 md:h-6 rounded bg-surface-container text-on-surface-variant flex items-center justify-center font-medium">3</span>
                   Compare
                 </div>
               </div>
@@ -336,16 +340,16 @@ export default function ComposerPage() {
               </div>
 
               {/* Performance summary */}
-              <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(composeData.results.length, 4)}, 1fr)` }}>
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 {composeData.results.map(r => {
                   const prov = (r as any).provider || 'ollama';
                   const meta = PROVIDER_META[prov] || PROVIDER_META.ollama;
                   return (
                     <div
                       key={r.model}
-                      className={`rounded-xl p-4 border transition-all cursor-pointer ${
+                      className={`rounded-xl p-4 border transition-all cursor-pointer shadow-sm ${
                         r.status === 'success'
-                          ? 'bg-surface-container-lowest border-outline-variant/15 hover:border-primary/30 shadow-sm'
+                          ? 'bg-surface-container-lowest border-outline-variant/15 hover:border-primary/30'
                           : 'bg-error-container border-error/20'
                       }`}
                       onClick={() => setExpandedModel(expandedModel === r.model ? null : r.model)}
@@ -353,25 +357,25 @@ export default function ComposerPage() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-1.5">
                           <span className={`text-xs ${meta.color}`}>{meta.icon}</span>
-                          <h4 className="text-sm font-bold text-on-surface">{r.model}</h4>
+                          <h4 className="text-sm font-bold text-on-surface truncate pr-2 max-w-[120px] sm:max-w-none">{r.model}</h4>
                         </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
                           r.status === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-error-container text-red-600'
                         }`}>{r.status}</span>
                       </div>
                       {r.status === 'success' ? (
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <p className="text-lg font-bold text-cyan-600">{r.duration_sec}s</p>
-                            <p className="text-[9px] text-outline uppercase">Duration</p>
+                            <p className="text-base sm:text-lg font-bold text-cyan-600">{r.duration_sec}s</p>
+                            <p className="text-[8px] sm:text-[9px] text-outline uppercase">Duration</p>
                           </div>
                           <div>
-                            <p className="text-lg font-bold text-amber-600">{r.tokens_generated || '—'}</p>
-                            <p className="text-[9px] text-outline uppercase">Tokens</p>
+                            <p className="text-base sm:text-lg font-bold text-amber-600">{r.tokens_generated || '—'}</p>
+                            <p className="text-[8px] sm:text-[9px] text-outline uppercase">Tokens</p>
                           </div>
                           <div>
-                            <p className="text-lg font-bold text-primary">{r.tokens_per_sec || '—'}</p>
-                            <p className="text-[9px] text-outline uppercase">Tok/sec</p>
+                            <p className="text-base sm:text-lg font-bold text-primary">{r.tokens_per_sec || '—'}</p>
+                            <p className="text-[8px] sm:text-[9px] text-outline uppercase">Tok/sec</p>
                           </div>
                         </div>
                       ) : (
@@ -385,12 +389,12 @@ export default function ComposerPage() {
                               retryMutation.mutate([key]);
                             }}
                             disabled={retryMutation.isPending}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container text-white text-[11px] font-medium hover:bg-primary disabled:opacity-50 transition-all"
+                            className="flex justify-center items-center w-full gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container text-white text-[11px] font-medium hover:bg-primary disabled:opacity-50 transition-all border border-transparent"
                           >
                             {retryMutation.isPending ? (
                               <><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Retrying...</>
                             ) : (
-                              <><span className="material-symbols-outlined text-[14px]">refresh</span> Retry (skip scrape)</>
+                              <><span className="material-symbols-outlined text-[14px]">refresh</span> Retry</>
                             )}
                           </button>
                         </div>
@@ -401,7 +405,7 @@ export default function ComposerPage() {
               </div>
 
               {/* Side-by-side content */}
-              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(composeData.results.filter(r => r.status === 'success').length, 3)}, 1fr)` }}>
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {composeData.results.filter(r => r.status === 'success').map(r => (
                   <ResultCard
                     key={r.model}

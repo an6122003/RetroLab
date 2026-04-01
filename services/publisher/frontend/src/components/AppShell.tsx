@@ -25,6 +25,7 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,8 +40,16 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-surface flex">
+      {/* Mobile nav overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 z-40 bg-black/50" 
+          onClick={() => setIsMobileMenuOpen(false)} 
+        />
+      )}
+
       {/* ── Icon-only Global Nav Rail ── */}
-      <aside className="fixed left-0 top-0 bottom-0 z-50 h-screen w-20 flex flex-col items-center py-6 bg-surface-container-low">
+      <aside className={`fixed left-0 top-0 bottom-0 z-50 h-screen w-20 flex flex-col items-center py-6 bg-surface-container-low transition-transform duration-300 lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand avatar */}
         <div className="mb-10">
           <button
@@ -64,7 +73,10 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
             return (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  navigate(item.path);
+                  setIsMobileMenuOpen(false);
+                }}
                 title={item.label}
                 className={`group relative flex flex-col items-center justify-center w-12 h-12 rounded-lg transition-all ${
                   isActive
@@ -133,19 +145,27 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
       </aside>
 
       {/* ── Content area (offset by nav rail width) ── */}
-      <div className="ml-20 flex-1 flex flex-col min-h-screen">
+      <div className="lg:ml-20 flex-1 flex flex-col min-h-screen w-full overflow-hidden">
         {/* Top header bar */}
         {header && (
-          <header className="sticky top-0 z-40 flex items-center justify-between h-20 px-12 bg-surface-container-lowest">
-            {header}
+          <header className="sticky top-0 z-40 flex items-start lg:items-center min-h-[4rem] lg:min-h-[5rem] py-3 lg:py-0 px-4 lg:px-12 bg-surface-container-lowest shadow-sm lg:shadow-none">
+            <button 
+              className="lg:hidden mr-4 mt-[2px] p-1.5 text-on-surface hover:bg-surface-container-low rounded-lg shrink-0"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[24px]">menu</span>
+            </button>
+            <div className="flex-1 min-w-0 w-full">
+              {header}
+            </div>
           </header>
         )}
 
         {/* Main workspace */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
           {/* Optional secondary sidebar */}
           {sidebar && (
-            <aside className="w-[240px] bg-surface-container-low flex flex-col flex-shrink-0 overflow-y-auto">
+            <aside className="w-full lg:w-[240px] bg-surface-container-low flex flex-col flex-shrink-0 overflow-y-auto lg:h-full max-h-64 lg:max-h-[unset] border-b lg:border-b-0 lg:border-r border-outline-variant/10">
               {sidebar}
             </aside>
           )}

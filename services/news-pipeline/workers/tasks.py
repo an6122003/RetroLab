@@ -433,24 +433,46 @@ def search_images_task(self, article_id: str):
             )
 
         # Update article with searched images, resolved body, and set final status
+        # Check if auto-approve is enabled
+        from config.settings import get_settings
+        settings = get_settings()
+
+        final_status = "draft"
+        selected_image = None
+        if settings.auto_approve:
+            final_status = "approved"
+            # Auto-select the first image if enabled
+            if settings.auto_approve_select_image and images:
+                selected_image = images[0]
+            logger.info(
+                "auto_approve_enabled",
+                article_id=article_id,
+                final_status=final_status,
+                image_selected=selected_image is not None,
+            )
+
         update_data = {
             "searched_images": images,
-            "status": "draft",
+            "status": final_status,
         }
+        if selected_image:
+            update_data["selected_image"] = selected_image
         if placeholders:
             update_data["body"] = body
 
         _run_async(update_article(article_id, update_data))
 
         title = article.get("title", "Untitled")
-        _log_activity("🖼️ Image Search", f"Done: {title[:80]} ({len(images)} images)", "done")
+        status_label = "Auto-approved" if final_status == "approved" else "Draft"
+        _log_activity("🖼️ Image Search", f"{status_label}: {title[:80]} ({len(images)} images)", "done")
         logger.info(
             "article_ready_for_review",
             article_id=article_id,
             title=title,
             images_found=len(images),
+            auto_approved=final_status == "approved",
         )
-        return {"article_id": article_id, "images_found": len(images), "status": "draft"}
+        return {"article_id": article_id, "images_found": len(images), "status": final_status}
 
     except Exception as exc:
         logger.exception("image_search_failed", article_id=article_id)

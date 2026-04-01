@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { api, PipelineConfig } from '../api';
+import { api, PipelineConfig, SchedulerStatus } from '../api';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 
@@ -112,10 +112,10 @@ export default function PipelinePage() {
 
   // ── Top header bar ──
   const headerContent = (
-    <>
-      <div className="flex items-center gap-12">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Pipeline</h1>
-        <nav className="flex gap-8">
+    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-12">
+        <h1 className="text-xl sm:text-2xl font-extrabold font-headline tracking-tight text-on-surface shrink-0">Pipeline</h1>
+        <nav className="flex gap-4 sm:gap-8 overflow-x-auto no-scrollbar w-full">
           {([
             { key: 'run' as PipelineTab, label: 'Run' },
             { key: 'sources' as PipelineTab, label: 'Sources' },
@@ -124,7 +124,7 @@ export default function PipelinePage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`font-medium pb-2 transition-all border-b-2 ${
+              className={`font-medium pb-1.5 transition-all border-b-2 whitespace-nowrap text-sm sm:text-base ${
                 tab === t.key
                   ? 'text-primary border-primary font-bold'
                   : 'text-on-surface-variant border-transparent hover:text-primary'
@@ -135,20 +135,20 @@ export default function PipelinePage() {
           ))}
         </nav>
       </div>
-      <div className="flex items-center gap-6">
-        <div className="relative flex items-center">
+      <div className="flex items-center gap-4 sm:gap-6 self-start xl:self-auto w-full sm:w-auto mt-2 sm:mt-0 pb-1 sm:pb-0">
+        <div className="relative flex items-center flex-1 sm:flex-none">
           <span className="material-symbols-outlined absolute left-3 text-outline text-[20px]">search</span>
           <input
-            className="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm w-56 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50"
+            className="pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant/15 rounded-lg text-sm w-full sm:w-56 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50"
             placeholder="Search pipelines..."
             type="text"
           />
         </div>
-        <button className="p-2 text-outline hover:bg-surface-container rounded-full transition-colors">
+        <button className="p-2 text-outline border border-outline-variant/15 hover:bg-surface-container rounded-full transition-colors flex-shrink-0">
           <span className="material-symbols-outlined">notifications</span>
         </button>
       </div>
-    </>
+    </div>
   );
 
   // ── Secondary sidebar ──
@@ -578,13 +578,13 @@ function RunTab({
 
       {/* ── Queue Management ──────────────────────────────── */}
       <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
             <span className="material-symbols-outlined text-[18px]">queue</span>
             Queue Management
-            <span className="text-[10px] text-outline normal-case font-normal">Auto-refreshes every 3s</span>
+            <span className="text-[10px] text-outline normal-case font-normal ml-2">Auto-refreshes every 3s</span>
           </h3>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => retryMutation.mutate('all')}
               disabled={retryMutation.isPending}
@@ -642,7 +642,7 @@ function RunTab({
         )}
 
         {/* Queue depths */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { name: 'scraper_queue', label: 'Scraper', icon: 'terminal', color: 'text-blue-600' },
             { name: 'rewriter_queue', label: 'Rewriter', icon: 'auto_awesome', color: 'text-purple-600' },
@@ -664,9 +664,9 @@ function RunTab({
 
         {/* Ollama / LLM Status */}
         {ollamaStatus && (
-          <div className="rounded-xl bg-surface-container/40 p-3 border border-outline-variant/15">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-surface-container/40 p-3 lg:p-4 border border-outline-variant/15">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className={`w-2.5 h-2.5 rounded-full ${
                   ollamaStatus.provider !== 'ollama' ? 'bg-blue-400' :
                   ollamaStatus.server_online ? (ollamaStatus.loaded_models.length > 0 ? 'bg-emerald-400' : 'bg-amber-400') : 'bg-red-400'
@@ -692,7 +692,7 @@ function RunTab({
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {ollamaStatus.provider === 'ollama' && ollamaStatus.loaded_models.length > 0 ? (
                   <>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
@@ -1048,35 +1048,35 @@ function SourcesTab({
   return (
     <div className="space-y-5 animate-fade-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">News Sources</h2>
-          <p className="text-on-surface-variant mt-1">Manage RSS feeds and crawl targets across categories.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-headline text-on-surface">News Sources</h2>
+          <p className="text-on-surface-variant mt-1 text-sm sm:text-base">Manage RSS feeds and crawl targets across categories.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={onRefresh} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors">
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button onClick={onRefresh} className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors">
             <span className="material-symbols-outlined text-[14px]">refresh</span> Refresh
           </button>
           <button onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary hover:translate-y-[-1px] transition-all font-semibold shadow-sm">
+            className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary hover:translate-y-[-1px] transition-all font-semibold shadow-sm">
             <span className="material-symbols-outlined text-[14px]">add</span> Add Source
           </button>
         </div>
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total', value: totalSources, icon: 'hub', color: 'text-on-surface' },
           { label: 'Active', value: enabledSources, icon: 'check_circle', color: 'text-emerald-600' },
           { label: 'RSS Feeds', value: rssSources, icon: 'rss_feed', color: 'text-amber-600' },
           { label: 'Crawlers', value: crawlSources, icon: 'travel_explore', color: 'text-purple-600' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl bg-surface-container-low border border-outline-variant/15 p-3 flex items-center gap-3">
-            <span className={`material-symbols-outlined text-[22px] ${s.color}`}>{s.icon}</span>
+          <div key={s.label} className="rounded-xl bg-surface-container-low border border-outline-variant/15 p-3 flex sm:flex-row flex-col items-start sm:items-center gap-2 sm:gap-3">
+            <span className={`material-symbols-outlined text-[20px] sm:text-[22px] ${s.color}`}>{s.icon}</span>
             <div>
-              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-[10px] text-outline uppercase tracking-wider">{s.label}</p>
+              <p className={`text-lg sm:text-xl font-bold leading-tight ${s.color}`}>{s.value}</p>
+              <p className="text-[9px] sm:text-[10px] text-outline uppercase tracking-wider">{s.label}</p>
             </div>
           </div>
         ))}
@@ -1157,8 +1157,8 @@ function SourcesTab({
         </div>
       )}
 
-      {/* Category Grid (2 columns) */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Category Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sources && sortedCategories.map((category) => {
           const entries = sources[category] || [];
           const meta = CATEGORY_META[category] || { label: category, icon: 'folder', color: 'text-on-surface-variant', bgTint: 'bg-surface-container', border: 'border-l-outline' };
@@ -1354,6 +1354,40 @@ function ConfigTab({
     refetchInterval: 10000,
   });
 
+  // Scheduler status
+  const { data: schedulerStatus } = useQuery({
+    queryKey: ['scheduler-status'],
+    queryFn: api.getSchedulerStatus,
+    refetchInterval: 5000,
+  });
+
+  const schedulerStartMutation = useMutation({
+    mutationFn: () => api.startScheduler(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduler-status'] });
+      toast.success(data.message || 'Scheduler started');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const schedulerStopMutation = useMutation({
+    mutationFn: () => api.stopScheduler(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduler-status'] });
+      toast.success(data.message || 'Scheduler stopped');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const schedulerRunNowMutation = useMutation({
+    mutationFn: () => api.schedulerRunNow(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduler-status'] });
+      toast.success(data.message || 'Pipeline triggered');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   if (isLoading || !config) {
     return (
       <div className="space-y-4">
@@ -1414,34 +1448,77 @@ function ConfigTab({
       title: 'Pipeline',
       fields: [
         { key: 'discovery_interval_minutes', label: 'Discovery Interval (min)', type: 'number' },
-        { key: 'max_articles_per_run', label: 'Max Articles Per Run', type: 'number' },
+        { key: 'max_articles_per_run', label: 'Max Articles Per Run (total)', type: 'number' },
+        { key: 'max_articles_per_source', label: 'Max Articles Per Source', type: 'number' },
+        { key: 'randomize_sources', label: 'Randomize source & article order', type: 'toggle' },
         { key: 'scraper_delay_seconds', label: 'Scraper Delay (sec)', type: 'number', step: 0.5 },
         { key: 'enable_dalle_fallback', label: 'Enable DALL·E Fallback', type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Auto-Approval',
+      fields: [
+        { key: 'auto_approve', label: 'Auto-approve articles after pipeline', type: 'toggle' },
+        { key: 'auto_approve_select_image', label: 'Auto-select first image as hero', type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Scheduled Pipeline',
+      fields: [
+        { key: 'scheduler_enabled', label: 'Enable scheduled runs', type: 'toggle' },
+        {
+          key: 'scheduler_mode',
+          label: 'Schedule Mode',
+          type: 'select',
+          options: [
+            { value: 'interval', label: 'Run repeatedly (Interval)' },
+            { value: 'daily', label: 'Run at specific times (Daily)' },
+          ],
+        },
+        ...(config.scheduler_mode === 'daily'
+          ? [
+              { key: 'scheduler_time_of_day', label: 'Daily run times (Local time, comma-separated e.g. 08:00, 16:30)', type: 'text' } as ConfigField,
+            ]
+          : [
+              { key: 'scheduler_interval_minutes', label: 'Interval (minutes)', type: 'number' } as ConfigField,
+              { key: 'scheduler_quiet_hours_start', label: 'Quiet hours start (Local hour, -1 = disabled)', type: 'number' } as ConfigField,
+              { key: 'scheduler_quiet_hours_end', label: 'Quiet hours end (Local hour, -1 = disabled)', type: 'number' } as ConfigField,
+            ]),
+        {
+          key: 'scheduler_task',
+          label: 'Task to run',
+          type: 'select',
+          options: [
+            { value: 'full_pipeline', label: 'Full Pipeline (RSS + Crawl)' },
+            { value: 'discover_feeds', label: 'RSS Feeds Only' },
+            { value: 'discover_crawl', label: 'Web Crawl Only' },
+          ],
+        },
       ],
     },
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 lg:space-y-6 animate-fade-in-up">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">Pipeline Configuration</h2>
-          <p className="text-on-surface-variant mt-2 text-lg">Adjust LLM, language, and scraping settings.</p>
+          <h2 className="text-2xl lg:text-3xl font-extrabold tracking-tight font-headline text-on-surface">Pipeline Configuration</h2>
+          <p className="text-on-surface-variant mt-1 lg:mt-2 text-sm lg:text-lg">Adjust LLM, language, and scraping settings.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row w-full lg:w-auto sm:items-center gap-2 lg:gap-3">
           {/* Worker status indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container/60 border border-outline-variant/15">
+          <div className="flex items-center justify-center sm:justify-start gap-2 px-3 py-2 sm:py-1.5 rounded-lg bg-surface-container/60 border border-outline-variant/15 w-full sm:w-auto">
             <span className={`w-2 h-2 rounded-full ${
               workerStatus?.alive ? 'bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/50' : 'bg-red-400'
             }`} />
-            <span className="text-xs text-on-surface-variant">
+            <span className="text-xs text-on-surface-variant whitespace-nowrap">
               Worker {workerStatus?.alive ? 'Online' : 'Offline'}
             </span>
           </div>
           <button
             onClick={() => saveMutation.mutate(config)}
             disabled={saveMutation.isPending || restartMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest disabled:opacity-50 transition-colors font-medium"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-sm rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest disabled:opacity-50 transition-colors font-medium w-full sm:w-auto"
           >
             <span className="material-symbols-outlined text-[16px]">save</span>
             {saveMutation.isPending ? 'Saving...' : 'Save'}
@@ -1449,30 +1526,43 @@ function ConfigTab({
           <button
             onClick={() => restartMutation.mutate(config)}
             disabled={saveMutation.isPending || restartMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary hover:translate-y-[-1px] disabled:opacity-50 transition-all font-semibold"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-sm rounded-lg bg-gradient-to-r from-primary to-primary-container text-on-primary hover:translate-y-[-1px] disabled:opacity-50 transition-all font-semibold w-full sm:w-auto"
           >
             <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-            {restartMutation.isPending ? 'Restarting...' : 'Save & Restart Worker'}
+            {restartMutation.isPending ? 'Restarting...' : 'Save & Restart'}
           </button>
         </div>
       </div>
 
       {configSections.map((section) => (
         <div key={section.title} className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-6 space-y-4">
-          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider">
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+            {section.title === 'Auto-Approval' && <span className="material-symbols-outlined text-[18px] text-emerald-500">verified</span>}
+            {section.title === 'Scheduled Pipeline' && <span className="material-symbols-outlined text-[18px] text-amber-500">schedule</span>}
             {section.title}
+            {section.title === 'Auto-Approval' && config.auto_approve && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 normal-case font-normal">Active</span>
+            )}
+            {section.title === 'Auto-Approval' && !config.auto_approve && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant normal-case font-normal">Disabled</span>
+            )}
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          {section.title === 'Auto-Approval' && (
+            <p className="text-xs text-on-surface-variant -mt-2">
+              When enabled, articles skip the "draft" review step and go directly to "approved" after the pipeline finishes.
+            </p>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
             {section.fields.map((field) => (
-              <div key={field.key} className={field.type === 'toggle' ? 'flex items-center justify-between col-span-2' : ''}>
-                <label className="text-xs text-on-surface-variant block mb-1">{field.label}</label>
+              <div key={field.key} className={field.type === 'toggle' ? 'flex items-center justify-between col-span-1 sm:col-span-2' : ''}>
+                <label className="text-[11px] lg:text-xs text-on-surface-variant block mb-1.5 font-medium">{field.label}</label>
 
                 {field.type === 'text' && (
                   <input
                     type="text"
                     value={String(config[field.key])}
                     onChange={(e) => updateConfig(field.key, e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2.5 lg:py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
                   />
                 )}
 
@@ -1482,7 +1572,7 @@ function ConfigTab({
                     value={Number(config[field.key])}
                     onChange={(e) => updateConfig(field.key, Number(e.target.value) as any)}
                     step={field.step || 1}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2.5 lg:py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
                   />
                 )}
 
@@ -1490,7 +1580,7 @@ function ConfigTab({
                   <select
                     value={String(config[field.key])}
                     onChange={(e) => updateConfig(field.key, e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2.5 lg:py-2 rounded-lg bg-surface-container border border-outline-variant/15 text-on-surface text-sm focus:border-emerald-500/50 focus:outline-none transition-colors"
                   >
                     {field.options?.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1518,12 +1608,12 @@ function ConfigTab({
                 {field.type === 'toggle' && (
                   <button
                     onClick={() => updateConfig(field.key, !config[field.key] as any)}
-                    className={`w-10 h-5 rounded-full transition-all relative flex-shrink-0 ${
+                    className={`w-12 h-6 lg:w-10 lg:h-5 rounded-full transition-all relative flex-shrink-0 ${
                       config[field.key] ? 'bg-emerald-500' : 'bg-surface-container-high'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full bg-surface-container-lowest absolute top-[3px] transition-all ${
-                      config[field.key] ? 'left-5' : 'left-1'
+                    <span className={`w-4 h-4 lg:w-3.5 lg:h-3.5 rounded-full bg-surface-container-lowest absolute top-[4px] lg:top-[3px] transition-all ${
+                      config[field.key] ? 'left-[26px] lg:left-5' : 'left-1'
                     }`} />
                   </button>
                 )}
@@ -1532,6 +1622,141 @@ function ConfigTab({
           </div>
         </div>
       ))}
+
+      {/* Scheduler Status Card */}
+      {schedulerStatus && (
+        <div className={`bg-surface-container-low border rounded-2xl p-6 space-y-4 ${
+          schedulerStatus.enabled
+            ? 'border-amber-500/30'
+            : 'border-outline-variant/15'
+        }`}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-amber-500">schedule</span>
+              Scheduler Status
+              {schedulerStatus.enabled ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Active
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant normal-case font-normal">
+                  Inactive
+                </span>
+              )}
+              {schedulerStatus.is_quiet_hours && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 normal-case font-normal">
+                  🌙 Quiet Hours
+                </span>
+              )}
+            </h3>
+            <div className="flex gap-2">
+              {!schedulerStatus.enabled ? (
+                <button
+                  onClick={() => schedulerStartMutation.mutate()}
+                  disabled={schedulerStartMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors font-medium disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[14px]">play_arrow</span>
+                  {schedulerStartMutation.isPending ? 'Starting...' : 'Start Scheduler'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => schedulerRunNowMutation.mutate()}
+                    disabled={schedulerRunNowMutation.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-colors font-medium disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">bolt</span>
+                    {schedulerRunNowMutation.isPending ? 'Running...' : 'Run Now'}
+                  </button>
+                  <button
+                    onClick={() => schedulerStopMutation.mutate()}
+                    disabled={schedulerStopMutation.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors font-medium disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">stop</span>
+                    {schedulerStopMutation.isPending ? 'Stopping...' : 'Stop'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-surface-container/60 p-3 border border-outline-variant/15">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-outline uppercase tracking-wider">
+                  {schedulerStatus.mode === 'daily' ? 'Daily At' : 'Interval'}
+                </span>
+                <span className="material-symbols-outlined text-[16px] text-amber-600">timer</span>
+              </div>
+              {schedulerStatus.mode === 'daily' ? (
+                <p className="text-[13px] leading-tight font-bold text-amber-600 mt-1 line-clamp-2">{schedulerStatus.time_of_day}</p>
+              ) : (
+                <p className="text-xl font-bold text-amber-600">{schedulerStatus.interval_minutes}m</p>
+              )}
+              <p className="text-[10px] text-outline mt-0.5">
+                {schedulerStatus.mode === 'daily' ? 'Local Times' : 'Between runs'}
+              </p>
+            </div>
+            <div className="rounded-xl bg-surface-container/60 p-3 border border-outline-variant/15">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-outline uppercase tracking-wider">Task</span>
+                <span className="material-symbols-outlined text-[16px] text-blue-600">rocket_launch</span>
+              </div>
+              <p className="text-sm font-bold text-blue-600 truncate">{
+                schedulerStatus.task === 'full_pipeline' ? 'Full Pipeline' :
+                schedulerStatus.task === 'discover_feeds' ? 'RSS Only' : 'Crawl Only'
+              }</p>
+              <p className="text-[10px] text-outline mt-0.5">Scheduled task</p>
+            </div>
+            <div className="rounded-xl bg-surface-container/60 p-3 border border-outline-variant/15">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-outline uppercase tracking-wider">Total Runs</span>
+                <span className="material-symbols-outlined text-[16px] text-emerald-600">counter_1</span>
+              </div>
+              <p className="text-xl font-bold text-emerald-600">{schedulerStatus.total_runs}</p>
+              <p className="text-[10px] text-outline mt-0.5">Since startup</p>
+            </div>
+            <div className="rounded-xl bg-surface-container/60 p-3 border border-outline-variant/15">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-outline uppercase tracking-wider">Last Run</span>
+                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">history</span>
+              </div>
+              <p className="text-sm font-bold text-on-surface-variant truncate">
+                {schedulerStatus.last_run_at
+                  ? new Date(schedulerStatus.last_run_at).toLocaleTimeString()
+                  : '—'}
+              </p>
+              <p className="text-[10px] text-outline mt-0.5">
+                {schedulerStatus.last_run_at
+                  ? new Date(schedulerStatus.last_run_at).toLocaleDateString()
+                  : 'Never'}
+              </p>
+            </div>
+          </div>
+
+          {schedulerStatus.last_error && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+              <p className="text-xs text-red-700 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                Last error: {schedulerStatus.last_error}
+              </p>
+            </div>
+          )}
+
+          {schedulerStatus.quiet_hours.start >= 0 && schedulerStatus.quiet_hours.end >= 0 && (
+            <div className="rounded-xl bg-purple-50 border border-purple-200 p-3">
+              <p className="text-xs text-purple-700 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">bedtime</span>
+                Quiet hours: {schedulerStatus.quiet_hours.start}:00 – {schedulerStatus.quiet_hours.end}:00 UTC
+                {schedulerStatus.is_quiet_hours && ' (currently active)'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-4 border border-amber-200">
         <p className="text-xs text-amber-700 flex items-center gap-2">

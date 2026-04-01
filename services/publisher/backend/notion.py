@@ -307,30 +307,19 @@ async def push_to_notion(article: Article) -> str:
         "Featured": {"checkbox": False},
     }
 
-    extra_tags: list[str] = []
-    
     if article.category:
         # Notion 'select' options cannot contain commas. Take the first one if multiple.
-        cats = [c.strip() for c in article.category.split(",") if c.strip()]
-        if cats:
-            properties["Category"] = {"select": {"name": cats[0]}}
-            # Append any extra returned categories into the tags array
-            extra_tags.extend(cats[1:])
+        clean_category = article.category.split(",")[0].strip()
+        properties["Category"] = {"select": {"name": clean_category}}
 
-    clean_tags = []
-    # add the original tags
     if article.tags:
+        # Ensure tags don't contain commas either (Notion multi_select limit)
+        clean_tags = []
         for tag in article.tags:
             for subt in tag.split(","):
                 if subt.strip():
                     clean_tags.append(subt.strip())
-            
-    # add extra tags from category
-    for t in extra_tags:
-        if t not in clean_tags:
-            clean_tags.append(t)
-            
-    if clean_tags:
+        
         properties["Tags"] = {
             "multi_select": [{"name": t[:100]} for t in clean_tags[:100]] # limit length and count
         }

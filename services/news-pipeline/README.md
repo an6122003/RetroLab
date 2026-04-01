@@ -31,6 +31,9 @@ via a built-in FastAPI review API.
 image_pending → draft → approved → published
                      ↘ rejected
 rewrite_failed (terminal)
+
+# With auto-approve enabled:
+image_pending → approved → published
 ```
 
 ## Quick Start
@@ -134,6 +137,13 @@ uvicorn pipeline.api:app --reload --port 8000
 | `PLAYWRIGHT_HEADLESS` | ❌ | `true` | Playwright browser mode |
 | `LLM_TEMPERATURE` | ❌ | `0.7` | Claude temperature setting |
 | `LOG_LEVEL` | ❌ | `INFO` | Logging level |
+| `AUTO_APPROVE` | ❌ | `false` | Auto-approve articles after pipeline |
+| `AUTO_APPROVE_SELECT_IMAGE` | ❌ | `true` | Auto-select first image when auto-approving |
+| `SCHEDULER_ENABLED` | ❌ | `false` | Enable scheduled automatic pipeline runs |
+| `SCHEDULER_INTERVAL_MINUTES` | ❌ | `60` | Interval between scheduled runs |
+| `SCHEDULER_TASK` | ❌ | `full_pipeline` | Task to run: full_pipeline, discover_feeds, discover_crawl |
+| `SCHEDULER_QUIET_HOURS_START` | ❌ | `-1` | Start of quiet hours (0-23 UTC, -1 = off) |
+| `SCHEDULER_QUIET_HOURS_END` | ❌ | `-1` | End of quiet hours (0-23 UTC, -1 = off) |
 
 ---
 

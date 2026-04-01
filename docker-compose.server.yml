@@ -11,6 +11,11 @@ x-pipeline-common: &pipeline-common
     context: ./services/news-pipeline
     dockerfile: Dockerfile
   env_file: ./services/news-pipeline/.env
+  environment:
+    # Override localhost URLs from .env with Docker service names
+    DATABASE_URL: postgresql+asyncpg://pipeline:${POSTGRES_PASSWORD:-pipeline_secret}@postgres:5432/news_pipeline
+    REDIS_URL: redis://redis:6379/0
+    OLLAMA_BASE_URL: http://host.docker.internal:11434
   depends_on:
     postgres:
       condition: service_healthy
@@ -57,6 +62,8 @@ services:
   # ── Pipeline: Celery worker ────────────────────────────────
   worker:
     <<: *pipeline-common
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: >
       celery -A workers.celery_app worker
       -Q scraper_queue,rewriter_queue,image_search_queue,default
@@ -92,6 +99,8 @@ services:
       # Override localhost URLs from .env with Docker service names
       DATABASE_URL: postgresql+asyncpg://pipeline:${POSTGRES_PASSWORD:-pipeline_secret}@postgres:5432/news_pipeline
       REDIS_URL: redis://redis:6379/0
+      TZ: Asia/Ho_Chi_Minh
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
     ports:
       - "9001:8001"
     depends_on:
@@ -100,10 +109,14 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./services/publisher/secrets:/app/secrets
       - publisher-backups:/app/backups
       - publisher-data:/app/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
 
 volumes:
   pgdata:

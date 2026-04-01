@@ -55,9 +55,9 @@ export default function Dashboard() {
   // ── Top header bar ──
   const headerContent = (
     <>
-      <div className="flex items-center gap-12">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Posts</h1>
-        <nav className="flex gap-8">
+      <div className="flex items-center gap-4 lg:gap-12 overflow-x-auto no-scrollbar mask-gradient-right">
+        <h1 className="text-xl lg:text-2xl font-extrabold font-headline tracking-tight text-on-surface hidden lg:block">Posts</h1>
+        <nav className="flex gap-6 lg:gap-8 shrink-0">
           {([
             { key: 'composer' as SourceTab, label: 'My Articles' },
             { key: 'pipeline' as SourceTab, label: 'Pipeline' },
@@ -65,7 +65,7 @@ export default function Dashboard() {
             <button
               key={tab.key}
               onClick={() => setSourceTab(tab.key)}
-              className={`font-medium pb-2 transition-all border-b-2 ${
+              className={`font-medium pb-1 lg:pb-2 transition-all border-b-2 whitespace-nowrap ${
                 sourceTab === tab.key
                   ? 'text-primary border-primary font-bold'
                   : 'text-on-surface-variant border-transparent hover:text-primary'
@@ -76,25 +76,26 @@ export default function Dashboard() {
           ))}
         </nav>
       </div>
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 lg:gap-6 shrink-0">
         {/* Search */}
-        <div className="relative flex items-center">
+        <div className="relative hidden md:flex items-center">
           <span className="material-symbols-outlined absolute left-3 text-outline text-[20px]">search</span>
           <input
-            className="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50"
+            className="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-sm w-48 lg:w-64 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50"
             placeholder="Search articles..."
             type="text"
           />
         </div>
-        <button className="p-2 text-outline hover:bg-surface-container rounded-full transition-colors">
+        <button className="p-2 text-outline hover:bg-surface-container rounded-full transition-colors hidden sm:block">
           <span className="material-symbols-outlined">notifications</span>
         </button>
         <button
           onClick={() => navigate('/composer')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all"
+          className="flex items-center gap-2 px-3 lg:px-6 py-2 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all w-max"
         >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-          New Compose
+          <span className="material-symbols-outlined text-[18px] lg:text-[20px]">add</span>
+          <span className="hidden sm:inline">New Compose</span>
+          <span className="inline sm:hidden">New</span>
         </button>
       </div>
     </>
@@ -102,22 +103,22 @@ export default function Dashboard() {
 
   return (
     <AppShell header={headerContent}>
-      <div className="p-12">
+      <div className="p-4 lg:p-12">
         {/* ── Page Hero ── */}
-        <section className="mb-12">
-          <div className="flex justify-between items-end">
+        <section className="mb-6 lg:mb-12">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
-              <h2 className="text-[2.75rem] font-extrabold font-headline leading-none text-on-surface">
+              <h2 className="text-3xl lg:text-[2.75rem] font-extrabold font-headline leading-none text-on-surface">
                 {sourceTab === 'composer' ? 'Editorial Queue' : 'Pipeline Feed'}
               </h2>
-              <p className="text-on-surface-variant mt-3 text-lg font-medium max-w-2xl">
+              <p className="text-on-surface-variant mt-2 lg:mt-3 text-sm lg:text-lg font-medium max-w-2xl">
                 {sourceTab === 'composer'
                   ? 'Curating the next generation of digital narratives.'
                   : 'Auto-scraped from RSS feeds and web sources.'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest">
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-[10px] lg:text-sm font-semibold text-on-surface-variant uppercase tracking-widest">
                 Last sync: {timeAgo(new Date().toISOString())}
               </span>
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -208,34 +209,34 @@ export default function Dashboard() {
                     ) : null;
                   })()}
 
-                  <div className="p-8">
-                    <div className="flex items-center gap-3 mb-4">
+                  <div className="p-4 lg:p-8">
+                    <div className="flex flex-wrap items-center gap-2 lg:gap-3 mb-3 lg:mb-4">
                       <StatusBadge status={featuredArticle.status} />
                       {featuredArticle.category && (
                         <span className="text-[10px] font-bold text-primary tracking-widest uppercase">{featuredArticle.category}</span>
                       )}
-                      <span className="w-1 h-1 rounded-full bg-outline-variant" />
-                      <span className="text-on-surface-variant text-sm font-medium">{timeAgo(featuredArticle.created_at)}</span>
+                      <span className="hidden lg:inline-block w-1 h-1 rounded-full bg-outline-variant" />
+                      <span className="text-on-surface-variant text-xs lg:text-sm font-medium">{timeAgo(featuredArticle.created_at)}</span>
                     </div>
-                    <h3 className="text-3xl font-bold font-headline mb-4 group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="text-xl lg:text-3xl font-bold font-headline mb-3 lg:mb-4 group-hover:text-primary transition-colors line-clamp-2">
                       {featuredArticle.title || 'Untitled'}
                     </h3>
                     {featuredArticle.summary && (
-                      <p className="text-on-surface-variant text-lg leading-relaxed mb-6 max-w-2xl line-clamp-3">
+                      <p className="text-on-surface-variant text-sm lg:text-lg leading-relaxed mb-4 lg:mb-6 max-w-2xl line-clamp-3">
                         {featuredArticle.summary}
                       </p>
                     )}
-                    <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap">
                       {featuredArticle.source_outlet && (
-                        <span className="text-sm font-medium text-on-surface-variant">{featuredArticle.source_outlet}</span>
+                        <span className="text-xs lg:text-sm font-medium text-on-surface-variant">{featuredArticle.source_outlet}</span>
                       )}
                       {featuredArticle.reading_time_minutes && (
-                        <span className="flex items-center gap-1.5 text-sm text-on-surface-variant">
-                          <span className="material-symbols-outlined text-lg">schedule</span>
+                        <span className="flex items-center gap-1.5 text-xs lg:text-sm text-on-surface-variant">
+                          <span className="material-symbols-outlined text-sm lg:text-lg">schedule</span>
                           {featuredArticle.reading_time_minutes} min read
                         </span>
                       )}
-                      {featuredArticle.rewrite_model && <ModelBadge model={featuredArticle.rewrite_model} size="md" />}
+                      {featuredArticle.rewrite_model && <div className="mt-2 sm:mt-0"><ModelBadge model={featuredArticle.rewrite_model} size="sm" /></div>}
                     </div>
                   </div>
                 </div>
@@ -273,7 +274,7 @@ export default function Dashboard() {
             )}
 
             {/* ── Article List Cards ── */}
-            <div className="lg:col-span-12 space-y-6 mt-4">
+            <div className="lg:col-span-12 space-y-4 lg:space-y-6 mt-2 lg:mt-4">
               {listArticles.map(article => (
                 <ArticleListCard
                   key={article.id}
@@ -290,12 +291,12 @@ export default function Dashboard() {
       </div>
 
       {/* ── FAB ── */}
-      <div className="fixed bottom-10 right-10 z-40">
+      <div className="fixed flex lg:bottom-10 lg:right-10 bottom-4 right-4 z-40">
         <button
           onClick={() => navigate('/composer')}
-          className="w-16 h-16 rounded-full bg-primary text-on-primary shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-transform"
+          className="w-14 h-14 lg:w-16 lg:h-16 rounded-full bg-primary text-on-primary shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-transform"
         >
-          <span className="material-symbols-outlined text-[32px]">edit_note</span>
+          <span className="material-symbols-outlined text-[28px] lg:text-[32px]">edit_note</span>
         </button>
       </div>
     </AppShell>
@@ -352,10 +353,9 @@ function ArticleListCard({ article, onClick, onDelete }: {
         {article.summary && (
           <p className="text-on-surface-variant text-sm line-clamp-2">{article.summary}</p>
         )}
-        {/* Meta row: source + reading time + AI model */}
-        <div className="flex items-center gap-3 mt-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2 mt-3">
           {article.source_outlet && (
-            <span className="text-xs text-on-surface-variant">{article.source_outlet}</span>
+            <span className="text-xs text-on-surface-variant font-medium">{article.source_outlet}</span>
           )}
           {article.reading_time_minutes && (
             <span className="flex items-center gap-1 text-xs text-on-surface-variant">
@@ -363,12 +363,12 @@ function ArticleListCard({ article, onClick, onDelete }: {
               {article.reading_time_minutes} min read
             </span>
           )}
-          {article.rewrite_model && <ModelBadge model={article.rewrite_model} />}
+          {article.rewrite_model && <ModelBadge model={article.rewrite_model} size="sm" />}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col items-end gap-3 flex-shrink-0">
+      <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 w-full md:w-auto flex-shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-outline-variant/15 mt-2 md:mt-0">
         <StatusBadge status={article.status} />
         <div className="flex gap-2">
           {isRejected ? (

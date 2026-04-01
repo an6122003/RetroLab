@@ -310,6 +310,22 @@ export const api = {
       sources: { name: string; type: string; tags: string[]; enabled: boolean }[];
     }>('/pipeline/sources/tags'),
 
+  // Scheduler
+  getSchedulerStatus: () =>
+    request<SchedulerStatus>('/pipeline/scheduler/status'),
+
+  startScheduler: () =>
+    request<{ status: string; message: string }>('/pipeline/scheduler/start', { method: 'POST' }),
+
+  stopScheduler: () =>
+    request<{ status: string; message: string }>('/pipeline/scheduler/stop', { method: 'POST' }),
+
+  schedulerRunNow: () =>
+    request<{ status: string; task_ids: string[]; task: string; message: string }>('/pipeline/scheduler/run-now', { method: 'POST' }),
+
+  ensureSchedulerStarted: () =>
+    request<{ status: string }>('/pipeline/scheduler/ensure-started'),
+
   // Composer
   scrapeOnly: (url: string) =>
     request<ComposeResponse>('/pipeline/compose', {
@@ -442,6 +458,34 @@ export interface PipelineConfig {
   max_articles_per_run: number;
   scraper_delay_seconds: number;
   enable_dalle_fallback: boolean;
+  max_articles_per_source: number;
+  randomize_sources: boolean;
+  // Auto-Approval
+  auto_approve: boolean;
+  auto_approve_select_image: boolean;
+  // Scheduler
+  scheduler_enabled: boolean;
+  scheduler_mode: string;
+  scheduler_time_of_day: string;
+  scheduler_interval_minutes: number;
+  scheduler_task: string;
+  scheduler_quiet_hours_start: number;
+  scheduler_quiet_hours_end: number;
+}
+
+export interface SchedulerStatus {
+  enabled: boolean;
+  mode: string;
+  time_of_day: string;
+  interval_minutes: number;
+  task: string;
+  quiet_hours: { start: number; end: number };
+  running: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  total_runs: number;
+  last_error: string | null;
+  is_quiet_hours: boolean;
 }
 
 // ── Composer types ──────────────────────────────────────────────

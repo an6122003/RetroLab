@@ -282,20 +282,20 @@ export default function ArticleEditorPage() {
 
   const headerContent = (
     <>
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-on-surface">Editor</h1>
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        <h1 className="text-xl sm:text-2xl font-extrabold font-headline tracking-tight text-on-surface">Editor</h1>
         {article && (
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-high text-on-surface-variant text-xs font-semibold rounded-full">
+          <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-surface-container-high text-on-surface-variant text-[10px] sm:text-xs font-semibold rounded-full shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Editing
           </span>
         )}
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar justify-end w-full">
         {article && editorActions && (
           <>
             {/* Save status */}
-            <span className={`text-sm font-medium ${
+            <span className={`hidden md:inline text-[10px] sm:text-sm font-medium shrink-0 ${
               editorActions.saveStatus === 'saving' ? 'text-amber-500 animate-pulse' :
               editorActions.saveStatus === 'saved' ? 'text-emerald-600' :
               'text-on-surface-variant'
@@ -308,7 +308,7 @@ export default function ArticleEditorPage() {
             {/* Save Draft */}
             <button
               onClick={editorActions.onSave}
-              className="px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+              className="px-2 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
             >
               Save Draft
             </button>
@@ -320,7 +320,7 @@ export default function ArticleEditorPage() {
                   if (window.confirm('Reject this article?')) editorActions.onReject();
                 }}
                 disabled={editorActions.isRejecting}
-                className="px-4 py-2 text-sm font-medium text-error/80 hover:text-error transition-colors disabled:opacity-50"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium text-error/80 hover:text-error transition-colors disabled:opacity-50 shrink-0"
               >
                 {editorActions.isRejecting ? 'Rejecting…' : 'Reject'}
               </button>
@@ -332,7 +332,7 @@ export default function ArticleEditorPage() {
                 onClick={editorActions.onApprove}
                 disabled={editorActions.isApproving || !editorActions.approveReady}
                 title={!editorActions.approveReady ? `Missing: ${editorActions.approveMissing.join(', ')}` : 'Approve article'}
-                className={`px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                className={`px-2 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold transition-colors disabled:opacity-50 shrink-0 ${
                   editorActions.approveReady
                     ? 'text-primary hover:text-primary/80'
                     : 'text-on-surface-variant cursor-not-allowed'
@@ -347,17 +347,17 @@ export default function ArticleEditorPage() {
               <button
                 onClick={editorActions.onPublish}
                 disabled={editorActions.isPublishing}
-                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold text-sm rounded-lg hover:translate-y-[-2px] active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold text-[11px] sm:text-sm rounded-lg hover:translate-y-[-2px] active:scale-95 transition-all shadow-sm disabled:opacity-50 shrink-0"
               >
-                <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">rocket_launch</span>
                 {editorActions.isPublishing ? 'Publishing…' : 'Publish'}
               </button>
             )}
 
             {/* Published state */}
             {editorActions.isPublished && (
-              <div className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 font-semibold text-sm rounded-lg border border-emerald-200">
-                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 font-semibold text-[11px] sm:text-sm rounded-lg border border-emerald-200 shrink-0">
+                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">check_circle</span>
                 Published
               </div>
             )}

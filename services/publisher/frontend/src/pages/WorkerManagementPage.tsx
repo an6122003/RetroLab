@@ -164,10 +164,10 @@ export default function WorkerManagementPage() {
 
   // ── Header ──
   const headerContent = (
-    <>
-      <div className="flex items-center gap-12">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-primary">Worker Management</h1>
-        <nav className="flex gap-8">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+      <div className="flex items-center gap-4 sm:gap-12 w-full overflow-hidden">
+        <h1 className="hidden sm:block text-xl sm:text-2xl font-extrabold font-headline tracking-tight text-primary shrink-0">Worker Management</h1>
+        <nav className="flex gap-4 sm:gap-8 overflow-x-auto no-scrollbar pb-1 sm:pb-0 w-full">
           {([
             { key: 'workers' as WorkerTab, label: 'Workers' },
             { key: 'queues' as WorkerTab, label: 'Queues' },
@@ -177,7 +177,7 @@ export default function WorkerManagementPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`font-medium pb-2 transition-all border-b-2 ${
+              className={`font-medium pb-2 transition-all border-b-2 whitespace-nowrap text-sm sm:text-base ${
                 tab === t.key
                   ? 'text-primary border-primary font-bold'
                   : 'text-on-surface-variant border-transparent hover:text-primary'
@@ -188,41 +188,41 @@ export default function WorkerManagementPage() {
           ))}
         </nav>
       </div>
-      <div className="flex items-center gap-4">
-        <button className="p-2 text-outline hover:bg-surface-container rounded-full transition-colors">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0 mt-2 md:mt-0">
+        <button className="p-2 text-outline hover:bg-surface-container rounded-full transition-colors flex-shrink-0">
           <span className="material-symbols-outlined">notifications</span>
         </button>
         {!isStopped ? (
           <button
             onClick={() => cancelMutation.mutate()}
             disabled={cancelMutation.isPending}
-            className="flex items-center gap-2 px-5 py-2.5 bg-error text-on-error font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm disabled:opacity-50"
+            className="flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-error text-on-error font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-xs sm:text-sm disabled:opacity-50 min-w-max"
           >
-            <span className="material-symbols-outlined text-[20px]">stop_circle</span>
+            <span className="material-symbols-outlined text-[16px] sm:text-[20px]">stop_circle</span>
             {cancelMutation.isPending ? 'Stopping...' : 'Stop All'}
           </button>
         ) : (
           <button
             onClick={() => resumeMutation.mutate()}
             disabled={resumeMutation.isPending}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm disabled:opacity-50"
+            className="flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-xs sm:text-sm disabled:opacity-50 min-w-max"
           >
-            <span className="material-symbols-outlined text-[20px]">play_arrow</span>
+            <span className="material-symbols-outlined text-[16px] sm:text-[20px]">play_arrow</span>
             {resumeMutation.isPending ? 'Resuming...' : 'Resume Pipeline'}
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 
   return (
     <AppShell header={headerContent}>
-      <div className="p-12 min-h-screen">
+      <div className="p-4 md:p-6 lg:p-12 min-h-screen">
         {/* ── Stopped banner ── */}
         {isStopped && (
-          <div className="mb-8 rounded-xl bg-error-container border border-error/20 p-4 flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-error animate-pulse" />
-            <span className="text-sm text-on-error-container font-medium">
+          <div className="mb-6 md:mb-8 rounded-xl bg-error-container border border-error/20 p-4 flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-error animate-pulse shrink-0" />
+            <span className="text-xs sm:text-sm text-on-error-container font-medium">
               Pipeline is stopped — all tasks will abort. Click Resume to restart.
             </span>
           </div>
@@ -400,27 +400,27 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
   };
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 md:space-y-8">
       {/* Hero */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight font-headline mb-2">Celery Workers</h2>
-          <p className="text-on-surface-variant text-lg">Real-time status of the news-pipeline Celery task workers.</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-headline mb-1 md:mb-2">Celery Workers</h2>
+          <p className="text-on-surface-variant text-sm md:text-lg">Real-time status of the news-pipeline Celery task workers.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 md:gap-3 w-full md:w-auto">
           <button
             onClick={() => setShowSpawnDialog(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm"
+            className="flex-1 md:flex-initial flex justify-center items-center gap-2 px-4 md:px-5 py-2.5 bg-emerald-600 text-white font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm whitespace-nowrap"
           >
-            <span className="material-symbols-outlined text-[20px]">add</span>
+            <span className="material-symbols-outlined text-[18px] md:text-[20px]">add</span>
             Spawn Worker
           </button>
           <button
             onClick={onRestart}
             disabled={isRestarting}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm disabled:opacity-50"
+            className="flex-1 md:flex-initial flex justify-center items-center gap-2 px-4 md:px-5 py-2.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm disabled:opacity-50 whitespace-nowrap"
           >
-            <span className="material-symbols-outlined text-[20px]">restart_alt</span>
+            <span className="material-symbols-outlined text-[18px] md:text-[20px]">restart_alt</span>
             {isRestarting ? 'Restarting...' : 'Restart All'}
           </button>
         </div>
@@ -429,11 +429,11 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
       {/* Redis Health Banner */}
       {!redisOk && (
         <div className="rounded-xl bg-error-container border border-error/20 p-4 flex items-center gap-3">
-          <span className="material-symbols-outlined text-error text-xl">link_off</span>
+          <span className="material-symbols-outlined text-error text-xl shrink-0">link_off</span>
           <div>
-            <p className="text-sm text-on-error-container font-bold">Redis Broker Unreachable</p>
-            <p className="text-xs text-on-error-container/80">
-              {redisStatus?.message || 'Workers cannot start without Redis. Make sure docker compose is running (redis + postgres).'}
+            <p className="text-xs sm:text-sm text-on-error-container font-bold">Redis Broker Unreachable</p>
+            <p className="text-[10px] sm:text-xs text-on-error-container/80 mt-0.5">
+              {redisStatus?.message || 'Workers cannot start without Redis. Make sure docker compose is running.'}
             </p>
           </div>
         </div>
@@ -607,7 +607,7 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
 
       {/* System Metrics */}
       {system && (
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -719,7 +719,7 @@ function WorkersTab({ workers, isAlive, isLoading, onRestart, isRestarting, acti
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-4 gap-6 py-4 border-y border-outline-variant/10">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 py-4 border-y border-outline-variant/10">
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-2">Active</p>
                     <p className="text-xl font-bold">{w.active_tasks}</p>
@@ -817,12 +817,12 @@ function QueuesTab({ queueStatus, hasStuck, onRetry, onPurge, isRetrying, isPurg
 }) {
   return (
     <section className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight font-headline mb-2">Queue Management</h2>
-          <p className="text-on-surface-variant text-lg">Monitor and manage Celery task queues. Auto-refreshes every 3s.</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-headline mb-1 md:mb-2">Queue Management</h2>
+          <p className="text-on-surface-variant text-sm md:text-lg">Monitor and manage Celery task queues. Auto-refreshes every 3s.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto">
           <button
             onClick={() => onRetry('all')}
             disabled={isRetrying}
@@ -872,7 +872,7 @@ function QueuesTab({ queueStatus, hasStuck, onRetry, onPurge, isRetrying, isPurg
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-8 py-4 border-y border-outline-variant/10">
+              <div className="grid grid-cols-3 gap-4 md:gap-8 py-4 border-y border-outline-variant/10">
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-2">Queued</p>
                   <p className={`text-xl font-bold ${meta.color}`}>{depth}</p>
@@ -889,7 +889,7 @@ function QueuesTab({ queueStatus, hasStuck, onRetry, onPurge, isRetrying, isPurg
                 </div>
               </div>
 
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 w-full">
                 {stuckCount > 0 ? (
                   <div className="bg-error-container/20 px-4 py-1.5 rounded-lg">
                     <p className="text-xs text-error font-medium">{stuckCount} tasks stuck — not in any queue</p>

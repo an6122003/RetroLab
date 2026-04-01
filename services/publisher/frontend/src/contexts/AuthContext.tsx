@@ -47,6 +47,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    // Activity tracking for auto-logout
+    let timeoutId: number;
+
+    const resetTimer = () => {
+      window.clearTimeout(timeoutId);
+      // Auto logout after 60 minutes of inactivity
+      timeoutId = window.setTimeout(async () => {
+        if (session) {
+          console.log('[Auth] Auto-logging out due to inactivity');
+          await signOut();
+        }
+      }, 60 * 60 * 1000);
+    };
+
+    if (session) {
+      resetTimer();
+      window.addEventListener('mousemove', resetTimer);
+      window.addEventListener('keydown', resetTimer);
+      window.addEventListener('click', resetTimer);
+      window.addEventListener('scroll', resetTimer);
+      window.addEventListener('touchstart', resetTimer);
+    }
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+      window.removeEventListener('touchstart', resetTimer);
+    };
+  }, [session]);
+
   const signInWithEmail = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;

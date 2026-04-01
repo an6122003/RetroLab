@@ -150,24 +150,24 @@ export default function BackupPage() {
   // ── Header ──
   const headerContent = (
     <>
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-extrabold font-headline tracking-tight text-primary">Backup & Restore</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-12 w-full overflow-hidden">
+        <h1 className="text-xl sm:text-2xl font-extrabold font-headline tracking-tight text-primary">Backup & Restore</h1>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 mt-3 sm:mt-0 w-full sm:w-auto">
         <button
           onClick={handleImport}
           disabled={importMutation.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-surface-container-high text-on-surface font-semibold rounded-lg hover:bg-surface-container transition-colors text-sm disabled:opacity-50"
+          className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-surface-container-high text-on-surface font-semibold rounded-lg hover:bg-surface-container transition-colors text-xs sm:text-sm disabled:opacity-50 min-w-max"
         >
-          <span className="material-symbols-outlined text-[20px]">upload_file</span>
+          <span className="material-symbols-outlined text-[18px] sm:text-[20px]">upload_file</span>
           {importMutation.isPending ? 'Importing…' : 'Import'}
         </button>
         <button
           onClick={() => exportMutation.mutate()}
           disabled={exportMutation.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-sm disabled:opacity-50"
+          className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-lg shadow-sm hover:translate-y-[-2px] active:scale-95 transition-all text-xs sm:text-sm disabled:opacity-50 min-w-max"
         >
-          <span className="material-symbols-outlined text-[20px]">backup</span>
+          <span className="material-symbols-outlined text-[18px] sm:text-[20px]">backup</span>
           {exportMutation.isPending ? 'Exporting…' : 'Create Backup'}
         </button>
       </div>
@@ -176,7 +176,7 @@ export default function BackupPage() {
 
   return (
     <AppShell header={headerContent}>
-      <div className="p-12 min-h-screen space-y-10">
+      <div className="p-4 md:p-6 lg:p-12 min-h-screen space-y-8 lg:space-y-10">
         <input
           ref={fileInputRef}
           type="file"
@@ -186,16 +186,16 @@ export default function BackupPage() {
         />
 
         {/* ── Schedule Config ── */}
-        <section className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 p-8">
-          <div className="flex items-start justify-between mb-6">
+        <section className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 p-4 md:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-xl font-bold font-headline mb-1">Auto-Backup Schedule</h2>
-              <p className="text-sm text-on-surface-variant">Configure periodic automatic backups of all data.</p>
+              <h2 className="text-lg md:text-xl font-bold font-headline mb-1">Auto-Backup Schedule</h2>
+              <p className="text-xs md:text-sm text-on-surface-variant">Configure periodic automatic backups of all data.</p>
             </div>
             {config?.last_backup && (
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-[10px] uppercase tracking-widest text-outline font-bold mb-1">Last Backup</p>
-                <p className="text-sm text-on-surface-variant">{new Date(config.last_backup).toLocaleString()}</p>
+                <p className="text-xs md:text-sm text-on-surface-variant">{new Date(config.last_backup).toLocaleString()}</p>
               </div>
             )}
           </div>
@@ -262,15 +262,15 @@ export default function BackupPage() {
         {/* ── Google Drive Sync ── */}
         <section className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 overflow-hidden">
           {/* Drive header with Google branding */}
-          <div className="px-8 py-6 border-b border-outline-variant/15 flex items-start justify-between">
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-outline-variant/15 flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center shadow-sm">
-                <span className="material-symbols-outlined text-white text-[24px]">cloud_sync</span>
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-blue-500 via-green-500 to-yellow-500 flex items-center justify-center shadow-sm shrink-0">
+                <span className="material-symbols-outlined text-white text-[20px] md:text-[24px]">cloud_sync</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold font-headline">Google Drive Sync</h2>
-                <p className="text-sm text-on-surface-variant">
-                  Auto-upload backups to Google Drive with version history.
+                <h2 className="text-lg md:text-xl font-bold font-headline">Google Drive Sync</h2>
+                <p className="text-xs md:text-sm text-on-surface-variant">
+                  Auto-upload backups to Google Drive.
                 </p>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function BackupPage() {
             </div>
           </div>
 
-          <div className="p-8">
+          <div className="p-4 md:p-8">
             {/* SA info */}
             {driveConfig?.sa_email && (
               <div className="mb-6 px-4 py-3 bg-surface-container rounded-lg flex items-center gap-3">
@@ -508,22 +508,22 @@ export default function BackupPage() {
                 return (
                   <div
                     key={b.filename}
-                    className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 p-6 flex items-center justify-between hover:shadow-lg hover:shadow-primary/5 transition-all"
+                    className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-lg hover:shadow-primary/5 transition-all"
                   >
-                    <div className="flex items-center gap-5">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    <div className="flex items-center gap-4 md:gap-5 w-full md:w-auto">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 ${
                         isRecent ? 'bg-emerald-50 text-emerald-600' : 'bg-surface-container text-outline'
                       }`}>
                         <span className="material-symbols-outlined">description</span>
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-on-surface">{b.filename}</h4>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-on-surface-variant">{date.toLocaleString()}</span>
-                          <span className="text-xs text-outline">•</span>
-                          <span className="text-xs text-on-surface-variant">{b.size_mb} MB</span>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-on-surface text-sm md:text-base truncate">{b.filename}</h4>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1">
+                          <span className="text-[10px] md:text-xs text-on-surface-variant whitespace-nowrap">{date.toLocaleString()}</span>
+                          <span className="text-[10px] md:text-xs text-outline hidden sm:inline">•</span>
+                          <span className="text-[10px] md:text-xs text-on-surface-variant">{b.size_mb} MB</span>
                           {isRecent && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold uppercase tracking-wider">
+                            <span className="text-[9px] md:text-[10px] px-1.5 md:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold uppercase tracking-wider">
                               Recent
                             </span>
                           )}
@@ -531,7 +531,7 @@ export default function BackupPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 justify-end w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t border-outline-variant/10 md:border-0">
                       {/* Upload to Drive button (only if Drive is configured) */}
                       {isDriveEnabled && currentFolderId && (
                         <button
