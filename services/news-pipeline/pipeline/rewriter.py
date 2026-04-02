@@ -40,7 +40,7 @@ VALID_CATEGORIES = ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin"
 USER_PROMPT_TEMPLATE = """\
 Rewrite the following article in {lang}.
 Title, body, summary, perspective, category, and tags → all in {lang}.
-image_keywords and inline_image_keywords → English always (for image search APIs).
+image_keywords → English always (for image search APIs).
 
 SOURCE ARTICLE:
 Title: {title}
@@ -50,7 +50,7 @@ Published: {published_at}
 
 Body:
 {body_text}
-
+{available_images_section}
 ---
 
 Return a JSON object with exactly these fields:
@@ -63,21 +63,29 @@ Return a JSON object with exactly these fields:
   * Tables only for real comparisons (e.g. specs side-by-side, pricing tiers)
   * > blockquotes only for actual quotes from people or official statements
   * Do NOT use callouts, code blocks, or excessive headers. Write flowing paragraphs as the primary format.
-  * Image placeholders: Include 2-4 images using ![description](PLACEHOLDER_IMAGE_N) syntax.
-    Place each at the CONTEXTUALLY CORRECT position where it relates to surrounding text.
-    The description inside ![...] MUST describe the specific content being discussed at that point
-    (e.g. ![Samsung Galaxy S26 Ultra design](PLACEHOLDER_IMAGE_1), NOT ![image](PLACEHOLDER_IMAGE_1)).
-    DO NOT put all images at the end — distribute them naturally throughout the article.
+  * IMAGES — CRITICAL RULES:
+    1. If the source article body contains inline images with REAL URLs (e.g. ![alt](https://example.com/image.jpg)),
+       you MUST KEEP those exact image URLs in your rewritten body at the contextually correct position.
+       These are original images from the source — they are relevant and should be preserved.
+    2. If AVAILABLE IMAGES are provided above, you may use them in the body where contextually appropriate.
+       Use the format ![Vietnamese description](URL) with the exact URL from the list.
+       Pick images whose description matches what you are writing about at that point in the article.
+       You do NOT have to use all of them — only use images that genuinely enhance the content.
+    3. DO NOT put all images at the end — distribute them naturally throughout the article.
+    4. DO NOT invent or hallucinate image URLs. Use ONLY URLs from the source article body or the AVAILABLE IMAGES list.
+    5. If no AVAILABLE IMAGES are provided and you want to suggest an image position,
+       use ![description](PLACEHOLDER_IMAGE_N) sparingly (1-3 max).
   Focus on compelling, insightful writing. Elaborate on the original content to add value, but do not hallucinate facts.
   * Length & Detail: If the source article is very short (under 300 words), expand it into a comprehensive article by explaining the underlying concepts, background context, or historical significance. Do NOT simply translate a brief snippet.
   * Fact Accuracy: If you are expanding the article, ONLY state facts you are highly confident about. If the topic is very new or niche and you are unsure, do not guess or hallucinate details. Stick to the provided text.
   * Category Adaptation: The news post could be from various categories (hardware, software, AI, casual gaming, enterprise IT). Adapt your writing style and tone to perfectly suit the specific category of the source article.
 - "summary": 2-3 sentences in {lang}, professional tone.
 - "perspective": 2 sentences of editorial opinion in {lang}. IMPORTANT: When stating an opinion or evaluating, you MUST refer to yourself as "RetroLab", "Đội ngũ RetroLab", "Team RetroLab", or "RetroLab chúng mình" (e.g. "Theo đánh giá của RetroLab...", "Đội ngũ RetroLab nhận thấy..."). NEVER use "Tôi nghĩ", "Theo tôi", "Chúng tôi", or other generic pronouns.
-- "category": REQUIRED. A SINGLE string — pick the ONE BEST-FIT category from this list: ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]. Choose the most specific match. If an article is about AI, pick "AI" (not "Tin tức"). If about gaming/emulation, pick "Game & Giả Lập". If about programming/IT, pick "Công nghệ thông tin". Use "Tin tức" only for general tech news that doesn't fit other categories. Any other relevant categories should go into "tags" instead.
-- "image_keywords": 4-6 English phrases for high-quality hero image search.
-- "inline_image_keywords": a JSON array of search phrases for each placeholder (must match # of placeholders in body). Each phrase should describe the specific subject at that point in the article.
-- "tags": 5-10 topic tags in {lang}. ALL tags must be in Vietnamese (e.g. "điện thoại", "trí tuệ nhân tạo", "đánh giá", "bảo mật", "phần mềm"). The ONLY exception: keep product/brand names in English (e.g. "Samsung", "iPhone", "ChatGPT"). Do NOT use English words for concepts — translate them.
+- "category": REQUIRED. A SINGLE string — pick the ONE BEST-FIT category from this list: ["Tin tức", "AI", "Công Nghệ", "Công nghệ thông tin", "Game & Giả Lập"]. Choose the most specific match. If an article is about AI, pick "AI" (not "Tin tức"). If about gaming/emulation, pick "Game & Giả Lập". If about programming/IT, pick "Công nghệ thông tin". Use "Tin tức" only for general tech news that doesn't fit other categories.
+- "hero_image_url": Pick the SINGLE BEST image URL for the article's cover/hero image. Choose the image that best represents the article's main subject. Prefer product photos, key visuals, or action shots. AVOID author headshots, logos, ads, icons, or generic stock imagery. Must be an exact URL from the source body or AVAILABLE IMAGES list. If no suitable image exists, return null.
+- "image_keywords": 4-6 English phrases for additional hero image search. Make these VERY SPECIFIC to the article subject (e.g. "Apple Car Project Titan concept render", NOT "car technology"). Only needed if no good hero image was found above.
+- "inline_image_keywords": a JSON array of search phrases for each PLACEHOLDER_IMAGE_N used in body. If you used real URLs from available images instead, return an empty array [].
+- "tags": 5-10 topic tags in {lang}. ALL tags must be in Vietnamese (e.g. "điện thoại", "trí tuệ nhân tạo", "đánh giá", "bảo mật", "phần mềm"). The ONLY exception: keep product/brand names in English (e.g. "Samsung", "iPhone", "ChatGPT"). Do NOT use English words for concepts — translate them. IMPORTANT: If the article fits multiple categories from the category list above, include the OTHER applicable categories (the ones NOT chosen as the primary "category") as additional tags here. For example, if the article is about an AI-powered game and you chose "AI" as the primary category, add "Game & Giả Lập" as a tag.
 - "reading_time_minutes": estimated reading time as an integer.
 
 CRITICAL — CONTENT CLEANING RULES:
@@ -231,6 +239,7 @@ async def rewrite_article(
     raw_article: dict[str, Any],
     source_name: str = "",
     output_language_name: str | None = None,
+    available_images: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """
     Rewrite a raw article using the configured LLM provider.
@@ -239,10 +248,13 @@ async def rewrite_article(
         raw_article: dict with title, author, body_text, published_at, source_name
         source_name: name of the source outlet
         output_language_name: language to rewrite in (defaults to settings value)
+        available_images: optional list of pre-searched images with {url, description}
+                         that the LLM can place directly in the article body
 
     Returns:
         Parsed JSON dict with rewritten fields:
-            title, body, summary, perspective, image_keywords, tags, reading_time_minutes
+            title, body, summary, perspective, image_keywords, tags, reading_time_minutes,
+            hero_image_url
 
     Raises:
         ValueError: if the LLM returns malformed JSON after retry.
@@ -250,6 +262,17 @@ async def rewrite_article(
     settings = get_settings()
     lang = output_language_name or settings.output_language_name
     provider = settings.llm_provider.lower()
+
+    # Build available images section for the prompt
+    available_images_section = ""
+    if available_images:
+        lines = ["\n\nAVAILABLE IMAGES (pre-searched, use these URLs directly in body where appropriate):"]
+        for i, img in enumerate(available_images, 1):
+            desc = img.get("description") or img.get("title") or "No description"
+            url = img.get("url", "")
+            lines.append(f"  {i}. {url} — \"{desc}\"")
+        lines.append("")
+        available_images_section = "\n".join(lines)
 
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(lang=lang)
     user_prompt = USER_PROMPT_TEMPLATE.format(
@@ -259,6 +282,7 @@ async def rewrite_article(
         source_name=source_name,
         published_at=raw_article.get("published_at", "Unknown"),
         body_text=raw_article.get("body_text", ""),
+        available_images_section=available_images_section,
     )
 
     # Determine model name for DB tracking

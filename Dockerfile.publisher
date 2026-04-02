@@ -44,8 +44,8 @@ RUN apt-get update && \
 COPY --from=pydeps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=pydeps /usr/local/bin /usr/local/bin
 
-# Install Playwright Chromium for headless scraping fallback
-# Also install xvfb for Tier 4 non-headless mode (anti-bot bypass)
+# Install Playwright Chromium into /app/.playwright (accessible by non-root user)
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright
 RUN playwright install --with-deps chromium && \
     apt-get update && apt-get install -y --no-install-recommends xvfb && \
     rm -rf /var/lib/apt/lists/*
@@ -62,10 +62,10 @@ COPY --from=frontend /app/frontend/dist ./frontend-dist/
 # Don't run as root
 RUN useradd --system --uid 1000 publisher && \
     mkdir -p /app/backups /app/secrets /app/pipeline/logs /app/data && \
-    chown -R publisher:publisher /app/backups /app/secrets /app/pipeline/logs /app/data /root/.cache/ms-playwright
+    chown -R publisher:publisher /app/backups /app/secrets /app/pipeline/logs /app/data /app/.playwright
 USER publisher
 
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8001

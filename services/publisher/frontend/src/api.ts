@@ -121,6 +121,9 @@ export const api = {
   publishArticle: (id: string) =>
     request<Article>(`/articles/${id}/publish`, { method: 'POST' }),
 
+  unpublishArticle: (id: string) =>
+    request<Article>(`/articles/${id}/unpublish`, { method: 'POST' }),
+
   deleteArticle: (id: string) =>
     request<{ status: string; id: string }>(`/articles/${id}`, { method: 'DELETE' }),
 
@@ -134,9 +137,10 @@ export const api = {
 
   getFinOps: () => request<any>('/finops'),
 
-  searchImages: (articleId: string, query?: string) => {
+  searchImages: (articleId: string, query?: string, platform?: string) => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
+    if (platform && platform !== 'all') params.set('platform', platform);
     return request<any[]>(`/articles/${articleId}/search-images?${params}`, {
       method: 'POST',
     });

@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     # ── Image search keys (all optional — Google Images scraped for free) ──
     unsplash_access_key: str = Field(default="", description="Unsplash API access key (fallback)")
     pexels_api_key: str = Field(default="", description="Pexels API key (fallback)")
+    google_search_api_key: str = Field(default="", description="Google Custom Search API key")
+    google_search_cx: str = Field(default="", description="Google Custom Search Engine ID (CX)")
 
 
     # ── Optional ─────────────────────────────────────────────────

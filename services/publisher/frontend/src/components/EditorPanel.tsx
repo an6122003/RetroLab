@@ -21,9 +21,11 @@ interface EditorActions {
   onReject: () => void;
   onApprove: () => void;
   onPublish: () => void;
+  onUnpublish: () => void;
   isApproving: boolean;
   isRejecting: boolean;
   isPublishing: boolean;
+  isUnpublishing: boolean;
 }
 
 interface EditorPanelProps {
@@ -42,6 +44,8 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchPlatform, setSearchPlatform] = useState<string>('all');
+  const [filterSource, setFilterSource] = useState<string>('all');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const hasManualSlug = useRef(!!initialArticle.slug);
 
@@ -61,14 +65,14 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
       saveMutation.mutate({ slug });
     }
 
-    // Auto-set author if needed
+    // Auto-set author if needed — ensure "Tổng hợp bởi RetroLab" branding
     const brand = 'Tổng hợp bởi RetroLab';
     const ogAuthor = initialArticle.source_author;
     let targetAuthor = '';
 
     if (ogAuthor) {
       if (!ogAuthor.includes(brand)) {
-        targetAuthor = `${ogAuthor} | ${brand}`;
+        targetAuthor = `${ogAuthor} - ${brand}`;
       } else {
         targetAuthor = ogAuthor;
       }
@@ -136,10 +140,10 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
   );
 
   // Search more images
-  const handleSearchImages = async (query?: string) => {
+  const handleSearchImages = async (query?: string, platform?: string) => {
     setIsSearching(true);
     try {
-      const newImages = await api.searchImages(article.id, query || undefined);
+      const newImages = await api.searchImages(article.id, query || undefined, platform || searchPlatform);
       // Refresh article data
       const updated = await api.getArticle(article.id);
       setArticle(updated);
@@ -217,8 +221,20 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
     onError: (err) => toast.error((err as Error).message),
   });
 
+  // Unpublish
+  const unpublishMutation = useMutation({
+    mutationFn: () => api.unpublishArticle(article.id),
+    onSuccess: (updated) => {
+      setArticle(updated);
+      queryClient.invalidateQueries({ queryKey: ['articles'] });
+      queryClient.invalidateQueries({ queryKey: ['article', article.id] });
+      toast.success('Article unpublished — ready to re-publish');
+    },
+    onError: (err) => toast.error((err as Error).message),
+  });
+
   const approveReady = !!(article.slug && article.selected_image && article.category);
-  const isEditable = !['published', 'rejected'].includes(article.status);
+  const isEditable = !['rejected'].includes(article.status);
   const approveMissing: string[] = [];
   if (!article.slug) approveMissing.push('slug');
   if (!article.selected_image) approveMissing.push('image');
@@ -244,11 +260,13 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
         approveMutation.mutate();
       },
       onPublish: () => publishMutation.mutate(),
+      onUnpublish: () => unpublishMutation.mutate(),
       isApproving: approveMutation.isPending,
       isRejecting: rejectMutation.isPending,
       isPublishing: publishMutation.isPending,
+      isUnpublishing: unpublishMutation.isPending,
     });
-  }, [saveStatus, article.status, article.slug, article.selected_image, article.category, approveReady, isEditable, approveMutation.isPending, rejectMutation.isPending, publishMutation.isPending]);
+  }, [saveStatus, article.status, article.slug, article.selected_image, article.category, approveReady, isEditable, approveMutation.isPending, rejectMutation.isPending, publishMutation.isPending, unpublishMutation.isPending]);
 
   return (
     <div className="flex flex-col h-full animate-fade-in-up">
@@ -499,12 +517,33 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
 
               {/* Image picker */}
               <div className="bg-surface-container-low border border-outline-variant/15 rounded-xl p-3">
+                {/* Source filter dropdown */}
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-[9px] text-outline uppercase tracking-wider">Filter:</label>
+                  <select
+                    value={filterSource}
+                    onChange={(e) => setFilterSource(e.target.value)}
+                    className="flex-1 px-1.5 py-0.5 rounded-md bg-surface-container-low border border-outline-variant/15 text-on-surface text-[10px] focus:border-accent-500/50 focus:outline-none"
+                  >
+                    <option value="all">All Sources</option>
+                    <option value="original">📌 Original</option>
+                    <option value="google_images">🔍 Google</option>
+                    <option value="google_api">✨ Google API</option>
+                    <option value="duckduckgo">🦆 DuckDuckGo</option>
+                    <option value="bing_images">🔎 Bing</option>
+                    <option value="unsplash">📷 Unsplash</option>
+                    <option value="pexels">📸 Pexels</option>
+                    <option value="dalle">🎨 DALL·E</option>
+                  </select>
+                </div>
+
                 <ImagePicker
                   originalImages={article.original_images}
                   searchedImages={article.searched_images}
                   selectedImage={article.selected_image}
                   onChange={(img) => updateField('selected_image', img)}
                   onInsertInBody={insertImageIntoBody}
+                  filterSource={filterSource}
                 />
 
                 {/* Search more images */}
@@ -521,12 +560,33 @@ export default function EditorPanel({ article: initialArticle, onActionsReady, o
                       }}
                     />
                   </div>
+                  {/* Platform selector */}
+                  <div className="flex gap-1">
+                    {[
+                      { id: 'all', label: '🌐 All', color: 'bg-slate-500/20 text-slate-300 border-slate-500/30' },
+                      { id: 'google', label: '🔍 Google', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+                      { id: 'duckduckgo', label: '🦆 DDG', color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+                      { id: 'bing', label: '🔎 Bing', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
+                    ].map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSearchPlatform(p.id)}
+                        className={`flex-1 px-1.5 py-1 text-[9px] font-medium rounded-md border transition-all ${
+                          searchPlatform === p.id
+                            ? p.color + ' ring-1 ring-white/10'
+                            : 'bg-surface-container-low text-outline border-outline-variant/15 hover:border-outline-variant/30'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                   <button
                     onClick={() => handleSearchImages(searchQuery || undefined)}
                     disabled={isSearching}
                     className="w-full px-2 py-1.5 text-[10px] font-medium rounded-lg bg-surface-container-low0/10 text-blue-400 border border-blue-500/30 hover:bg-surface-container-low0/20 transition-all disabled:opacity-50"
                   >
-                    {isSearching ? '🔍 Searching…' : '🔍 Search More Images'}
+                    {isSearching ? '🔍 Searching…' : `🔍 Search ${searchPlatform === 'all' ? 'All' : searchPlatform === 'duckduckgo' ? 'DuckDuckGo' : searchPlatform === 'google' ? 'Google' : 'Bing'}`}
                   </button>
                 </div>
               </div>

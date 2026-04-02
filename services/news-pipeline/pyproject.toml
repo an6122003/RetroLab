@@ -12,6 +12,7 @@ version = "0.1.0"
 description = "Automated news scraping, LLM rewriting, and editorial review pipeline"
 requires-python = ">=3.11"
 dependencies = [
+    "duckduckgo-search>=6.0.0",
     "celery[redis]>=5.3",
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.29",

@@ -1,6 +1,7 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const NAV_ITEMS = [
   { path: '/',          label: 'ARTICLES',  icon: 'article' },
@@ -25,6 +26,7 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -104,10 +106,20 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
         {/* Footer actions */}
         <div className="mt-auto flex flex-col gap-3 items-center">
           <button
-            className="w-12 h-12 flex items-center justify-center text-outline hover:text-primary transition-all rounded-lg"
-            title="Settings"
+            onClick={() => {
+              const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';
+              setTheme(next);
+            }}
+            className="w-12 h-12 flex items-center justify-center text-outline hover:text-primary transition-all rounded-lg group relative"
+            title={`Theme: ${theme}`}
           >
-            <span className="material-symbols-outlined text-[24px]">settings</span>
+            <span className="material-symbols-outlined text-[24px]">
+              {theme === 'light' ? 'light_mode' : theme === 'dark' ? 'dark_mode' : 'routine'}
+            </span>
+            {/* Tooltip */}
+            <span className="absolute left-full ml-2 px-2 py-1 bg-inverse-surface text-inverse-on-surface text-[10px] font-semibold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              {theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System'}
+            </span>
           </button>
 
           {/* User avatar */}

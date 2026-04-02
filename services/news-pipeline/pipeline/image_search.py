@@ -69,24 +69,43 @@ async def search_images(
     seen_urls: set[str] = set()
 
     for keyword in keywords:
-        # Build list of search coroutines for this keyword
-        tasks = [
-            _scrape_google_images(keyword),
+        # Priority 1: Google API OR Google Playwright OR DuckDuckGo
+        # Try Google API first if configured
+        api_result = None
+        if settings.google_search_api_key and settings.google_search_cx:
+            api_result = await _search_google_api_images(keyword, settings.google_search_api_key, settings.google_search_cx)
+        
+        if api_result and not isinstance(api_result, Exception):
+            google_result = api_result
+        else:
+            # Fallback to DuckDuckGo (API key not needed, fast)
+            google_result = await _search_duckduckgo_images(keyword)
+            # If DuckDuckGo fails, fallback to Playwright scraper
+            if not google_result or isinstance(google_result, Exception):
+                google_result = await _scrape_google_images(keyword)
+
+        if google_result and not isinstance(google_result, Exception):
+            url = google_result.get("url", "")
+            if url and url not in seen_urls and _is_acceptable_image_url(url):
+                seen_urls.add(url)
+                images.append(google_result)
+
+        # Priority 2: Other providers run concurrently
+        other_tasks = [
             _scrape_bing_images(keyword),
         ]
         if settings.unsplash_access_key:
-            tasks.append(_search_unsplash(keyword, settings.unsplash_access_key))
+            other_tasks.append(_search_unsplash(keyword, settings.unsplash_access_key))
         if settings.pexels_api_key:
-            tasks.append(_search_pexels(keyword, settings.pexels_api_key))
+            other_tasks.append(_search_pexels(keyword, settings.pexels_api_key))
 
-        # Run all free providers concurrently
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        other_results = await asyncio.gather(*other_tasks, return_exceptions=True)
 
-        for result in results:
+        for result in other_results:
             if isinstance(result, Exception) or result is None:
                 continue
             url = result.get("url", "")
-            if url and url not in seen_urls:
+            if url and url not in seen_urls and _is_acceptable_image_url(url):
                 seen_urls.add(url)
                 images.append(result)
 
@@ -113,35 +132,185 @@ async def search_images(
     return images[:max_images]
 
 
+# Blocklist of domains/patterns known to return bad, watermarked, or irrelevant images
+_IMAGE_URL_BLOCKLIST = [
+    "shutterstock.com",
+    "istockphoto.com",
+    "gettyimages.com",
+    "depositphotos.com",
+    "dreamstime.com",
+    "123rf.com",
+    "alamy.com",
+    "stockfresh.com",
+    "placeholder.com",
+    "via.placeholder",
+    "picsum.photos",
+    "placehold.it",
+    "placekitten.com",
+    "dummyimage.com",
+    "lorempixel.com",
+    "fakeimg.pl",
+    "ad.doubleclick.net",
+    "googlesyndication.com",
+    "amazon-adsystem.com",
+]
+
+
+def _is_acceptable_image_url(url: str) -> bool:
+    """Filter out images from known bad sources (watermarked stock, placeholders, ads)."""
+    url_lower = url.lower()
+    # Must be a real HTTP(S) URL
+    if not (url_lower.startswith("http://") or url_lower.startswith("https://")):
+        return False
+    # Block known bad domains
+    for blocked in _IMAGE_URL_BLOCKLIST:
+        if blocked in url_lower:
+            return False
+    return True
+
+
+# ── DuckDuckGo Images (library) ─────────────────────────────────
+
+async def _search_duckduckgo_images(query: str) -> dict[str, Any] | None:
+    """Search DuckDuckGo using duckduckgo-search package (synchronous)."""
+    import asyncio
+    import concurrent.futures
+
+    def _sync_ddg():
+        try:
+            from duckduckgo_search import DDGS
+            return list(DDGS().images(query, max_results=10))
+        except Exception as e:
+            logger.warning("duckduckgo_sync_failed", error=str(e))
+            return []
+
+    try:
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results = await loop.run_in_executor(pool, _sync_ddg)
+            
+        images = []
+        for r in results:
+            url = r.get("image")
+            if not url or "stock" in url.lower() or "depositphotos" in url.lower():
+                continue
+            images.append({
+                "url": url,
+                "thumbnail_url": r.get("thumbnail", url),
+                "page_url": r.get("url", ""),
+                "title": r.get("title", ""),
+                "width": r.get("width", 0),
+                "height": r.get("height", 0),
+            })
+            
+        if not images:
+            logger.debug("duckduckgo_images_empty", query=query)
+            return None
+
+        best = _pick_best_image(images)
+        logger.info("duckduckgo_image_found", query=query)
+        
+        return {
+            "url": best["url"],
+            "thumbnail_url": best.get("thumbnail_url", best["url"]),
+            "source": "duckduckgo",
+            "photographer": "",
+            "page_url": best.get("page_url", ""),
+            "license": "Web image — verify rights before publishing",
+            "query_used": query,
+            "ai_generated": False,
+            "prompt_used": None,
+            "width": best.get("width", 0),
+            "height": best.get("height", 0),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except ImportError:
+        logger.warning("duckduckgo_search_not_installed")
+        return None
+    except Exception:
+        logger.exception("duckduckgo_search_failed", query=query)
+        return None
+
+
+# ── Google Custom Search API ────────────────────────────────────
+
+async def _search_google_api_images(query: str, api_key: str, cx: str) -> dict[str, Any] | None:
+    """Search using official Google Custom Search API (JSON)."""
+    try:
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            "key": api_key,
+            "cx": cx,
+            "q": query,
+            "searchType": "image",
+            "safe": "active",
+            "num": 10
+        }
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            
+        items = data.get("items", [])
+        if not items:
+            return None
+            
+        images = []
+        for item in items:
+            img = item.get("image", {})
+            images.append({
+                "url": item.get("link", ""),
+                "thumbnail_url": img.get("thumbnailLink", item.get("link", "")),
+                "page_url": item.get("image", {}).get("contextLink", ""),
+                "title": item.get("title", ""),
+                "width": img.get("width", 0),
+                "height": img.get("height", 0),
+            })
+            
+        best = _pick_best_image(images)
+        logger.info("google_api_image_found", query=query)
+        
+        return {
+            "url": best["url"],
+            "thumbnail_url": best.get("thumbnail_url", best["url"]),
+            "source": "google_api",
+            "photographer": "",
+            "page_url": best.get("page_url", ""),
+            "license": "Web image — verify rights before publishing",
+            "query_used": query,
+            "ai_generated": False,
+            "prompt_used": None,
+            "width": best.get("width", 0),
+            "height": best.get("height", 0),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception:
+        logger.exception("google_api_search_failed", query=query)
+        return None
+
+
 # ── Google Images (scraping) ────────────────────────────────────
 
 async def _scrape_google_images(query: str) -> dict[str, Any] | None:
     """
-    Scrape Google Images search results via httpx.
+    Scrape Google Images search results using Playwright.
 
-    Google embeds image metadata as JSON in script tags containing
-    'AF_initDataCallback'. We extract URLs from these data structures.
+    Uses a real headed browser to bypass Google's bot detection.
+    Runs Playwright synchronously in a thread pool to avoid event loop conflicts.
+    Falls back to httpx if Playwright is unavailable.
     """
+    import asyncio
+    import concurrent.futures
+
     try:
-        url = (
-            f"https://www.google.com/search?"
-            f"q={quote_plus(query)}&tbm=isch"
-            f"&hl=en&safe=active"
-        )
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            images = await loop.run_in_executor(pool, _google_images_playwright, query)
 
-        async with httpx.AsyncClient(
-            timeout=15,
-            follow_redirects=True,
-            headers={
-                **_SCRAPE_HEADERS,
-                "Referer": "https://www.google.com/",
-            },
-        ) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            html = resp.text
-
-        images = _parse_google_results(html)
+        if not images:
+            # Fallback to httpx (may work sometimes)
+            images = await _google_images_httpx_fallback(query)
 
         if not images:
             logger.debug("google_images_empty", query=query)
@@ -174,6 +343,101 @@ async def _scrape_google_images(query: str) -> dict[str, Any] | None:
     except Exception:
         logger.exception("google_images_scrape_failed", query=query)
         return None
+
+
+def _google_images_playwright(query: str) -> list[dict[str, Any]]:
+    """
+    Synchronous Playwright-based Google Images scraper.
+    Runs in a thread pool from the async caller.
+    """
+    import time as _time
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("playwright_not_installed_for_google_images")
+        return []
+
+    images: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+
+    try:
+        from config.settings import get_settings
+        settings = get_settings()
+
+        pw = sync_playwright().start()
+        browser = pw.chromium.launch(
+            headless=settings.playwright_headless,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        ctx = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        page.add_init_script(
+            'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'
+        )
+
+        url = (
+            f"https://www.google.com/search?"
+            f"q={quote_plus(query)}&tbm=isch"
+            f"&hl=en&safe=active"
+        )
+
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            pass  # Continue even on timeout
+
+        # Wait for images to load
+        _time.sleep(2)
+
+        # Scroll down to trigger lazy loading of more results
+        page.evaluate("window.scrollBy(0, 1000)")
+        _time.sleep(1)
+
+        # Get the full page HTML
+        html = page.content()
+
+        browser.close()
+        pw.stop()
+
+        # Parse results from rendered HTML
+        images = _parse_google_results(html)
+
+    except Exception as exc:
+        logger.warning("google_images_playwright_failed", error=str(exc))
+
+    return images
+
+
+async def _google_images_httpx_fallback(query: str) -> list[dict[str, Any]]:
+    """Fallback httpx-based Google Images scraper (may be blocked)."""
+    try:
+        url = (
+            f"https://www.google.com/search?"
+            f"q={quote_plus(query)}&tbm=isch"
+            f"&hl=en&safe=active"
+        )
+        async with httpx.AsyncClient(
+            timeout=15,
+            follow_redirects=True,
+            headers={
+                **_SCRAPE_HEADERS,
+                "Referer": "https://www.google.com/",
+            },
+        ) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            html = resp.text
+        return _parse_google_results(html)
+    except Exception:
+        return []
 
 
 def _parse_google_results(html: str) -> list[dict[str, Any]]:
