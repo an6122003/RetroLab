@@ -627,7 +627,7 @@ def _is_quiet_hours(quiet_start: int, quiet_end: int) -> bool:
         return current_hour >= quiet_start or current_hour < quiet_end
 
 
-def _get_next_daily_sleep(now: datetime, time_str: str) -> int:
+def _get_next_daily_sleep(now: datetime, time_str: str) -> float:
     """Calculate seconds until next run time in 'daily' mode (local server time)."""
     try:
         times = []
@@ -642,7 +642,7 @@ def _get_next_daily_sleep(now: datetime, time_str: str) -> int:
                 times.append((h, m))
             
         if not times:
-            return 3600 # Fallback 1 hour
+            return 3600.0 # Fallback 1 hour
             
         next_dt = None
         for h, m in sorted(times):
@@ -656,9 +656,9 @@ def _get_next_daily_sleep(now: datetime, time_str: str) -> int:
             first_h, first_m = sorted(times)[0]
             next_dt = now.replace(hour=first_h, minute=first_m, second=0, microsecond=0) + timedelta(days=1)
             
-        return int((next_dt - now).total_seconds())
+        return (next_dt - now).total_seconds()
     except Exception:
-        return 3600
+        return 3600.0
 
 
 async def _scheduler_loop():
@@ -2375,11 +2375,16 @@ async def compose_save_to_draft(req: ComposeSaveRequest) -> dict[str, Any]:
             if not isinstance(inline_image_keywords, list):
                 inline_image_keywords = []
 
-            # Determine source_author with fallback to site name
-            source_author = req.source_author
+            # Build formatted author: "Author - SiteName - Tổng hợp bởi RetroLab"
+            brand = "Tổng hợp bởi RetroLab"
             source_outlet = req.source_sitename or "composer"
-            if not source_author and source_outlet:
-                source_author = f"{source_outlet} - Tổng hợp bởi RetroLab"
+            author_parts = []
+            if req.source_author:
+                author_parts.append(req.source_author)
+            if source_outlet:
+                author_parts.append(source_outlet)
+            author_parts.append(brand)
+            source_author = " | ".join(author_parts)
 
             conn.execute(
                 text("""

@@ -7,51 +7,51 @@ export default {
     extend: {
       colors: {
         // ── Tonal Surface Hierarchy (from DESIGN.md) ──
-        'surface':                  '#faf8ff',
-        'surface-dim':              '#d2d9f4',
-        'surface-bright':           '#faf8ff',
-        'surface-container-lowest': '#ffffff',
-        'surface-container-low':    '#f2f3ff',
-        'surface-container':        '#eaedff',
-        'surface-container-high':   '#e2e7ff',
-        'surface-container-highest':'#dae2fd',
+        'surface':                  'var(--color-surface)',
+        'surface-dim':              'var(--color-surface-dim)',
+        'surface-bright':           'var(--color-surface-bright)',
+        'surface-container-lowest': 'var(--color-surface-container-lowest)',
+        'surface-container-low':    'var(--color-surface-container-low)',
+        'surface-container':        'var(--color-surface-container)',
+        'surface-container-high':   'var(--color-surface-container-high)',
+        'surface-container-highest':'var(--color-surface-container-highest)',
 
         // ── On-surface text ──
-        'on-surface':         '#131b2e',
-        'on-surface-variant': '#434655',
+        'on-surface':         'var(--color-on-surface)',
+        'on-surface-variant': 'var(--color-on-surface-variant)',
 
         // ── Primary ──
-        'primary':           '#004ac6',
-        'primary-container': '#2563eb',
-        'on-primary':        '#ffffff',
-        'on-primary-container': '#eeefff',
+        'primary':           'var(--color-primary)',
+        'primary-container': 'var(--color-primary-container)',
+        'on-primary':        'var(--color-on-primary)',
+        'on-primary-container': 'var(--color-on-primary-container)',
 
         // ── Secondary ──
-        'secondary':           '#495c95',
-        'secondary-container': '#acbfff',
-        'on-secondary':        '#ffffff',
+        'secondary':           'var(--color-secondary)',
+        'secondary-container': 'var(--color-secondary-container)',
+        'on-secondary':        'var(--color-on-secondary)',
 
         // ── Tertiary (drafts / warnings) ──
-        'tertiary':           '#943700',
-        'tertiary-container': '#bc4800',
-        'tertiary-fixed':     '#ffdbcd',
-        'tertiary-fixed-dim': '#ffb596',
-        'on-tertiary-fixed-variant': '#7d2d00',
+        'tertiary':           'var(--color-tertiary)',
+        'tertiary-container': 'var(--color-tertiary-container)',
+        'tertiary-fixed':     'var(--color-tertiary-fixed)',
+        'tertiary-fixed-dim': 'var(--color-tertiary-fixed-dim)',
+        'on-tertiary-fixed-variant': 'var(--color-on-tertiary-fixed-variant)',
 
         // ── Error ──
-        'error':           '#ba1a1a',
-        'error-container': '#ffdad6',
-        'on-error':        '#ffffff',
-        'on-error-container': '#93000a',
+        'error':           'var(--color-error)',
+        'error-container': 'var(--color-error-container)',
+        'on-error':        'var(--color-on-error)',
+        'on-error-container': 'var(--color-on-error-container)',
 
         // ── Outline ──
-        'outline':         '#737686',
-        'outline-variant': '#c3c6d7',
+        'outline':         'var(--color-outline)',
+        'outline-variant': 'var(--color-outline-variant)',
 
         // ── Inverse ──
-        'inverse-surface':    '#283044',
-        'inverse-on-surface': '#eef0ff',
-        'inverse-primary':    '#b4c5ff',
+        'inverse-surface':    'var(--color-inverse-surface)',
+        'inverse-on-surface': 'var(--color-inverse-on-surface)',
+        'inverse-primary':    'var(--color-inverse-primary)',
       },
       fontFamily: {
         headline: ['Manrope', 'sans-serif'],

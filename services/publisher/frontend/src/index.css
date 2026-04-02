@@ -2,11 +2,147 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   ── Theme Tokens (Light) ──
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+.light {
+  --color-surface:                  #faf8ff;
+  --color-surface-dim:              #d2d9f4;
+  --color-surface-bright:           #faf8ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #f2f3ff;
+  --color-surface-container:        #eaedff;
+  --color-surface-container-high:   #e2e7ff;
+  --color-surface-container-highest:#dae2fd;
+
+  --color-on-surface:         #131b2e;
+  --color-on-surface-variant: #434655;
+
+  --color-primary:           #004ac6;
+  --color-primary-container: #2563eb;
+  --color-on-primary:        #ffffff;
+  --color-on-primary-container: #eeefff;
+
+  --color-secondary:           #495c95;
+  --color-secondary-container: #acbfff;
+  --color-on-secondary:        #ffffff;
+
+  --color-tertiary:           #943700;
+  --color-tertiary-container: #bc4800;
+  --color-tertiary-fixed:     #ffdbcd;
+  --color-tertiary-fixed-dim: #ffb596;
+  --color-on-tertiary-fixed-variant: #7d2d00;
+
+  --color-error:           #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error:        #ffffff;
+  --color-on-error-container: #93000a;
+
+  --color-outline:         #737686;
+  --color-outline-variant: #c3c6d7;
+
+  --color-inverse-surface:    #283044;
+  --color-inverse-on-surface: #eef0ff;
+  --color-inverse-primary:    #b4c5ff;
+
+  /* Scrollbar */
+  --scrollbar-track: #f2f3ff;
+  --scrollbar-thumb: #c3c6d7;
+  --scrollbar-thumb-hover: #737686;
+
+  /* Glass */
+  --glass-bg: rgba(250, 248, 255, 0.7);
+
+  /* MDEditor */
+  --editor-canvas: #ffffff;
+  --editor-fg: #131b2e;
+  --editor-border: #c3c6d7;
+  --editor-toolbar-bg: #f2f3ff;
+  --editor-toolbar-border: rgba(195, 198, 215, 0.15);
+  --editor-toolbar-btn: #434655;
+  --editor-toolbar-btn-hover: #131b2e;
+  --editor-toolbar-btn-hover-bg: #eaedff;
+
+  /* Toast */
+  --toast-bg: #ffffff;
+  --toast-color: #1e293b;
+  --toast-border: #e2e8f0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ── Theme Tokens (Dark) ──
+   ═══════════════════════════════════════════════════════════════ */
+.dark {
+  --color-surface:                  #0f1318;
+  --color-surface-dim:              #0f1318;
+  --color-surface-bright:           #363a43;
+  --color-surface-container-lowest: #0a0e14;
+  --color-surface-container-low:    #171c24;
+  --color-surface-container:        #1c2130;
+  --color-surface-container-high:   #262b3a;
+  --color-surface-container-highest:#313644;
+
+  --color-on-surface:         #e2e4f0;
+  --color-on-surface-variant: #c3c6d7;
+
+  --color-primary:           #b4c5ff;
+  --color-primary-container: #1d4ed8;
+  --color-on-primary:        #002b75;
+  --color-on-primary-container: #d9e2ff;
+
+  --color-secondary:           #b6c6ff;
+  --color-secondary-container: #384b7f;
+  --color-on-secondary:        #1a2f64;
+
+  --color-tertiary:           #ffb596;
+  --color-tertiary-container: #7d2d00;
+  --color-tertiary-fixed:     #5c2100;
+  --color-tertiary-fixed-dim: #ff8e5e;
+  --color-on-tertiary-fixed-variant: #ffdbcd;
+
+  --color-error:           #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error:        #690005;
+  --color-on-error-container: #ffdad6;
+
+  --color-outline:         #8d9099;
+  --color-outline-variant: #434655;
+
+  --color-inverse-surface:    #e2e4f0;
+  --color-inverse-on-surface: #283044;
+  --color-inverse-primary:    #004ac6;
+
+  /* Scrollbar */
+  --scrollbar-track: #171c24;
+  --scrollbar-thumb: #434655;
+  --scrollbar-thumb-hover: #8d9099;
+
+  /* Glass */
+  --glass-bg: rgba(15, 19, 24, 0.75);
+
+  /* MDEditor */
+  --editor-canvas: #0a0e14;
+  --editor-fg: #e2e4f0;
+  --editor-border: #434655;
+  --editor-toolbar-bg: #1c2130;
+  --editor-toolbar-border: rgba(67, 70, 85, 0.3);
+  --editor-toolbar-btn: #c3c6d7;
+  --editor-toolbar-btn-hover: #e2e4f0;
+  --editor-toolbar-btn-hover-bg: #262b3a;
+
+  /* Toast */
+  --toast-bg: #1c2130;
+  --toast-color: #e2e4f0;
+  --toast-border: #434655;
+}
+
 /* ── Global ─────────────────────────────────────────────────── */
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #faf8ff;
-  color: #131b2e;
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, .font-headline {
@@ -19,7 +155,7 @@ h1, h2, h3, .font-headline {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c3c6d7 #f2f3ff;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar {
@@ -27,50 +163,50 @@ h1, h2, h3, .font-headline {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f2f3ff;
+  background: var(--scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: #c3c6d7;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #737686;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ── Glass header ──────────────────────────────────────────── */
 .glass-header {
-  background: rgba(250, 248, 255, 0.7);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
 }
 
 /* ── MDEditor overrides ────────────────────────────────────── */
 .w-md-editor {
-  --color-canvas-default: #ffffff !important;
-  --color-fg-default: #131b2e !important;
-  --color-border-default: #c3c6d7 !important;
-  background-color: #ffffff !important;
-  border: 1px solid rgba(195, 198, 215, 0.15) !important;
+  --color-canvas-default: var(--editor-canvas) !important;
+  --color-fg-default: var(--editor-fg) !important;
+  --color-border-default: var(--editor-border) !important;
+  background-color: var(--editor-canvas) !important;
+  border: 1px solid var(--editor-toolbar-border) !important;
   font-family: Inter, system-ui, sans-serif !important;
   border-radius: 0.75rem !important;
 }
 
 .w-md-editor-toolbar {
-  background-color: #f2f3ff !important;
-  border-bottom-color: rgba(195, 198, 215, 0.15) !important;
+  background-color: var(--editor-toolbar-bg) !important;
+  border-bottom-color: var(--editor-toolbar-border) !important;
   border-radius: 0.75rem 0.75rem 0 0 !important;
 }
 
 .w-md-editor-toolbar li > button {
-  color: #434655 !important;
+  color: var(--editor-toolbar-btn) !important;
 }
 
 .w-md-editor-toolbar li > button:hover {
-  color: #131b2e !important;
-  background-color: #eaedff !important;
+  color: var(--editor-toolbar-btn-hover) !important;
+  background-color: var(--editor-toolbar-btn-hover-bg) !important;
 }
 
 .w-md-editor-content {
-  background-color: #ffffff !important;
+  background-color: var(--editor-canvas) !important;
 }
 
 .w-md-editor textarea,
@@ -81,17 +217,17 @@ h1, h2, h3, .font-headline {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
   font-size: 0.875rem !important;
   line-height: 1.6 !important;
-  color: #131b2e !important;
+  color: var(--editor-fg) !important;
   tab-size: 4 !important;
 }
 
 .w-md-editor-preview {
-  background-color: #ffffff !important;
+  background-color: var(--editor-canvas) !important;
 }
 
 .wmde-markdown {
   background-color: transparent !important;
-  color: #131b2e !important;
+  color: var(--editor-fg) !important;
   font-family: Inter, system-ui, sans-serif !important;
 }
 
@@ -136,4 +272,12 @@ h1, h2, h3, .font-headline {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ── Theme transition ──────────────────────────────────────── */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease !important;
 }

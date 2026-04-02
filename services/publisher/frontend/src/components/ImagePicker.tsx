@@ -6,6 +6,24 @@ interface ImagePickerProps {
   selectedImage: any;
   onChange: (img: any) => void;
   onInsertInBody?: (url: string, alt: string) => void;
+  filterSource?: string;
+}
+
+const SOURCE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  original: { label: 'Original', color: 'bg-emerald-500/80 text-white', icon: '📌' },
+  google_images: { label: 'Google', color: 'bg-blue-500/80 text-white', icon: '🔍' },
+  google_api: { label: 'Google API', color: 'bg-blue-600/80 text-white', icon: '✨' },
+  duckduckgo: { label: 'DuckDuckGo', color: 'bg-orange-500/80 text-white', icon: '🦆' },
+  bing_images: { label: 'Bing', color: 'bg-cyan-500/80 text-white', icon: '🔎' },
+  unsplash: { label: 'Unsplash', color: 'bg-violet-500/80 text-white', icon: '📷' },
+  pexels: { label: 'Pexels', color: 'bg-green-500/80 text-white', icon: '📸' },
+  dalle: { label: 'DALL·E', color: 'bg-pink-500/80 text-white', icon: '🎨' },
+  search: { label: 'Search', color: 'bg-slate-500/80 text-white', icon: '🔍' },
+};
+
+function getSourceBadge(source: string) {
+  const config = SOURCE_CONFIG[source] || { label: source, color: 'bg-slate-500/80 text-white', icon: '🖼️' };
+  return config;
 }
 
 function getImageList(originalImages: any[] | null, searchedImages: any[] | null): any[] {
@@ -40,12 +58,23 @@ export default function ImagePicker({
   selectedImage,
   onChange,
   onInsertInBody,
+  filterSource,
 }: ImagePickerProps) {
-  const images = getImageList(originalImages, searchedImages);
+  const allImages = getImageList(originalImages, searchedImages);
+  const images = filterSource && filterSource !== 'all'
+    ? allImages.filter(img => img.source === filterSource)
+    : allImages;
   const selectedUrl = selectedImage?.url || '';
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  if (!images.length) {
+  // Count by source for the header
+  const sourceCounts = allImages.reduce((acc, img) => {
+    const src = img.source || 'unknown';
+    acc[src] = (acc[src] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  if (!allImages.length) {
     return (
       <div className="text-center py-4">
         <div className="text-2xl mb-1">🖼️</div>
@@ -62,10 +91,27 @@ export default function ImagePicker({
         </label>
         <span className="text-[9px] text-outline">{images.length} images</span>
       </div>
+
+      {/* Source count chips */}
+      <div className="flex flex-wrap gap-1">
+        {Object.entries(sourceCounts).map(([src, count]) => {
+          const badge = getSourceBadge(src);
+          return (
+            <span
+              key={src}
+              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium ${badge.color}`}
+            >
+              {badge.icon} {badge.label}: {count as number}
+            </span>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto pr-1">
         {images.map((img, idx) => {
           const isSelected = img.url === selectedUrl;
           const isHovered = hoveredIdx === idx;
+          const badge = getSourceBadge(img.source);
           return (
             <div
               key={img.url || idx}
@@ -98,10 +144,16 @@ export default function ImagePicker({
                     </div>
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                  <span className="text-[9px] text-on-surface/70 uppercase tracking-wider">
-                    {img.source}
+                {/* Source badge */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1 flex items-center justify-between">
+                  <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-semibold ${badge.color}`}>
+                    {badge.icon} {badge.label}
                   </span>
+                  {img.width > 0 && img.height > 0 && (
+                    <span className="text-[7px] text-white/60">
+                      {img.width}×{img.height}
+                    </span>
+                  )}
                 </div>
               </button>
 

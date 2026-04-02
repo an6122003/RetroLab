@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import AppShell from '../components/AppShell';
+import { useTheme } from '../contexts/ThemeContext';
 
-type ConfigTab = 'youtube' | 'ads';
+type ConfigTab = 'youtube' | 'ads' | 'appearance';
 
 // ── Well-known ad slot definitions ──
 const AD_SLOT_DEFS: { id: string; label: string; page: string; size: string }[] = [
@@ -60,6 +61,7 @@ export default function ConfigPage() {
           {([
             { key: 'youtube' as ConfigTab, label: 'YouTube' },
             { key: 'ads' as ConfigTab, label: 'Ads' },
+            { key: 'appearance' as ConfigTab, label: 'Appearance' },
           ]).map(t => (
             <button
               key={t.key}
@@ -85,6 +87,7 @@ export default function ConfigPage() {
         {([
           { id: 'youtube' as ConfigTab, icon: 'smart_display', label: 'YouTube Channels' },
           { id: 'ads' as ConfigTab, icon: 'ad_units', label: 'Ads Management' },
+          { id: 'appearance' as ConfigTab, icon: 'palette', label: 'Appearance' },
         ]).map((item) => (
           <button
             key={item.id}
@@ -109,6 +112,7 @@ export default function ConfigPage() {
         <div className="max-w-5xl mx-auto space-y-6 md:space-y-8">
           {tab === 'youtube' && <YoutubeTab />}
           {tab === 'ads' && <AdsTab />}
+          {tab === 'appearance' && <AppearanceTab />}
         </div>
       </div>
     </AppShell>
@@ -246,7 +250,7 @@ function AdsTab() {
                       onChange={() => saveSlot(def.id, { ...slot, enabled: !slot.enabled })}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-gray-300 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                    <div className="w-9 h-5 bg-outline-variant peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all" />
                   </label>
                   <button
                     onClick={() => setEditSlot(isEditing ? null : def.id)}
@@ -280,7 +284,7 @@ function TypeBadge({ type }: { type: string }) {
   const styles = {
     affiliate: 'bg-emerald-500/10 text-emerald-600',
     network: 'bg-cyan-500/10 text-cyan-600',
-    placeholder: 'bg-gray-500/10 text-gray-500',
+    placeholder: 'bg-outline-variant/10 text-on-surface-variant',
   };
   const icons = { affiliate: 'link', network: 'code', placeholder: 'ad_units' };
   return (
@@ -604,6 +608,167 @@ function YoutubeTab() {
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   ─── Appearance Tab ───
+   ════════════════════════════════════════════════════════════════ */
+function AppearanceTab() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
+  const themes: { id: 'light' | 'dark' | 'system'; label: string; icon: string; desc: string }[] = [
+    { id: 'light', label: 'Light', icon: 'light_mode', desc: 'Classic bright interface' },
+    { id: 'dark', label: 'Dark', icon: 'dark_mode', desc: 'Easy on the eyes, perfect for late-night editing' },
+    { id: 'system', label: 'System', icon: 'routine', desc: 'Follows your operating system preference' },
+  ];
+
+  return (
+    <div className="space-y-6 md:space-y-8 animate-fade-in-up">
+      <div>
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-headline text-on-surface">Appearance</h2>
+        <p className="text-on-surface-variant mt-1 md:mt-2 text-sm md:text-lg">Customize how the admin dashboard looks and feels.</p>
+      </div>
+
+      {/* ── Theme Selector Cards ── */}
+      <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-6">
+        <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2 mb-6">
+          <span className="material-symbols-outlined text-[18px]">palette</span>
+          Theme Mode
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {themes.map(t => {
+            const isActive = theme === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTheme(t.id)}
+                className={`relative flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all duration-200 group ${
+                  isActive
+                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+                    : 'border-outline-variant/15 hover:border-outline-variant/30 hover:bg-surface-container/40'
+                }`}
+              >
+                {/* Active check */}
+                {isActive && (
+                  <div className="absolute top-3 right-3 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                    <span className="material-symbols-outlined text-on-primary text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                  </div>
+                )}
+
+                {/* Theme preview mini */}
+                <div className={`w-full h-20 rounded-lg overflow-hidden border ${
+                  isActive ? 'border-primary/30' : 'border-outline-variant/10'
+                }`}>
+                  {t.id === 'light' && (
+                    <div className="w-full h-full bg-[#faf8ff] flex">
+                      <div className="w-1/5 h-full bg-[#f2f3ff] flex flex-col items-center pt-2 gap-1">
+                        <div className="w-3 h-3 rounded-full bg-[#2563eb]" />
+                        <div className="w-2 h-0.5 bg-[#c3c6d7] rounded" />
+                        <div className="w-2 h-0.5 bg-[#c3c6d7] rounded" />
+                        <div className="w-2 h-0.5 bg-[#c3c6d7] rounded" />
+                      </div>
+                      <div className="flex-1 p-2 space-y-1">
+                        <div className="w-3/4 h-1.5 bg-[#131b2e] rounded" />
+                        <div className="w-1/2 h-1 bg-[#c3c6d7] rounded" />
+                        <div className="w-full h-6 bg-[#eaedff] rounded mt-1" />
+                      </div>
+                    </div>
+                  )}
+                  {t.id === 'dark' && (
+                    <div className="w-full h-full bg-[#0f1318] flex">
+                      <div className="w-1/5 h-full bg-[#171c24] flex flex-col items-center pt-2 gap-1">
+                        <div className="w-3 h-3 rounded-full bg-[#1d4ed8]" />
+                        <div className="w-2 h-0.5 bg-[#434655] rounded" />
+                        <div className="w-2 h-0.5 bg-[#434655] rounded" />
+                        <div className="w-2 h-0.5 bg-[#434655] rounded" />
+                      </div>
+                      <div className="flex-1 p-2 space-y-1">
+                        <div className="w-3/4 h-1.5 bg-[#e2e4f0] rounded" />
+                        <div className="w-1/2 h-1 bg-[#434655] rounded" />
+                        <div className="w-full h-6 bg-[#1c2130] rounded mt-1" />
+                      </div>
+                    </div>
+                  )}
+                  {t.id === 'system' && (
+                    <div className="w-full h-full flex">
+                      <div className="w-1/2 bg-[#faf8ff] flex">
+                        <div className="w-2/5 h-full bg-[#f2f3ff] flex flex-col items-center pt-2 gap-1">
+                          <div className="w-2 h-2 rounded-full bg-[#2563eb]" />
+                          <div className="w-1.5 h-0.5 bg-[#c3c6d7] rounded" />
+                        </div>
+                        <div className="flex-1 p-1.5 space-y-0.5">
+                          <div className="w-3/4 h-1 bg-[#131b2e] rounded" />
+                          <div className="w-full h-4 bg-[#eaedff] rounded mt-0.5" />
+                        </div>
+                      </div>
+                      <div className="w-1/2 bg-[#0f1318] flex">
+                        <div className="w-2/5 h-full bg-[#171c24] flex flex-col items-center pt-2 gap-1">
+                          <div className="w-2 h-2 rounded-full bg-[#1d4ed8]" />
+                          <div className="w-1.5 h-0.5 bg-[#434655] rounded" />
+                        </div>
+                        <div className="flex-1 p-1.5 space-y-0.5">
+                          <div className="w-3/4 h-1 bg-[#e2e4f0] rounded" />
+                          <div className="w-full h-4 bg-[#1c2130] rounded mt-0.5" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Icon + label */}
+                <span className={`material-symbols-outlined text-[28px] ${isActive ? 'text-primary' : 'text-on-surface-variant'}`}
+                  style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                >
+                  {t.icon}
+                </span>
+                <div className="text-center">
+                  <p className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-on-surface'}`}>
+                    {t.label}
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">{t.desc}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Current Theme Info ── */}
+      <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-6">
+        <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2 mb-4">
+          <span className="material-symbols-outlined text-[18px]">info</span>
+          Current Theme
+        </h3>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[20px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+              {resolvedTheme === 'dark' ? 'dark_mode' : 'light_mode'}
+            </span>
+            <span className="text-sm font-semibold text-on-surface capitalize">{resolvedTheme} mode</span>
+            {theme === 'system' && (
+              <span className="text-[10px] px-2 py-0.5 bg-secondary-container/30 text-secondary rounded-full font-semibold uppercase tracking-wider">
+                auto
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Color strip preview */}
+        <div className="mt-4 flex gap-1 h-4 rounded-lg overflow-hidden">
+          <div className="flex-1 bg-surface" title="Surface" />
+          <div className="flex-1 bg-surface-container-low" title="Container Low" />
+          <div className="flex-1 bg-surface-container" title="Container" />
+          <div className="flex-1 bg-surface-container-high" title="Container High" />
+          <div className="flex-1 bg-primary" title="Primary" />
+          <div className="flex-1 bg-primary-container" title="Primary Container" />
+          <div className="flex-1 bg-secondary" title="Secondary" />
+          <div className="flex-1 bg-outline" title="Outline" />
+        </div>
+        <p className="text-[10px] text-on-surface-variant mt-2">Theme preference is saved to your browser and persists across sessions.</p>
       </div>
     </div>
   );

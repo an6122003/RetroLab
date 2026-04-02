@@ -316,12 +316,12 @@ function ArticleListCard({ article, onClick, onDelete }: {
   return (
     <div
       onClick={onClick}
-      className={`bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col md:flex-row gap-8 items-center hover:bg-white transition-colors cursor-pointer group ${
+      className={`bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex flex-col md:flex-row gap-8 items-center hover:bg-surface-container-low transition-colors cursor-pointer group ${
         isRejected ? 'opacity-75' : ''
       }`}
     >
       {/* Thumbnail */}
-      <div className={`w-full md:w-48 h-32 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 ${isRejected ? 'grayscale' : ''}`}>
+      <div className={`w-full md:w-48 h-32 rounded-lg overflow-hidden bg-surface-container flex-shrink-0 ${isRejected ? 'grayscale' : ''}`}>
         {thumbnailUrl ? (
           <img
             src={thumbnailUrl}

@@ -14,12 +14,12 @@ import CurationPage from './pages/CurationPage';
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
+    <div className="min-h-screen bg-surface flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-[#2563eb] flex items-center justify-center relative animate-pulse">
+        <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center relative animate-pulse">
           <div className="w-2 h-2 bg-[#facc15] rounded-full absolute top-1 right-1" />
         </div>
-        <p className="text-gray-400 text-sm">Loading...</p>
+        <p className="text-on-surface-variant text-sm">Loading...</p>
       </div>
     </div>
   );

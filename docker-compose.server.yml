@@ -70,12 +70,7 @@ services:
       --loglevel=info
       --concurrency=4
 
-  # ── Pipeline: Celery beat scheduler ────────────────────────
-  beat:
-    <<: *pipeline-common
-    command: >
-      celery -A workers.celery_app beat
-      --loglevel=info
+
 
   # ── Pipeline: FastAPI review API ───────────────────────────
   pipeline-api:

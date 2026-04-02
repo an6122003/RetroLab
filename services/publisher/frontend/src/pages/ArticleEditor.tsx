@@ -276,8 +276,8 @@ export default function ArticleEditorPage() {
     saveStatus: 'idle' | 'saving' | 'saved';
     canReject: boolean; canApprove: boolean; approveReady: boolean; approveMissing: string[];
     canPublish: boolean; isPublished: boolean;
-    onSave: () => void; onReject: () => void; onApprove: () => void; onPublish: () => void;
-    isApproving: boolean; isRejecting: boolean; isPublishing: boolean;
+    onSave: () => void; onReject: () => void; onApprove: () => void; onPublish: () => void; onUnpublish: () => void;
+    isApproving: boolean; isRejecting: boolean; isPublishing: boolean; isUnpublishing: boolean;
   } | null>(null);
 
   const headerContent = (
@@ -354,12 +354,26 @@ export default function ArticleEditorPage() {
               </button>
             )}
 
-            {/* Published state */}
+            {/* Published state — badge + unpublish button */}
             {editorActions.isPublished && (
-              <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 font-semibold text-[11px] sm:text-sm rounded-lg border border-emerald-200 shrink-0">
-                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">check_circle</span>
-                Published
-              </div>
+              <>
+                <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 font-semibold text-[11px] sm:text-sm rounded-lg border border-emerald-200 shrink-0">
+                  <span className="material-symbols-outlined text-[16px] sm:text-[18px]">check_circle</span>
+                  Published
+                </div>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Unpublish this article? It will be moved back to Approved status for re-editing and re-publishing.'))
+                      editorActions.onUnpublish();
+                  }}
+                  disabled={editorActions.isUnpublishing}
+                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all disabled:opacity-50 shrink-0"
+                  title="Move back to Approved for re-editing"
+                >
+                  <span className="material-symbols-outlined text-[16px] sm:text-[18px]">undo</span>
+                  {editorActions.isUnpublishing ? 'Unpublishing…' : 'Unpublish'}
+                </button>
+              </>
             )}
           </>
         )}
