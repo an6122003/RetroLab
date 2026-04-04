@@ -180,25 +180,30 @@ def _pick_best_hero_image(
 # ── Stage 1: Discovery ──────────────────────────────────────────
 
 @app.task(name="workers.tasks.discover_feeds", bind=True, max_retries=2)
-def discover_feeds(self, source_tags=None):
+def discover_feeds(self, source_tags=None, category=None):
     """Poll all enabled RSS feeds and enqueue new articles for scraping.
     
     Args:
         source_tags: Optional list of tags to filter sources (e.g. ['ai', 'smartphones']).
                      Only sources with at least one matching tag are polled.
+        category: Optional category key to filter (e.g. 'game_emulation').
     """
     from pipeline.discovery.feed_poller import poll_feeds
 
-    tag_str = f" (tags: {source_tags})" if source_tags else ""
-    logger.info("discover_feeds_started", source_tags=source_tags)
-    _log_activity("🔍 Discover Feeds", f"Polling RSS sources{tag_str}...", "running")
+    filter_str = ""
+    if category:
+        filter_str = f" [{category}]"
+    elif source_tags:
+        filter_str = f" (tags: {source_tags})"
+    logger.info("discover_feeds_started", source_tags=source_tags, category=category)
+    _log_activity("🔍 Discover Feeds", f"Polling RSS sources{filter_str}...", "running")
 
     try:
         if _is_pipeline_stopped():
             _log_activity("🔍 Discover Feeds", "Aborted — pipeline stopped", "error")
             return {"new_count": 0, "stopped": True}
 
-        new_articles = _run_async(poll_feeds(source_tags=source_tags))
+        new_articles = _run_async(poll_feeds(source_tags=source_tags, category=category))
 
         # Enqueue each discovered article for scraping
         for article_info in new_articles:
@@ -207,7 +212,7 @@ def discover_feeds(self, source_tags=None):
                 break
             scrape_article_task.delay(article_info)
 
-        _log_activity("🔍 Discover Feeds", f"Found {len(new_articles)} new articles{tag_str}", "done")
+        _log_activity("🔍 Discover Feeds", f"Found {len(new_articles)} new articles{filter_str}", "done")
         logger.info("discover_feeds_complete", new_count=len(new_articles))
         return {"new_count": len(new_articles)}
 
@@ -217,24 +222,29 @@ def discover_feeds(self, source_tags=None):
 
 
 @app.task(name="workers.tasks.discover_crawl", bind=True, max_retries=2)
-def discover_crawl(self, source_tags=None):
+def discover_crawl(self, source_tags=None, category=None):
     """Crawl all enabled crawl-type sources and enqueue new articles.
     
     Args:
         source_tags: Optional list of tags to filter sources.
+        category: Optional category key to filter (e.g. 'game_emulation').
     """
     from pipeline.discovery.page_crawler import crawl_pages
 
-    tag_str = f" (tags: {source_tags})" if source_tags else ""
-    logger.info("discover_crawl_started", source_tags=source_tags)
-    _log_activity("🕷️ Web Crawl", f"Crawling enabled sources{tag_str}...", "running")
+    filter_str = ""
+    if category:
+        filter_str = f" [{category}]"
+    elif source_tags:
+        filter_str = f" (tags: {source_tags})"
+    logger.info("discover_crawl_started", source_tags=source_tags, category=category)
+    _log_activity("🕷️ Web Crawl", f"Crawling enabled sources{filter_str}...", "running")
 
     try:
         if _is_pipeline_stopped():
             _log_activity("🕷️ Web Crawl", "Aborted — pipeline stopped", "error")
             return {"new_count": 0, "stopped": True}
 
-        new_articles = _run_async(crawl_pages(source_tags=source_tags))
+        new_articles = _run_async(crawl_pages(source_tags=source_tags, category=category))
 
         for article_info in new_articles:
             if _is_pipeline_stopped():
@@ -242,13 +252,14 @@ def discover_crawl(self, source_tags=None):
                 break
             scrape_article_task.delay(article_info)
 
-        _log_activity("🕷️ Web Crawl", f"Found {len(new_articles)} new articles{tag_str}", "done")
+        _log_activity("🕷️ Web Crawl", f"Found {len(new_articles)} new articles{filter_str}", "done")
         logger.info("discover_crawl_complete", new_count=len(new_articles))
         return {"new_count": len(new_articles)}
 
     except Exception as exc:
         logger.exception("discover_crawl_failed")
         raise self.retry(exc=exc, countdown=60)
+
 
 
 # ── Stage 2: Scraper ────────────────────────────────────────────
@@ -293,7 +304,10 @@ def scrape_article_task(self, article_info: dict):
         }))
 
         # Scrape the article
-        scraped = _run_async(scrape_article(url))
+        scraped = _run_async(scrape_article(
+            url,
+            rss_author=article_info.get("rss_author"),
+        ))
 
         scrape_success = bool(scraped.get("body_text"))
 
@@ -370,7 +384,7 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
 
         # ── Pre-search images before rewrite ────────────────────
         # Search using the article title so the LLM can place real URLs
-        _log_activity("✍️ Rewriting", f"Pre-searching images: {title_short}", "running")
+        _log_activity("🔎 Pre-Search", f"Finding images: {title_short}", "running")
         available_images = []
         try:
             from pipeline.image_search import search_images

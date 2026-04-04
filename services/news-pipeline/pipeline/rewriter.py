@@ -102,7 +102,8 @@ Focus ONLY on the factual news content and editorial substance.
 
 Rules: Write in a premium, authoritative tech journalism voice. 
 Keep product names in English. Use markdown architecture to make the article highly readable and professional.
-Note: Systematic source attribution (Nguồn: ...) is handled by the platform; focus purely on the article content.
+Note: Systematic source attribution (Nguồn: ...) AND author bylines are handled by the platform. 
+Do NOT include author names, "Nguồn:", source credits, or bylines anywhere in the article body — focus purely on the content.
 """
 
 

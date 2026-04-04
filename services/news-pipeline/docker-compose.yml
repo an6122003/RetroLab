@@ -65,13 +65,10 @@ services:
       --loglevel=info
       --concurrency=4
 
-  # ── Beat scheduler (discovery every 30 min) ────────────────
-  beat:
-    <<: *common
-    command: >
-      celery -A workers.celery_app beat
-      --loglevel=info
-
+  # NOTE: Celery Beat has been REMOVED.
+  # All scheduled runs are managed by the publisher's built-in scheduler,
+  # which is controlled via the admin dashboard's Config tab.
+  # Do NOT re-add a beat service — it will cause phantom scraping.
   # ── Review API (FastAPI) ────────────────────────────────────
   api:
     <<: *common

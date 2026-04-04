@@ -3,6 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
+export const APP_VERSION = 'v2.5.1';
+const BUILD_DATE = '2026-04-04';
+
 const NAV_ITEMS = [
   { path: '/',          label: 'ARTICLES',  icon: 'article' },
   { path: '/composer',  label: 'COMPOSE',   icon: 'auto_awesome' },
@@ -105,6 +108,14 @@ export default function AppShell({ children, sidebar, header }: AppShellProps) {
 
         {/* Footer actions */}
         <div className="mt-auto flex flex-col gap-3 items-center">
+          {/* Version tag */}
+          <div
+            className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 cursor-default select-none"
+            title={`RetroLab Publisher ${APP_VERSION} • Built ${BUILD_DATE}`}
+          >
+            <span className="text-[9px] font-bold text-primary/70 tracking-wider">{APP_VERSION}</span>
+          </div>
+
           <button
             onClick={() => {
               const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';

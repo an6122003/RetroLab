@@ -161,6 +161,12 @@ export const api = {
       method: 'PATCH',
     }),
 
+  batchToggleSources: (category: string, enabled: boolean) =>
+    request<{ status: string; count: number; enabled: boolean }>(`/pipeline/sources/${encodeURIComponent(category)}/batch-toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    }),
+
   addSource: (category: string, source: any) =>
     request<{ status: string }>(`/pipeline/sources/${encodeURIComponent(category)}`, {
       method: 'POST',
@@ -192,10 +198,14 @@ export const api = {
       body: JSON.stringify(config),
     }),
 
-  runPipeline: (task: string, source_tags?: string[]) =>
+  runPipeline: (task: string, source_tags?: string[], category?: string) =>
     request<{ status: string; task_ids: string[]; message: string }>('/pipeline/run', {
       method: 'POST',
-      body: JSON.stringify({ task, source_tags: source_tags?.length ? source_tags : undefined }),
+      body: JSON.stringify({
+        task,
+        source_tags: source_tags?.length ? source_tags : undefined,
+        category: category || undefined,
+      }),
     }),
 
   getTaskStatus: (taskId: string) =>

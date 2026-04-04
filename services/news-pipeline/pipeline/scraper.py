@@ -104,7 +104,7 @@ def _extract_images(html: str, base_url: str, max_images: int = 10) -> list[dict
 
 # ── Main scraper ────────────────────────────────────────────────
 
-async def scrape_article(url: str) -> dict[str, Any]:
+async def scrape_article(url: str, rss_author: str | None = None) -> dict[str, Any]:
     """
     Scrape an article URL and return extracted content.
 
@@ -211,6 +211,9 @@ async def scrape_article(url: str) -> dict[str, Any]:
 
             if not title:
                 title = _extract_title_from_html(html)
+            # Re-extract author from Playwright HTML if still missing
+            if not author:
+                author = _extract_author_from_html(html)
         except Exception:
             logger.exception("playwright_fallback_failed", url=url)
 
@@ -233,6 +236,10 @@ async def scrape_article(url: str) -> dict[str, Any]:
         final_body = body_text
 
     word_count = len(body_text.split()) if body_text else 0
+
+    # Use RSS author as fallback if scraping didn't find one
+    if not author and rss_author:
+        author = _clean_author_name(rss_author)
 
     result.update({
         "title": title,
@@ -275,16 +282,137 @@ def _extract_title_from_html(html: str) -> str:
 
 
 def _extract_author_from_html(html: str) -> str | None:
-    """Try to extract author from common meta tags."""
-    patterns = [
+    """Extract author from HTML using multiple strategies.
+    
+    Priority order:
+    1. trafilatura metadata extraction (handles many patterns)
+    2. Standard meta tags (author, article:author, dc.creator, etc.)
+    3. JSON-LD structured data (schema.org)
+    4. Common HTML element patterns (byline classes, rel=author, etc.)
+    """
+    import json as _json
+
+    # ── Strategy 1: trafilatura metadata ──
+    try:
+        from trafilatura import extract_metadata
+        meta = extract_metadata(html)
+        if meta:
+            meta_dict = meta.as_dict()
+            author_val = meta_dict.get("author")
+            if author_val and _is_valid_author(author_val):
+                return _clean_author_name(author_val)
+    except Exception:
+        pass
+
+    # ── Strategy 2: Meta tags (expanded) ──
+    meta_patterns = [
         r'<meta\s+name=["\']author["\']\s+content=["\']([^"\']+)["\']',
+        r'<meta\s+content=["\']([^"\']+)["\']\s+name=["\']author["\']',
         r'<meta\s+property=["\']article:author["\']\s+content=["\']([^"\']+)["\']',
+        r'<meta\s+content=["\']([^"\']+)["\']\s+property=["\']article:author["\']',
+        r'<meta\s+name=["\']dc\.creator["\']\s+content=["\']([^"\']+)["\']',
+        r'<meta\s+name=["\']citation_author["\']\s+content=["\']([^"\']+)["\']',
+        r'<meta\s+name=["\']sailthru\.author["\']\s+content=["\']([^"\']+)["\']',
+        r'<meta\s+property=["\']og:article:author["\']\s+content=["\']([^"\']+)["\']',
     ]
-    for p in patterns:
+    for p in meta_patterns:
         m = re.search(p, html, re.IGNORECASE)
         if m:
-            return m.group(1).strip()
+            val = m.group(1).strip()
+            if _is_valid_author(val):
+                return _clean_author_name(val)
+
+    # ── Strategy 3: JSON-LD structured data ──
+    jsonld_pattern = re.findall(
+        r'<script\s+type=["\']application/ld\+json["\']\s*>(.*?)</script>',
+        html, re.DOTALL | re.IGNORECASE,
+    )
+    for blob in jsonld_pattern:
+        try:
+            data = _json.loads(blob)
+            # Handle @graph arrays
+            items = data if isinstance(data, list) else [data]
+            if isinstance(data, dict) and "@graph" in data:
+                items = data["@graph"]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                item_type = item.get("@type", "")
+                if isinstance(item_type, list):
+                    item_type = " ".join(item_type)
+                if any(t in item_type for t in ["Article", "NewsArticle", "BlogPosting", "WebPage"]):
+                    author_obj = item.get("author")
+                    if author_obj:
+                        name = None
+                        if isinstance(author_obj, str):
+                            name = author_obj
+                        elif isinstance(author_obj, dict):
+                            name = author_obj.get("name")
+                        elif isinstance(author_obj, list) and author_obj:
+                            first = author_obj[0]
+                            name = first.get("name") if isinstance(first, dict) else str(first)
+                        if name and _is_valid_author(name):
+                            return _clean_author_name(name)
+        except (_json.JSONDecodeError, TypeError, KeyError):
+            continue
+
+    # ── Strategy 4: HTML element patterns ──
+    html_patterns = [
+        r'<a[^>]+rel=["\']author["\'][^>]*>([^<]+)</a>',
+        r'<[^>]+class=["\'][^"\']*\bbyline\b[^"\']*["\'][^>]*>([^<]+)<',
+        r'<[^>]+class=["\'][^"\']*\bauthor[_-]?name\b[^"\']*["\'][^>]*>([^<]+)<',
+        r'<[^>]+class=["\'][^"\']*\bpost-author\b[^"\']*["\'][^>]*>([^<]+)<',
+        r'<[^>]+class=["\'][^"\']*\barticle-author\b[^"\']*["\'][^>]*>([^<]+)<',
+        r'<[^>]+class=["\'][^"\']*\bwriter\b[^"\']*["\'][^>]*>([^<]+)<',
+        r'<[^>]+itemprop=["\']author["\'][^>]*>(?:<[^>]+>)*([^<]+)',
+        r'<span[^>]+class=["\'][^"\']*\bvcard\b[^"\']*["\'][^>]*>\s*<[^>]+class=["\'][^"\']*\bfn\b[^"\']*["\'][^>]*>([^<]+)',
+    ]
+    for p in html_patterns:
+        m = re.search(p, html, re.IGNORECASE)
+        if m:
+            val = m.group(1).strip()
+            # Clean HTML entities
+            val = re.sub(r'&[a-z]+;', ' ', val).strip()
+            if _is_valid_author(val):
+                return _clean_author_name(val)
+
     return None
+
+
+def _is_valid_author(name: str) -> bool:
+    """Check if an extracted author name looks like an actual person/author name."""
+    if not name or len(name) < 2 or len(name) > 100:
+        return False
+    name_lower = name.lower().strip()
+    # Reject URLs
+    if name_lower.startswith(("http://", "https://", "www.")):
+        return False
+    # Reject common non-author values
+    reject_patterns = [
+        "admin", "editor", "staff", "team", "editorial",
+        "redaction", "unknown", "anonymous", "contributor",
+        "news desk", "newsroom", "web editor",
+    ]
+    if name_lower in reject_patterns:
+        return False
+    # Reject if it looks like a site name (all lowercase single word with .com/.org)
+    if re.search(r'\.(com|org|net|io|co)$', name_lower):
+        return False
+    return True
+
+
+def _clean_author_name(name: str) -> str:
+    """Clean up an extracted author name."""
+    # Remove common prefixes
+    name = re.sub(r'^(by|written by|author:|posted by)\s+', '', name, flags=re.IGNORECASE).strip()
+    # Remove HTML tags if any leaked
+    name = re.sub(r'<[^>]+>', '', name).strip()
+    # Collapse whitespace
+    name = re.sub(r'\s+', ' ', name).strip()
+    # Title-case if all lowercase or all uppercase
+    if name == name.lower() or name == name.upper():
+        name = name.title()
+    return name
 
 
 async def _fetch_with_playwright(url: str) -> str:
@@ -301,35 +429,82 @@ async def _fetch_with_playwright(url: str) -> str:
     def _do_fetch(target_url: str) -> str:
         from playwright.sync_api import sync_playwright
         pw = sync_playwright().start()
-        browser = pw.chromium.launch(
-            headless=settings.playwright_headless,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        ctx = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            viewport={"width": 1920, "height": 1080},
-        )
-        page = ctx.new_page()
-        page.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined})')
-
+        browser = None
         try:
-            page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
-        except Exception:
-            pass  # Continue even on timeout
+            browser = pw.chromium.launch(
+                headless=settings.playwright_headless,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                ],
+            )
+            ctx = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                java_script_enabled=True,
+                locale="en-US",
+                timezone_id="America/New_York",
+                color_scheme="light",
+                service_workers="allow",
+            )
+            page = ctx.new_page()
 
-        # Wait for Cloudflare/bot challenge to resolve
-        for _ in range(5):
-            _time.sleep(3)
-            title = page.title()
-            if "just a moment" not in title.lower() and "checking" not in title.lower() and "attention" not in title.lower():
-                break
+            # Stealth: hide automation signals
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+                Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                window.chrome = {runtime: {}};
+            """)
 
-        content = page.content()
-        browser.close()
-        pw.stop()
-        return content
+            try:
+                page.goto(target_url, wait_until="networkidle", timeout=60000)
+            except Exception:
+                try:
+                    page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
+                except Exception:
+                    pass  # Continue even on timeout
+
+            # Wait for bot challenges / JS rendering to complete
+            for _ in range(6):
+                _time.sleep(3)
+                title = page.title().lower()
+                try:
+                    body_text = page.inner_text("body")[:500].lower()
+                except Exception:
+                    body_text = ""
+                blocked = any(msg in title or msg in body_text for msg in [
+                    "just a moment", "checking", "attention required",
+                    "javascript is disabled", "enable javascript",
+                    "please wait", "verifying",
+                ])
+                if not blocked:
+                    break
+
+            return page.content()
+        finally:
+            try:
+                if browser:
+                    browser.close()
+            except Exception:
+                pass
+            try:
+                pw.stop()
+            except Exception:
+                pass
 
     loop = asyncio.get_event_loop()
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        return await loop.run_in_executor(pool, _do_fetch, url)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(pool, _do_fetch, url),
+                timeout=120,  # Hard limit: 2 minutes max
+            )
+        except asyncio.TimeoutError:
+            logger.warning("playwright_fetch_timeout", url=url)
+            return ""
 

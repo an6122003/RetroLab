@@ -358,6 +358,40 @@ function RunTab({
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Scheduler status — polls every 5s
+  const { data: schedulerStatus } = useQuery({
+    queryKey: ['scheduler-status'],
+    queryFn: api.getSchedulerStatus,
+    refetchInterval: 5000,
+  });
+
+  const startSchedulerMutation = useMutation({
+    mutationFn: () => api.startScheduler(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduler-status'] });
+      toast.success(data.message || 'Scheduler started');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const stopSchedulerMutation = useMutation({
+    mutationFn: () => api.stopScheduler(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduler-status'] });
+      toast.success(data.message || 'Scheduler stopped');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const runNowMutation = useMutation({
+    mutationFn: () => api.schedulerRunNow(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['scheduler-status'] });
+      toast.success(data.message || 'Pipeline triggered');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   // Source tags for category filtering
   const { data: sourceTagsData } = useQuery({
     queryKey: ['source-tags'],
@@ -386,7 +420,7 @@ function RunTab({
       id: 'discover_feeds',
       label: 'RSS Feeds Only',
       desc: 'Poll all enabled RSS feeds for new articles',
-      icon: '📰',
+      icon: '📡',
       color: 'from-amber-500 to-orange-500',
       shadow: 'shadow-amber-500/20',
     },
@@ -394,7 +428,7 @@ function RunTab({
       id: 'discover_crawl',
       label: 'Web Crawl Only',
       desc: 'Crawl all enabled crawl-type sources',
-      icon: '🕷️',
+      icon: '🌐',
       color: 'from-purple-500 to-pink-500',
       shadow: 'shadow-purple-500/20',
     },
@@ -617,6 +651,166 @@ function RunTab({
           </div>
         </div>
       )}
+      {/* ── Scheduler & Worker Monitor ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Scheduler Status */}
+        <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">schedule</span>
+              Scheduler
+            </h3>
+            <div className="flex items-center gap-2">
+              {schedulerStatus?.enabled ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Active
+                  </span>
+                  <button
+                    onClick={() => stopSchedulerMutation.mutate()}
+                    disabled={stopSchedulerMutation.isPending}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors font-medium disabled:opacity-50"
+                  >Stop</button>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-container-high text-outline font-medium">
+                    Inactive
+                  </span>
+                  <button
+                    onClick={() => startSchedulerMutation.mutate()}
+                    disabled={startSchedulerMutation.isPending}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors font-medium disabled:opacity-50"
+                  >Start</button>
+                </>
+              )}
+              <button
+                onClick={() => runNowMutation.mutate()}
+                disabled={runNowMutation.isPending}
+                className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors font-medium disabled:opacity-50 flex items-center gap-1"
+              >
+                <span className={`material-symbols-outlined text-[10px] ${runNowMutation.isPending ? 'animate-spin' : ''}`}>
+                  {runNowMutation.isPending ? 'progress_activity' : 'play_arrow'}
+                </span>
+                Run Now
+              </button>
+            </div>
+          </div>
+
+          {schedulerStatus && (
+            <div className="space-y-2">
+              {/* Schedule info */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-surface-container/40 px-3 py-2">
+                  <p className="text-[9px] text-outline uppercase tracking-wider">Mode</p>
+                  <p className="text-xs font-medium text-on-surface mt-0.5">
+                    {schedulerStatus.mode === 'daily'
+                      ? `Daily at ${schedulerStatus.time_of_day}`
+                      : `Every ${schedulerStatus.interval_minutes} min`}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-surface-container/40 px-3 py-2">
+                  <p className="text-[9px] text-outline uppercase tracking-wider">Task</p>
+                  <p className="text-xs font-medium text-on-surface mt-0.5">
+                    {schedulerStatus.task === 'full_pipeline' ? '🔄 Full Pipeline'
+                      : schedulerStatus.task === 'discover_feeds' ? '📡 RSS Only'
+                      : '🌐 Crawl Only'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Timing */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-surface-container/40 px-3 py-2">
+                  <p className="text-[9px] text-outline uppercase tracking-wider">Next Run</p>
+                  <p className="text-[10px] font-medium text-on-surface mt-0.5 truncate" title={schedulerStatus.next_run_at || ''}>
+                    {schedulerStatus.next_run_at
+                      ? new Date(schedulerStatus.next_run_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-surface-container/40 px-3 py-2">
+                  <p className="text-[9px] text-outline uppercase tracking-wider">Last Run</p>
+                  <p className="text-[10px] font-medium text-on-surface mt-0.5 truncate" title={schedulerStatus.last_run_at || ''}>
+                    {schedulerStatus.last_run_at
+                      ? new Date(schedulerStatus.last_run_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-surface-container/40 px-3 py-2">
+                  <p className="text-[9px] text-outline uppercase tracking-wider">Total Runs</p>
+                  <p className="text-[10px] font-bold text-on-surface mt-0.5">{schedulerStatus.total_runs}</p>
+                </div>
+              </div>
+
+              {schedulerStatus.is_quiet_hours && (
+                <div className="text-[10px] text-amber-600 bg-amber-500/10 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px]">bedtime</span>
+                  Quiet hours active ({schedulerStatus.quiet_hours.start}:00 – {schedulerStatus.quiet_hours.end}:00)
+                </div>
+              )}
+
+              {schedulerStatus.last_error && (
+                <div className="text-[10px] text-red-500 bg-red-500/10 px-3 py-1.5 rounded-lg truncate" title={schedulerStatus.last_error}>
+                  ⚠ {schedulerStatus.last_error}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Worker Live View */}
+        <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+            Worker
+            {queueStatus?.active_tasks && queueStatus.active_tasks.length > 0 && (
+              <span className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {queueStatus.active_tasks.length} active
+              </span>
+            )}
+            <span className="text-[10px] text-outline normal-case font-normal ml-auto">Refreshes 3s</span>
+          </h3>
+
+          {queueStatus?.active_tasks && queueStatus.active_tasks.length > 0 ? (
+            <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+              {queueStatus.active_tasks.map((t) => {
+                const elapsed = t.started ? Math.round((Date.now() / 1000) - t.started) : 0;
+                const elapsedStr = elapsed > 60 ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s` : `${elapsed}s`;
+                const taskIcon = t.name.includes('scrape') ? '📰'
+                  : t.name.includes('rewrite') ? '✍️'
+                  : t.name.includes('image') || t.name.includes('search') ? '🔎'
+                  : t.name.includes('discover') ? '🔍' : '⚙️';
+                return (
+                  <div key={t.id} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
+                    <span className="text-sm flex-shrink-0">{taskIcon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-on-surface">{t.name}</span>
+                        {elapsed > 0 && (
+                          <span className="text-[10px] text-outline font-mono">{elapsedStr}</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-on-surface-variant truncate mt-0.5" title={t.args}>
+                        {t.args}
+                      </p>
+                    </div>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <span className="material-symbols-outlined text-[28px] text-outline/30">hourglass_empty</span>
+              <p className="text-xs text-outline mt-2">No active tasks</p>
+              <p className="text-[10px] text-outline/60 mt-0.5">Worker is idle — waiting for jobs</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Queue Management ──────────────────────────────── */}
       <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl p-6 space-y-4">
@@ -689,19 +883,22 @@ function RunTab({
             { name: 'scraper_queue', label: 'Scraper', icon: 'terminal', color: 'text-blue-600' },
             { name: 'rewriter_queue', label: 'Rewriter', icon: 'auto_awesome', color: 'text-purple-600' },
             { name: 'image_search_queue', label: 'Images', icon: 'image_search', color: 'text-cyan-600' },
-            { name: 'default', label: 'Default', icon: 'inventory_2', color: 'text-on-surface-variant' },
-          ].map(q => (
+            { name: 'default', label: 'Discovery', icon: 'explore', color: 'text-on-surface-variant' },
+          ].map(q => {
+            const count = queueStatus?.queues?.[q.name] ?? 0;
+            return (
             <div key={q.name} className="rounded-xl bg-surface-container/60 p-3 border border-outline-variant/15">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-outline uppercase tracking-wider">{q.label}</span>
-                <span className={`material-symbols-outlined text-[16px] ${q.color}`}>{q.icon}</span>
+                <span className={`material-symbols-outlined text-[16px] ${q.color} ${count > 0 ? 'animate-pulse' : ''}`}>{q.icon}</span>
               </div>
-              <p className={`text-xl font-bold ${q.color}`}>
-                {queueStatus?.queues?.[q.name] ?? 0}
+              <p className={`text-xl font-bold ${count > 0 ? q.color : 'text-outline'}`}>
+                {count}
               </p>
-              <p className="text-[10px] text-outline mt-0.5">in queue</p>
+              <p className="text-[10px] text-outline mt-0.5">{count > 0 ? 'in-flight' : 'idle'}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Ollama / LLM Status */}
@@ -1006,6 +1203,25 @@ function SourcesTab({
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const batchToggleMutation = useMutation({
+    mutationFn: ({ category, enabled }: { category: string; enabled: boolean }) =>
+      api.batchToggleSources(category, enabled),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-sources'] });
+      toast.success(`${data.enabled ? 'Enabled' : 'Disabled'} ${data.count} sources`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const runCategoryMutation = useMutation({
+    mutationFn: (category: string) =>
+      api.runPipeline('full_pipeline', undefined, category),
+    onSuccess: (data, category) => {
+      toast.success(`Pipeline started for ${CATEGORY_META[category]?.label || category}`);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const [detecting, setDetecting] = useState<'add' | 'edit' | null>(null);
 
   const runDetect = async (seedUrl: string, target: 'add' | 'edit') => {
@@ -1218,8 +1434,36 @@ function SourcesTab({
                   <p className="text-[10px] text-outline">{enabledCount}/{entries.length} active</p>
                 </div>
                 {entries.length > 0 && (
-                  <div className="w-12 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(enabledCount / entries.length) * 100}%` }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-12 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(enabledCount / entries.length) * 100}%` }} />
+                    </div>
+                    {enabledCount < entries.length ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); batchToggleMutation.mutate({ category, enabled: true }); }}
+                        className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors font-medium whitespace-nowrap"
+                        title="Enable all sources"
+                      >All on</button>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); batchToggleMutation.mutate({ category, enabled: false }); }}
+                        className="text-[9px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors font-medium whitespace-nowrap"
+                        title="Disable all sources"
+                      >All off</button>
+                    )}
+                    {enabledCount > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); runCategoryMutation.mutate(category); }}
+                        disabled={runCategoryMutation.isPending}
+                        className={`text-[9px] px-2 py-0.5 rounded-full ${meta.bgTint} ${meta.color} hover:opacity-80 transition-all font-medium whitespace-nowrap flex items-center gap-1 disabled:opacity-50`}
+                        title={`Run pipeline for ${meta.label} only`}
+                      >
+                        <span className={`material-symbols-outlined text-[10px] ${runCategoryMutation.isPending ? 'animate-spin' : ''}`}>
+                          {runCategoryMutation.isPending ? 'progress_activity' : 'play_arrow'}
+                        </span>
+                        Run
+                      </button>
+                    )}
                   </div>
                 )}
                 <span className={`material-symbols-outlined text-[18px] text-outline transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}>expand_more</span>
@@ -1487,13 +1731,12 @@ function ConfigTab({
       ],
     },
     {
-      title: 'Pipeline',
+      title: 'Pipeline Limits',
       fields: [
-        { key: 'discovery_interval_minutes', label: 'Discovery Interval (min)', type: 'number' },
-        { key: 'max_articles_per_run', label: 'Max Articles Per Run (total)', type: 'number' },
-        { key: 'max_articles_per_source', label: 'Max Articles Per Source', type: 'number' },
+        { key: 'max_articles_per_run', label: 'Max articles per discovery run (total)', type: 'number' },
+        { key: 'max_articles_per_source', label: 'Max articles per source (per run)', type: 'number' },
         { key: 'randomize_sources', label: 'Randomize source & article order', type: 'toggle' },
-        { key: 'scraper_delay_seconds', label: 'Scraper Delay (sec)', type: 'number', step: 0.5 },
+        { key: 'scraper_delay_seconds', label: 'Scraper delay between requests (sec)', type: 'number', step: 0.5 },
         { key: 'enable_dalle_fallback', label: 'Enable DALL·E Fallback', type: 'toggle' },
       ],
     },
@@ -1505,26 +1748,26 @@ function ConfigTab({
       ],
     },
     {
-      title: 'Scheduled Pipeline',
+      title: 'Scheduled Runs',
       fields: [
-        { key: 'scheduler_enabled', label: 'Enable scheduled runs', type: 'toggle' },
+        { key: 'scheduler_enabled', label: 'Enable automatic scheduled runs', type: 'toggle' },
         {
           key: 'scheduler_mode',
-          label: 'Schedule Mode',
+          label: 'Schedule type',
           type: 'select',
           options: [
-            { value: 'interval', label: 'Run repeatedly (Interval)' },
-            { value: 'daily', label: 'Run at specific times (Daily)' },
+            { value: 'interval', label: 'Repeat every N minutes' },
+            { value: 'daily', label: 'Run at specific times each day' },
           ],
         },
         ...(config.scheduler_mode === 'daily'
           ? [
-              { key: 'scheduler_time_of_day', label: 'Daily run times (Local time, comma-separated e.g. 08:00, 16:30)', type: 'text' } as ConfigField,
+              { key: 'scheduler_time_of_day', label: 'Run times (local, comma-separated e.g. 08:00, 16:30)', type: 'text' } as ConfigField,
             ]
           : [
-              { key: 'scheduler_interval_minutes', label: 'Interval (minutes)', type: 'number' } as ConfigField,
-              { key: 'scheduler_quiet_hours_start', label: 'Quiet hours start (Local hour, -1 = disabled)', type: 'number' } as ConfigField,
-              { key: 'scheduler_quiet_hours_end', label: 'Quiet hours end (Local hour, -1 = disabled)', type: 'number' } as ConfigField,
+              { key: 'scheduler_interval_minutes', label: 'Run every (minutes)', type: 'number' } as ConfigField,
+              { key: 'scheduler_quiet_hours_start', label: 'Quiet hours start (0-23, -1 = off)', type: 'number' } as ConfigField,
+              { key: 'scheduler_quiet_hours_end', label: 'Quiet hours end (0-23, -1 = off)', type: 'number' } as ConfigField,
             ]),
         {
           key: 'scheduler_task',

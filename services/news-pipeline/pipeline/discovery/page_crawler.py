@@ -46,7 +46,10 @@ def _score_link(element_context: str) -> int:
     return score
 
 
-async def crawl_pages(source_tags: list[str] | None = None) -> list[dict[str, Any]]:
+async def crawl_pages(
+    source_tags: list[str] | None = None,
+    category: str | None = None,
+) -> list[dict[str, Any]]:
     """
     Crawl all enabled crawl-type sources and return new article dicts.
 
@@ -54,11 +57,12 @@ async def crawl_pages(source_tags: list[str] | None = None) -> list[dict[str, An
     
     Args:
         source_tags: Optional list of tags to filter sources.
+        category: Optional category key to filter (e.g. 'game_emulation').
     """
     import random
 
     settings = get_settings()
-    sources = get_enabled_sources(source_type="crawl")
+    sources = get_enabled_sources(source_type="crawl", category=category)
     
     # Filter by tags if provided
     if source_tags:
@@ -180,9 +184,23 @@ async def _fetch_with_playwright(url: str, headless: bool = True) -> str:
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=headless)
-        page = await browser.new_page()
-        await page.goto(url, wait_until="networkidle", timeout=30_000)
-        content = await page.content()
-        await browser.close()
+        browser = await p.chromium.launch(
+            headless=headless,
+            args=["--no-sandbox", "--disable-dev-shm-usage"],
+        )
+        try:
+            page = await browser.new_page()
+            try:
+                await page.goto(url, wait_until="networkidle", timeout=30_000)
+            except Exception:
+                try:
+                    await page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+                except Exception:
+                    pass
+            content = await page.content()
+        finally:
+            try:
+                await browser.close()
+            except Exception:
+                pass
     return content
