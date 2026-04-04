@@ -27,7 +27,10 @@ def hash_url(url: str) -> str:
     return hashlib.sha256(url.encode("utf-8")).hexdigest()
 
 
-async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any]]:
+async def poll_feeds(
+    source_tags: list[str] | None = None,
+    category: str | None = None,
+) -> list[dict[str, Any]]:
     """
     Poll all enabled RSS sources and return a list of new article dicts
     ready for the scraper queue.
@@ -38,11 +41,12 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
     Args:
         source_tags: Optional list of tags to filter sources. Only sources
                      with at least one matching tag are polled.
+        category: Optional category key to filter (e.g. 'game_emulation').
     """
     import random
 
     settings = get_settings()
-    sources = get_enabled_sources(source_type="rss")
+    sources = get_enabled_sources(source_type="rss", category=category)
     
     # Filter by tags if provided
     if source_tags:
@@ -119,6 +123,12 @@ async def poll_feeds(source_tags: list[str] | None = None) -> list[dict[str, Any
                     "title": entry.get("title", ""),
                     "published_at": published_at,
                     "output_language": source.get("output_language", settings.output_language),
+                    # Capture author from RSS feed entry if available
+                    "rss_author": (
+                        getattr(entry, "author", None)
+                        or (getattr(entry, "author_detail", {}) or {}).get("name")
+                        or None
+                    ),
                 }
 
                 await mark_url_processed(

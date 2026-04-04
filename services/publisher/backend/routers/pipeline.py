@@ -132,6 +132,7 @@ class PipelineConfig(BaseModel):
 class RunRequest(BaseModel):
     task: str  # "discover_feeds", "discover_crawl", "full_pipeline"
     source_tags: list[str] | None = None  # optional tag filter e.g. ["ai", "smartphones"]
+    category: str | None = None  # optional category filter e.g. "game_emulation"
 
 
 class RunResponse(BaseModel):
@@ -451,6 +452,33 @@ async def update_source(
 
     raise HTTPException(status_code=404, detail=f"Source '{source_name}' not found")
 
+
+@router.post("/sources/{category}/batch-toggle")
+async def batch_toggle_sources(
+    category: str,
+    body: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Enable or disable ALL sources in a category at once."""
+    enabled = body.get("enabled", False)
+    path = _sources_path()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="sources.yaml not found")
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    if category not in data:
+        raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
+
+    count = 0
+    for source in data[category]:
+        source["enabled"] = enabled
+        count += 1
+
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+    return {"status": "updated", "count": count, "enabled": enabled}
 
 
 # ── Pipeline config (Redis-backed, .env as initial fallback) ─────
@@ -1590,33 +1618,73 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
         def _scrape_with_playwright(target_url: str, headless: bool = True) -> str:
             from playwright.sync_api import sync_playwright
             pw = sync_playwright().start()
-            browser = pw.chromium.launch(
-                headless=headless,
-                args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
-            )
-            ctx = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                viewport={"width": 1920, "height": 1080},
-            )
-            page = ctx.new_page()
-            page.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined})')
-
+            browser = None
             try:
-                page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
-            except Exception:
-                pass  # Continue even on timeout
+                browser = pw.chromium.launch(
+                    headless=headless,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-web-security",
+                        "--disable-features=IsolateOrigins,site-per-process",
+                    ],
+                )
+                ctx = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    viewport={"width": 1920, "height": 1080},
+                    java_script_enabled=True,
+                    locale="en-US",
+                    timezone_id="America/New_York",
+                    color_scheme="light",
+                    service_workers="allow",
+                )
+                page = ctx.new_page()
 
-            # Wait for Cloudflare/bot challenge to resolve
-            for _ in range(5):
-                _time.sleep(3)
-                title = page.title()
-                if "just a moment" not in title.lower() and "checking" not in title.lower() and "attention" not in title.lower():
-                    break
+                # Stealth: hide automation signals
+                page.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                    Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+                    Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
+                    Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                    window.chrome = {runtime: {}};
+                """)
 
-            result_html = page.content()
-            browser.close()
-            pw.stop()
-            return result_html
+                try:
+                    page.goto(target_url, wait_until="networkidle", timeout=60000)
+                except Exception:
+                    try:
+                        page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
+                    except Exception:
+                        pass  # Continue even on timeout
+
+                # Wait for bot challenges / JS rendering to complete
+                for _ in range(6):
+                    _time.sleep(3)
+                    title = page.title().lower()
+                    try:
+                        body_text = page.inner_text("body")[:500].lower()
+                    except Exception:
+                        body_text = ""
+                    blocked = any(msg in title or msg in body_text for msg in [
+                        "just a moment", "checking", "attention required",
+                        "javascript is disabled", "enable javascript",
+                        "please wait", "verifying",
+                    ])
+                    if not blocked:
+                        break
+
+                return page.content()
+            finally:
+                try:
+                    if browser:
+                        browser.close()
+                except Exception:
+                    pass
+                try:
+                    pw.stop()
+                except Exception:
+                    pass
 
         try:
             loop = asyncio.get_event_loop()
@@ -1645,28 +1713,67 @@ async def compose_article(req: ComposeRequest) -> dict[str, Any]:
 import time
 from playwright.sync_api import sync_playwright
 pw = sync_playwright().start()
-browser = pw.chromium.launch(
-    headless=False,
-    args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
-)
-ctx = browser.new_context(
-    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    viewport={{"width": 1920, "height": 1080}},
-)
-page = ctx.new_page()
-page.add_init_script('Object.defineProperty(navigator, "webdriver", {{get: () => undefined}})')
+browser = None
 try:
-    page.goto("{target_url}", wait_until="domcontentloaded", timeout=60000)
-except Exception:
-    pass
-for _ in range(5):
-    time.sleep(3)
-    title = page.title()
-    if "just a moment" not in title.lower() and "checking" not in title.lower() and "attention" not in title.lower():
-        break
-print(page.content())
-browser.close()
-pw.stop()
+    browser = pw.chromium.launch(
+        headless=False,
+        args=[
+            "--disable-blink-features=AutomationControlled",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-web-security",
+            "--disable-features=IsolateOrigins,site-per-process",
+        ],
+    )
+    ctx = browser.new_context(
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        viewport={{"width": 1920, "height": 1080}},
+        java_script_enabled=True,
+        locale="en-US",
+        timezone_id="America/New_York",
+        color_scheme="light",
+        service_workers="allow",
+    )
+    page = ctx.new_page()
+    page.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', {{get: () => undefined}});
+        Object.defineProperty(navigator, 'languages', {{get: () => ['en-US', 'en']}});
+        Object.defineProperty(navigator, 'platform', {{get: () => 'Win32'}});
+        Object.defineProperty(navigator, 'plugins', {{get: () => [1, 2, 3, 4, 5]}});
+        window.chrome = {{runtime: {{}}}};
+    """)
+    try:
+        page.goto("{target_url}", wait_until="networkidle", timeout=60000)
+    except Exception:
+        try:
+            page.goto("{target_url}", wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            pass
+    for _ in range(6):
+        time.sleep(3)
+        title = page.title().lower()
+        try:
+            body_text = page.inner_text("body")[:500].lower()
+        except Exception:
+            body_text = ""
+        blocked = any(msg in title or msg in body_text for msg in [
+            "just a moment", "checking", "attention required",
+            "javascript is disabled", "enable javascript",
+            "please wait", "verifying",
+        ])
+        if not blocked:
+            break
+    print(page.content())
+finally:
+    try:
+        if browser:
+            browser.close()
+    except Exception:
+        pass
+    try:
+        pw.stop()
+    except Exception:
+        pass
 '''
             result = _sp.run(
                 ["xvfb-run", "--auto-servernum", "python", "-c", script],
@@ -1760,9 +1867,6 @@ pw.stop()
         m = re_mod.search(r'title="([^"]+)"', meta_obj)
         if m:
             title = m.group(1)
-        m = re_mod.search(r'author="([^"]+)"', meta_obj)
-        if m:
-            author = m.group(1)
         m = re_mod.search(r'sitename="([^"]+)"', meta_obj)
         if m:
             sitename = m.group(1)
@@ -1771,20 +1875,24 @@ pw.stop()
         m = re_mod.search(r"<title[^>]*>([^<]+)</title>", html, re_mod.IGNORECASE)
         title = m.group(1).strip() if m else ""
 
-    # Fallback author from HTML meta tags
-    if not author:
-        m = re_mod.search(r'<meta[^>]+name=["\']author["\'][^>]+content=["\']([^"\']+)["\']', html, re_mod.IGNORECASE)
-        if m:
-            author = m.group(1)
-    if not author:
-        m = re_mod.search(r'<meta[^>]+property=["\']article:author["\'][^>]+content=["\']([^"\']+)["\']', html, re_mod.IGNORECASE)
-        if m:
-            author = m.group(1)
-    if not author:
-        # Try JSON-LD author
-        m = re_mod.search(r'"author"\s*:\s*\{[^}]*"name"\s*:\s*"([^"]+)"', html)
-        if m:
-            author = m.group(1)
+    # Robust author extraction — use shared pipeline scraper function
+    try:
+        import sys as _sys2
+        if '/app/pipeline' not in _sys2.path:
+            _sys2.path.insert(0, '/app/pipeline')
+        from pipeline.scraper import _extract_author_from_html
+        author = _extract_author_from_html(html) or ""
+    except Exception:
+        # Fallback: trafilatura metadata
+        if meta_obj:
+            m = re_mod.search(r'author="([^"]+)"', meta_obj)
+            if m:
+                author = m.group(1)
+        # Fallback: basic meta tags
+        if not author:
+            m = re_mod.search(r'<meta[^>]+name=["\']author["\'][^>]+content=["\']([^"\']+)["\']', html, re_mod.IGNORECASE)
+            if m:
+                author = m.group(1)
 
     # Fallback site name from og:site_name or domain
     if not sitename:
@@ -1829,6 +1937,7 @@ pw.stop()
         source_name=scraped.get("sitename", ""),
         published_at="Unknown",
         body_text=scraped["body_text"],
+        available_images_section="",
     )
 
     # Cache scraped data (available for retry/rewrite later)
@@ -2375,16 +2484,21 @@ async def compose_save_to_draft(req: ComposeSaveRequest) -> dict[str, Any]:
             if not isinstance(inline_image_keywords, list):
                 inline_image_keywords = []
 
-            # Build formatted author: "Author - SiteName - Tổng hợp bởi RetroLab"
+            # Determine source_author with consistent format: "Author | SiteName | Tổng hợp bởi RetroLab"
             brand = "Tổng hợp bởi RetroLab"
             source_outlet = req.source_sitename or "composer"
-            author_parts = []
             if req.source_author:
-                author_parts.append(req.source_author)
-            if source_outlet:
-                author_parts.append(source_outlet)
-            author_parts.append(brand)
-            source_author = " | ".join(author_parts)
+                source_author = req.source_author
+            else:
+                # Build from scraped author + site name
+                author_parts = []
+                scraped_author = scraped.get("author", "")
+                if scraped_author:
+                    author_parts.append(scraped_author)
+                if source_outlet:
+                    author_parts.append(source_outlet)
+                author_parts.append(brand)
+                source_author = " | ".join(author_parts)
 
             conn.execute(
                 text("""
@@ -2571,29 +2685,57 @@ async def queue_status() -> dict[str, Any]:
         )).fetchone()
         stuck["image_pending"] = row[0] if row else 0
 
-    # Active tasks from Celery inspect
+    # Active + reserved tasks from Celery inspect (per-queue counts)
     celery = _get_celery()
     active_tasks = []
+    # Map task names to their queue for per-queue active counts
+    task_queue_map = {
+        "scrape_article_task": "scraper_queue",
+        "rewrite_article_task": "rewriter_queue",
+        "search_images_task": "image_search_queue",
+        "discover_feeds": "default",
+        "discover_crawl": "default",
+    }
+    active_per_queue = {q: 0 for q in queues}
     try:
         inspect = celery.control.inspect(timeout=2.0)
+        # Count active (currently executing) tasks
         active = inspect.active() or {}
         for worker_name, tasks in active.items():
             for t in tasks:
+                task_short = t.get("name", "").split(".")[-1]
                 active_tasks.append({
                     "id": t.get("id", ""),
-                    "name": t.get("name", "").split(".")[-1],
+                    "name": task_short,
                     "args": str(t.get("args", ""))[:100],
                     "started": t.get("time_start"),
                     "worker": worker_name,
                 })
+                q_name = task_queue_map.get(task_short, "default")
+                if q_name in active_per_queue:
+                    active_per_queue[q_name] += 1
+
+        # Count reserved (prefetched, waiting to execute) tasks
+        reserved = inspect.reserved() or {}
+        for worker_name, tasks in reserved.items():
+            for t in tasks:
+                task_short = t.get("name", "").split(".")[-1]
+                q_name = task_queue_map.get(task_short, "default")
+                if q_name in active_per_queue:
+                    active_per_queue[q_name] += 1
     except Exception:
         pass
 
+    # Combine: queued (in Redis) + active + reserved = total in-flight
+    combined = {q: queues[q] + active_per_queue.get(q, 0) for q in queues}
+
     return {
-        "queues": queues,
+        "queues": combined,
+        "queues_pending": queues,
+        "active_per_queue": active_per_queue,
         "stuck": stuck,
         "active_tasks": active_tasks,
-        "total_queued": sum(queues.values()),
+        "total_queued": sum(combined.values()),
     }
 
 
@@ -2796,10 +2938,12 @@ async def run_pipeline(req: RunRequest = Body(...)) -> RunResponse:
         _r = _redis.Redis.from_url(settings.REDIS_URL)
         _r.delete("pipeline:stopped")
 
-        # Pass source_tags to task args if provided
+        # Pass source_tags and category to task args if provided
         task_kwargs = {}
         if req.source_tags:
             task_kwargs["source_tags"] = req.source_tags
+        if req.category:
+            task_kwargs["category"] = req.category
 
         if req.task in ("discover_feeds", "full_pipeline"):
             result = celery.send_task(
@@ -2852,27 +2996,29 @@ async def get_task_status(task_id: str) -> dict[str, Any]:
 
 @router.get("/status")
 async def get_pipeline_status() -> dict[str, Any]:
-    """Return live pipeline processing counts from the database."""
-    from sqlalchemy import func, select, text
-    from sqlalchemy.ext.asyncio import AsyncSession
+    """Return live pipeline processing counts from the database.
+    
+    Uses a fresh sync connection (not the async session pool) to ensure
+    every poll returns the latest data without stale transaction snapshots.
+    """
+    from sqlalchemy import text
 
-    from ..database import get_db
-
-    async for db in get_db():
+    engine = _get_engine()
+    with engine.connect() as conn:
         # Raw articles by status
-        raw_result = await db.execute(
+        raw_result = conn.execute(
             text("SELECT status, COUNT(*) FROM raw_articles GROUP BY status")
         )
         raw_counts = {row[0]: row[1] for row in raw_result.all()}
 
         # Final articles by status
-        art_result = await db.execute(
+        art_result = conn.execute(
             text("SELECT status, COUNT(*) FROM articles GROUP BY status")
         )
         art_counts = {row[0]: row[1] for row in art_result.all()}
 
         # Recent articles (last 5 created)
-        recent_result = await db.execute(
+        recent_result = conn.execute(
             text(
                 "SELECT id, LEFT(title, 80) as title, status, source_outlet, created_at "
                 "FROM articles ORDER BY created_at DESC LIMIT 5"
@@ -2889,13 +3035,13 @@ async def get_pipeline_status() -> dict[str, Any]:
             for row in recent_result.all()
         ]
 
-        return {
-            "raw_articles": raw_counts,
-            "articles": art_counts,
-            "recent": recent,
-            "total_raw": sum(raw_counts.values()),
-            "total_articles": sum(art_counts.values()),
-        }
+    return {
+        "raw_articles": raw_counts,
+        "articles": art_counts,
+        "recent": recent,
+        "total_raw": sum(raw_counts.values()),
+        "total_articles": sum(art_counts.values()),
+    }
 
 
 # ── Curation (raw article review before LLM rewrite) ────────────
@@ -2907,10 +3053,10 @@ async def list_curation_articles(
 ) -> list[dict[str, Any]]:
     """List raw articles for curation, filterable by status."""
     from sqlalchemy import text
-    from ..database import get_db
 
-    async for db in get_db():
-        result = await db.execute(
+    engine = _get_engine()
+    with engine.connect() as conn:
+        result = conn.execute(
             text(
                 "SELECT id, url, url_hash, source_name, source_type, category, "
                 "title, author, body_text, word_count, language, status, "
@@ -2923,35 +3069,36 @@ async def list_curation_articles(
             {"status": status, "limit": limit},
         )
         rows = result.all()
-        return [
-            {
-                "id": str(row[0]),
-                "url": row[1],
-                "url_hash": row[2],
-                "source_name": row[3],
-                "source_type": row[4],
-                "category": row[5],
-                "title": row[6],
-                "author": row[7],
-                "body_text": row[8],
-                "word_count": row[9],
-                "language": row[10],
-                "status": row[11],
-                "scraped_at": str(row[12]) if row[12] else None,
-                "created_at": str(row[13]) if row[13] else None,
-            }
-            for row in rows
-        ]
+
+    return [
+        {
+            "id": str(row[0]),
+            "url": row[1],
+            "url_hash": row[2],
+            "source_name": row[3],
+            "source_type": row[4],
+            "category": row[5],
+            "title": row[6],
+            "author": row[7],
+            "body_text": row[8],
+            "word_count": row[9],
+            "language": row[10],
+            "status": row[11],
+            "scraped_at": str(row[12]) if row[12] else None,
+            "created_at": str(row[13]) if row[13] else None,
+        }
+        for row in rows
+    ]
 
 
 @router.get("/curation/stats")
 async def curation_stats() -> dict[str, int]:
     """Count raw articles by status for the curation dashboard."""
     from sqlalchemy import text
-    from ..database import get_db
 
-    async for db in get_db():
-        result = await db.execute(
+    engine = _get_engine()
+    with engine.connect() as conn:
+        result = conn.execute(
             text("SELECT status, COUNT(*) FROM raw_articles GROUP BY status")
         )
         return {row[0]: row[1] for row in result.all()}

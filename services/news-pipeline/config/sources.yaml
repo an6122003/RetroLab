@@ -154,6 +154,7 @@ it:
   - android
   - smartphones
   - tips
+  - modding
 - name: Phandroid
   type: crawl
   seed_url: https://phandroid.com/category/android-news/
@@ -165,10 +166,121 @@ it:
   - android
   - smartphones
   - apps
-game_emulation:
-- name: GameSpot
-  type: crawl
-  seed_url: https://www.gamespot.com/
-  article_url_pattern: ''
-  article_selector: ''
+- name: BleepingComputer
+  type: rss
+  url: https://www.bleepingcomputer.com/feed/
   enabled: true
+  tags:
+  - security
+  - malware
+  - windows
+- name: The Hacker News
+  type: rss
+  url: https://feeds.feedburner.com/TheHackersNews
+  enabled: true
+  tags:
+  - security
+  - hacking
+  - vulnerabilities
+- name: How-To Geek
+  type: rss
+  url: https://www.howtogeek.com/feed/
+  enabled: true
+  tags:
+  - tips
+  - windows
+  - linux
+  - tutorials
+- name: TechSpot
+  type: rss
+  url: https://www.techspot.com/backend/rss/rss.xml
+  enabled: true
+  tags:
+  - hardware
+  - benchmarks
+  - reviews
+- name: Tom's Hardware
+  type: rss
+  url: https://www.tomshardware.com/feeds/all
+  enabled: true
+  tags:
+  - hardware
+  - benchmarks
+  - reviews
+  - gpu
+- name: Neowin
+  type: rss
+  url: https://www.neowin.net/news/rss/
+  enabled: true
+  tags:
+  - windows
+  - microsoft
+  - software
+game_emulation:
+- name: IGN
+  type: rss
+  url: https://feeds.feedburner.com/ign/all
+  enabled: true
+  tags:
+  - games
+  - reviews
+  - trailers
+- name: GameSpot
+  type: rss
+  url: https://www.gamespot.com/feeds/mashup/
+  enabled: true
+  tags:
+  - games
+  - reviews
+  - news
+- name: Kotaku
+  type: rss
+  url: https://kotaku.com/rss
+  enabled: true
+  tags:
+  - games
+  - culture
+  - reviews
+- name: PC Gamer
+  type: rss
+  url: https://www.pcgamer.com/rss/
+  enabled: true
+  tags:
+  - pc-games
+  - reviews
+  - hardware
+- name: Eurogamer
+  type: rss
+  url: https://www.eurogamer.net/feed
+  enabled: true
+  tags:
+  - games
+  - reviews
+  - analysis
+- name: Rock Paper Shotgun
+  type: rss
+  url: https://www.rockpapershotgun.com/feed
+  enabled: true
+  tags:
+  - pc-games
+  - indie
+  - reviews
+- name: RetroArch Blog
+  type: crawl
+  seed_url: https://www.libretro.com/
+  article_url_pattern: libretro\.com/index\.php/
+  article_selector: h2 a, .entry-title a
+  js_required: false
+  enabled: true
+  tags:
+  - emulation
+  - retrogaming
+  - libretro
+- name: Emulation News
+  type: rss
+  url: https://emulation.gametechwiki.com/index.php/Special:RecentChanges?feed=rss
+  enabled: true
+  tags:
+  - emulation
+  - retrogaming
+  - emulators

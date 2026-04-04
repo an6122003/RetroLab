@@ -370,15 +370,13 @@ async def push_to_notion(article: Article) -> str:
     # 4. Divider
     children.append(_divider_block())
 
-    # 5. Source paragraph — format: Nguồn: Author - Website Name - Link
-    source_parts = []
-    if article.source_author:
-        source_parts.append(article.source_author)
-    if article.source_outlet:
-        source_parts.append(article.source_outlet)
-    if article.source_url:
-        source_parts.append(article.source_url)
-    if source_parts:
+    # 5. Source paragraph — only outlet + link (author is in the Author property)
+    if article.source_outlet or article.source_url:
+        source_parts = []
+        if article.source_outlet:
+            source_parts.append(article.source_outlet)
+        if article.source_url:
+            source_parts.append(article.source_url)
         children.append(_paragraph_block(f"Nguồn: {' - '.join(source_parts)}"))
 
     # ── Create page ───────────────────────────────────────────
