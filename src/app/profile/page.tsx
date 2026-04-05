@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { User, Heart, MessageSquare, Settings, LogOut,
-  Clock, Trash2, Bookmark, Bell, Lock, Check, ExternalLink, AlertTriangle
+  Clock, Trash2, Bookmark, Bell, Lock, Check, ExternalLink, AlertTriangle, Mail, Loader2, CalendarDays, CalendarClock, Newspaper, Brain, Monitor, Terminal, Gamepad2
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { getAvatar, AVATARS, type AvatarOption } from '@/constants/avatars';
@@ -38,6 +38,12 @@ export default function ProfilePage() {
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
   const [newsletter, setNewsletter] = useState(true);
+
+  // Newsletter subscription from DB (via API)
+  const [newsletterDbActive, setNewsletterDbActive] = useState(false);
+  const [newsletterDbFrequency, setNewsletterDbFrequency] = useState<'daily' | 'weekly'>('weekly');
+  const [newsletterDbCategories, setNewsletterDbCategories] = useState<string[]>([]);
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
 
   // Post lists
   const [savedSlugs, setSavedSlugs] = useState<string[]>([]);
@@ -73,6 +79,17 @@ export default function ProfilePage() {
     }
     setSavedSlugs(saved);
     setLikedSlugs(liked);
+
+    // Fetch newsletter DB status
+    try {
+      const nlRes = await fetch('/api/newsletter/status');
+      const nlData = await nlRes.json();
+      setNewsletterDbActive(nlData.subscribed || false);
+      setNewsletterDbFrequency(nlData.frequency || 'weekly');
+      setNewsletterDbCategories(nlData.categories || []);
+    } catch {
+      // Silently ignore
+    }
   }, [user]);
 
   useEffect(() => {
@@ -89,7 +106,7 @@ export default function ProfilePage() {
     setSaveSuccess(false);
 
     try {
-      const [updatedProfile] = await Promise.all([
+      await Promise.all([
         updateProfile(user.id, {
           display_name: editName,
           bio: editBio,
@@ -108,6 +125,75 @@ export default function ProfilePage() {
       alert('Không thể lưu thay đổi. Vui lòng thử lại.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleNewsletter = async () => {
+    if (!user?.email) return;
+    setNewsletterLoading(true);
+    try {
+      const endpoint = newsletterDbActive
+        ? '/api/newsletter/unsubscribe'
+        : '/api/newsletter/subscribe';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, frequency: newsletterDbFrequency, categories: newsletterDbCategories.length > 0 ? newsletterDbCategories : ['general'] }),
+      });
+      if (res.ok) {
+        setNewsletterDbActive(!newsletterDbActive);
+      }
+    } catch {
+      alert('Không thể thay đổi trạng thái đăng ký.');
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
+  const handleChangeFrequency = async (newFreq: 'daily' | 'weekly') => {
+    if (!user?.email || !newsletterDbActive || newFreq === newsletterDbFrequency) return;
+    setNewsletterLoading(true);
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, frequency: newFreq, categories: newsletterDbCategories }),
+      });
+      if (res.ok) {
+        setNewsletterDbFrequency(newFreq);
+      }
+    } catch {
+      alert('Không thể thay đổi tần suất.');
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
+  const handleToggleCategory = async (catSlug: string) => {
+    if (!user?.email || !newsletterDbActive) return;
+    setNewsletterLoading(true);
+    const isCurrentlySubscribed = newsletterDbCategories.includes(catSlug);
+    let updatedCats: string[];
+    if (isCurrentlySubscribed) {
+      updatedCats = newsletterDbCategories.filter(c => c !== catSlug);
+      // Don't allow removing all categories
+      if (updatedCats.length === 0) updatedCats = ['general'];
+    } else {
+      updatedCats = [...newsletterDbCategories, catSlug];
+    }
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, frequency: newsletterDbFrequency, categories: updatedCats }),
+      });
+      if (res.ok) {
+        setNewsletterDbCategories(updatedCats);
+      }
+    } catch {
+      alert('Không thể cập nhật chủ đề.');
+    } finally {
+      setNewsletterLoading(false);
     }
   };
 
@@ -483,7 +569,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Notifications Section */}
-              <div className="p-6">
+              <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Bell size={18} className="text-[#2563eb]" />
                   Thông báo
@@ -517,6 +603,148 @@ export default function ProfilePage() {
                     <span className="text-sm text-gray-700">Đăng ký nhận bản tin tổng hợp hàng tuần (Newsletter)</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Newsletter Subscription Section */}
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Mail size={18} className="text-[#2563eb]" />
+                  Bản tin Email (Newsletter)
+                </h3>
+
+                {/* Main status card */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-5 mb-4">
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      newsletterDbActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <Mail size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {newsletterDbActive ? 'Đang nhận bản tin' : 'Chưa đăng ký bản tin'}
+                        </p>
+                        {newsletterDbActive && (
+                          <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {newsletterDbFrequency === 'daily' ? 'Hàng ngày' : 'Hàng tuần'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        {newsletterDbActive
+                          ? `Bạn đang nhận email bản tin ${newsletterDbFrequency === 'daily' ? 'hàng ngày' : 'tổng hợp hàng tuần'} từ RetroLab.`
+                          : 'Đăng ký để nhận bản tin công nghệ, đánh giá sản phẩm mới nhất và thủ thuật AI độc quyền.'
+                        }
+                      </p>
+
+                      {/* Frequency picker */}
+                      {newsletterDbActive && (
+                        <div className="flex gap-2 mb-4">
+                          <button
+                            onClick={() => handleChangeFrequency('daily')}
+                            disabled={newsletterLoading}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all disabled:opacity-50 ${
+                              newsletterDbFrequency === 'daily'
+                                ? 'border-[#2563eb] bg-blue-50 text-[#2563eb]'
+                                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                            }`}
+                          >
+                            <CalendarDays size={13} />
+                            Hàng ngày
+                          </button>
+                          <button
+                            onClick={() => handleChangeFrequency('weekly')}
+                            disabled={newsletterLoading}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all disabled:opacity-50 ${
+                              newsletterDbFrequency === 'weekly'
+                                ? 'border-[#2563eb] bg-blue-50 text-[#2563eb]'
+                                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                            }`}
+                          >
+                            <CalendarClock size={13} />
+                            Hàng tuần
+                          </button>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleToggleNewsletter}
+                        disabled={newsletterLoading}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 ${
+                          newsletterDbActive
+                            ? 'text-red-600 bg-white border border-red-200 hover:bg-red-50'
+                            : 'text-white bg-[#2563eb] hover:bg-blue-700'
+                        }`}
+                      >
+                        {newsletterLoading ? (
+                          <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</>
+                        ) : newsletterDbActive ? (
+                          'Hủy đăng ký bản tin'
+                        ) : (
+                          'Đăng ký nhận bản tin'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category subscription management */}
+                {newsletterDbActive && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <h4 className="text-sm font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      <Newspaper size={14} className="text-[#2563eb]" />
+                      Quản lý chủ đề đăng ký
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Chọn các chủ đề bạn muốn nhận bản tin. Bấm vào để bật/tắt.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { slug: 'general', name: 'Tổng hợp', icon: <Mail size={15} />, color: '#2563eb' },
+                        { slug: 'tin-tuc', name: 'Tin tức', icon: <Newspaper size={15} />, color: '#dc2626' },
+                        { slug: 'ai', name: 'AI', icon: <Brain size={15} />, color: '#6366f1' },
+                        { slug: 'cong-nghe', name: 'Công Nghệ', icon: <Monitor size={15} />, color: '#2563eb' },
+                        { slug: 'it', name: 'CNTT', icon: <Terminal size={15} />, color: '#10b981' },
+                        { slug: 'game-gia-lap', name: 'Game', icon: <Gamepad2 size={15} />, color: '#8b5cf6' },
+                      ].map((cat) => {
+                        const isActive = newsletterDbCategories.includes(cat.slug);
+                        return (
+                          <button
+                            key={cat.slug}
+                            onClick={() => handleToggleCategory(cat.slug)}
+                            disabled={newsletterLoading}
+                            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-left transition-all disabled:opacity-50 ${
+                              isActive
+                                ? 'border-current bg-opacity-10 shadow-sm'
+                                : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                            }`}
+                            style={isActive ? { color: cat.color, backgroundColor: `${cat.color}10`, borderColor: `${cat.color}40` } : {}}
+                          >
+                            <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                              isActive ? 'text-white' : 'bg-gray-100 text-gray-400'
+                            }`}
+                              style={isActive ? { backgroundColor: cat.color } : {}}
+                            >
+                              {cat.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-bold truncate ${isActive ? '' : 'text-gray-600'}`}>{cat.name}</p>
+                              <p className="text-[10px] text-gray-400">
+                                {isActive ? 'Đang nhận' : 'Đã tắt'}
+                              </p>
+                            </div>
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              isActive ? 'border-current' : 'border-gray-300'
+                            }`}>
+                              {isActive && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

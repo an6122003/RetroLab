@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -81,7 +81,7 @@ export default function RelatedPostsCarousel({ posts }: { posts: RelatedPost[] }
               className="group cursor-pointer flex flex-col h-full"
             >
               <div className="relative overflow-hidden rounded-lg mb-4 aspect-[16/9]">
-                <Image
+                <SafeImage
                   src={post.coverImage}
                   alt={post.title}
                   fill

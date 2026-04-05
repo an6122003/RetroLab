@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import { PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface YoutubeVideo {
@@ -106,7 +106,7 @@ export default function YoutubeCarousel({ videos }: { videos: YoutubeVideo[] }) 
               className="group/card flex-shrink-0 w-[290px] flex flex-col bg-gray-900 p-2 rounded-lg hover:bg-gray-800 transition-colors"
             >
               <div className="relative overflow-hidden rounded-md mb-3 aspect-[16/9] shrink-0">
-                <Image
+                <SafeImage
                   src={video.thumbnail}
                   alt={video.title}
                   fill

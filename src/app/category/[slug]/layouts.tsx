@@ -1,5 +1,7 @@
 import { ArticleData, formatDate } from "@/lib/notion";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
+import { stripMarkdown } from "@/lib/utils/stripMarkdown";
+import CategorySubscribeButton from "@/components/ui/CategorySubscribeButton";
 import Link from "next/link";
 import { Clock, Cpu, Terminal, Smartphone, Wifi, Zap, Monitor, Brain, Sparkles, Bot, Network, Newspaper, Globe, TrendingUp, Flame, Radio } from "lucide-react";
 import AdBanner from "@/components/ui/AdBanner";
@@ -109,7 +111,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Link href={`/article/${heroPost.slug}`} className="group cursor-pointer flex flex-col md:flex-row bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-md hover:shadow-xl transition-all">
             <div className="w-full md:w-[58%] relative aspect-[16/10] md:aspect-auto md:min-h-[380px] overflow-hidden shrink-0">
-              <Image src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
+              <SafeImage src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#dc2626] via-[#f59e0b] to-transparent"></div>
               <div className="absolute top-4 left-4 flex items-center gap-2">
                 <span className="bg-[#dc2626] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-red-500/30 flex items-center gap-1.5"><Flame size={12} /> Nóng</span>
@@ -121,7 +123,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                 <span className="text-[#dc2626] text-[10px] font-bold uppercase tracking-widest">Tiêu điểm</span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black leading-snug mb-4 group-hover:text-[#dc2626] transition-colors text-gray-900">{heroPost.title}</h2>
-              <p className="text-gray-500 text-[15px] leading-relaxed mb-5 line-clamp-3">{heroPost.excerpt}</p>
+              <p className="text-gray-500 text-[15px] leading-relaxed mb-5 line-clamp-3">{stripMarkdown(heroPost.excerpt)}</p>
               <div className="flex items-center text-[11px] text-gray-400 gap-4 uppercase tracking-wide">
                 <span>By <span className="font-bold text-gray-700">{heroPost.author.toUpperCase()}</span></span>
                 <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(heroPost.date)}</span>
@@ -144,7 +146,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
               return (
                 <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all overflow-hidden">
                   <div className="relative aspect-[16/9] overflow-hidden">
-                    <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+                    <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${accents[idx]}, transparent)` }}></div>
                     <div className="absolute top-3 left-3">
                       <span className="text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg" style={{ backgroundColor: accents[idx] }}>{post.category}</span>
@@ -183,14 +185,14 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <Link href={`/article/${editorPick.slug}`} className="group cursor-pointer flex flex-col md:flex-row bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#dc2626]/30 transition-all">
                   <div className="w-full md:w-[55%] relative aspect-[16/10] md:aspect-auto md:min-h-[260px] overflow-hidden shrink-0">
-                    <Image src={editorPick.coverImage} alt={editorPick.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <SafeImage src={editorPick.coverImage} alt={editorPick.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                     <div className="absolute top-3 left-3">
                       <span className="bg-[#f59e0b] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-amber-500/25 flex items-center gap-1"><TrendingUp size={11} /> {editorPick.category}</span>
                     </div>
                   </div>
                   <div className="p-6 flex-1 flex flex-col justify-center">
                     <h3 className="text-xl md:text-2xl font-bold leading-snug mb-3 group-hover:text-[#dc2626] transition-colors text-gray-900">{editorPick.title}</h3>
-                    <p className="text-gray-500 text-[14px] leading-relaxed mb-4 line-clamp-3">{editorPick.excerpt}</p>
+                    <p className="text-gray-500 text-[14px] leading-relaxed mb-4 line-clamp-3">{stripMarkdown(editorPick.excerpt)}</p>
                     <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide">
                       <span>By <span className="font-bold text-gray-700">{editorPick.author.toUpperCase()}</span></span>
                       <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(editorPick.date)}</span>
@@ -211,14 +213,14 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                   {gridPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#dc2626]/20 transition-all">
                       <div className="relative overflow-hidden aspect-[16/9]">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
                         <div className="absolute top-3 left-3">
                           <span className="bg-[#dc2626] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-red-500/20">{post.category}</span>
                         </div>
                       </div>
                       <div className="p-5 flex-1 flex flex-col">
                         <h3 className="text-[18px] font-bold leading-snug mb-2 group-hover:text-[#dc2626] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                        <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{post.excerpt}</p>
+                        <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{stripMarkdown(post.excerpt)}</p>
                         <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide mt-auto">
                           <span className="font-bold text-gray-600">{post.author.toUpperCase()}</span>
                           <span>• {formatDate(post.date)}</span>
@@ -244,11 +246,11 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                   {remainingPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-5 py-4 px-5 items-center hover:bg-red-50/30 transition-colors">
                       <div className="w-[120px] md:w-[160px] shrink-0 relative aspect-[16/10] rounded-lg overflow-hidden border border-gray-100">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-[16px] md:text-[18px] font-bold leading-snug mb-1.5 group-hover:text-[#dc2626] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                        <p className="text-gray-500 text-[14px] leading-relaxed line-clamp-1 mb-2 hidden md:block">{post.excerpt}</p>
+                        <p className="text-gray-500 text-[14px] leading-relaxed line-clamp-1 mb-2 hidden md:block">{stripMarkdown(post.excerpt)}</p>
                         <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide">
                           <span className="font-bold text-gray-600">{post.author.toUpperCase()}</span>
                           <span>• {formatDate(post.date)}</span>
@@ -284,7 +286,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                           <span className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">{formatDate(post.date)}</span>
                         </div>
                         <div className="w-14 h-14 shrink-0 overflow-hidden rounded-lg border border-gray-100">
-                          <Image src={post.coverImage} alt={post.title} width={56} height={56} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                          <SafeImage src={post.coverImage} alt={post.title} width={56} height={56} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
                         </div>
                       </Link>
                     ))}
@@ -320,7 +322,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                   <div className="text-3xl mb-3">📰</div>
                   <h4 className="font-bold mb-2 text-white text-sm uppercase tracking-widest">Tin tức hàng ngày</h4>
                   <p className="text-[12px] text-gray-400 mb-4 leading-relaxed">Nhận tin nóng và phân tích chuyên sâu mỗi sáng.</p>
-                  <button className="w-full bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[10px] font-bold py-3 uppercase tracking-widest rounded-lg transition-colors shadow-lg shadow-red-500/25">Đăng ký ngay</button>
+                  <CategorySubscribeButton categorySlug="tin-tuc" categoryName="Tin tức" accentColor="#dc2626" />
                 </div>
               </div>
 
@@ -369,7 +371,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
       {heroPost && (
         <div className="relative">
           <Link href={`/article/${heroPost.slug}`} className="block relative w-full h-[400px] md:h-[520px] overflow-hidden group cursor-pointer">
-            <Image src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-1000 group-hover:scale-105" priority />
+            <SafeImage src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-1000 group-hover:scale-105" priority />
             {/* Gradient overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#1a0a2e] via-[#1a0a2e]/50 to-transparent"></div>
             <div className="absolute inset-0 bg-gradient-to-r from-[#1a0a2e]/60 via-transparent to-transparent"></div>
@@ -388,7 +390,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                   <span className="bg-[#ec4899] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-pink-500/30">Tiêu điểm</span>
                 </div>
                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">{heroPost.title}</h1>
-                <p className="text-gray-300 text-[15px] leading-relaxed line-clamp-2 mb-4 max-w-xl">{heroPost.excerpt}</p>
+                <p className="text-gray-300 text-[15px] leading-relaxed line-clamp-2 mb-4 max-w-xl">{stripMarkdown(heroPost.excerpt)}</p>
                 <div className="flex items-center text-[11px] text-gray-400 gap-4 uppercase tracking-wide">
                   <span>By <span className="font-bold text-white">{heroPost.author.toUpperCase()}</span></span>
                   <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(heroPost.date)}</span>
@@ -409,7 +411,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
               return (
                 <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all overflow-hidden">
                   <div className="relative aspect-[16/10] overflow-hidden">
-                    <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 50vw, 25vw" />
+                    <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 50vw, 25vw" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: accent }}></div>
                   </div>
                   <div className="p-3.5">
@@ -445,14 +447,14 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <Link href={`/article/${spotlightPost.slug}`} className="group cursor-pointer flex flex-col md:flex-row bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#8b5cf6]/30 transition-all">
                   <div className="w-full md:w-[55%] relative aspect-[16/10] md:aspect-auto md:min-h-[280px] overflow-hidden shrink-0">
-                    <Image src={spotlightPost.coverImage} alt={spotlightPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <SafeImage src={spotlightPost.coverImage} alt={spotlightPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                     <div className="absolute top-3 left-3">
                       <span className="bg-[#8b5cf6] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-purple-500/25">{spotlightPost.category}</span>
                     </div>
                   </div>
                   <div className="p-6 flex-1 flex flex-col justify-center">
                     <h3 className="text-xl md:text-2xl font-bold leading-snug mb-3 group-hover:text-[#7c3aed] transition-colors text-gray-900">{spotlightPost.title}</h3>
-                    <p className="text-gray-500 text-[14px] leading-relaxed mb-4 line-clamp-3">{spotlightPost.excerpt}</p>
+                    <p className="text-gray-500 text-[14px] leading-relaxed mb-4 line-clamp-3">{stripMarkdown(spotlightPost.excerpt)}</p>
                     <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide">
                       <span>By <span className="font-bold text-gray-700">{spotlightPost.author.toUpperCase()}</span></span>
                       <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(spotlightPost.date)}</span>
@@ -473,14 +475,14 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                   {gridPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#8b5cf6]/30 transition-all">
                       <div className="relative overflow-hidden aspect-[16/9]">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
                         <div className="absolute top-3 left-3">
                           <span className="bg-[#ec4899] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-pink-500/25">{post.category}</span>
                         </div>
                       </div>
                       <div className="p-5 flex-1 flex flex-col">
                         <h3 className="text-[18px] font-bold leading-snug mb-2 group-hover:text-[#7c3aed] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                        <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{post.excerpt}</p>
+                        <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{stripMarkdown(post.excerpt)}</p>
                         <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide mt-auto">
                           <span>By <span className="font-bold text-gray-700">{post.author.toUpperCase()}</span></span>
                           <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(post.date)}</span>
@@ -506,7 +508,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                   {remainingPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-4 p-4 hover:bg-purple-50/50 transition-colors items-center">
                       <div className="w-[120px] md:w-[160px] shrink-0 relative aspect-[16/10] rounded-lg overflow-hidden border border-gray-100">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-[16px] md:text-[18px] font-bold leading-snug mb-1.5 group-hover:text-[#7c3aed] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
@@ -545,7 +547,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                           <span className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">{formatDate(post.date)}</span>
                         </div>
                         <div className="w-14 h-14 shrink-0 overflow-hidden rounded-lg border border-gray-100">
-                          <Image src={post.coverImage} alt={post.title} width={56} height={56} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                          <SafeImage src={post.coverImage} alt={post.title} width={56} height={56} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
                         </div>
                       </Link>
                     ))}
@@ -561,7 +563,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                 <div className="text-3xl mb-3">🎮</div>
                 <h4 className="font-bold mb-2 text-white text-sm uppercase tracking-widest">Game Newsletter</h4>
                 <p className="text-[12px] text-gray-400 mb-4 leading-relaxed">Nhận tin game & giả lập mới nhất vào email mỗi tuần.</p>
-                <button className="w-full bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-[10px] font-bold py-3 uppercase tracking-widest rounded-lg transition-colors shadow-lg shadow-purple-500/25">Đăng ký ngay</button>
+                <CategorySubscribeButton categorySlug="game-gia-lap" categoryName="Game & Giả Lập" accentColor="#8b5cf6" />
               </div>
             </div>
           </aside>
@@ -684,14 +686,14 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-4">
             {/* Large Hero */}
             <Link href={`/article/${heroMain.slug}`} className="lg:col-span-3 relative group overflow-hidden rounded-xl cursor-pointer h-[320px] md:h-[420px] border border-gray-200 shadow-md">
-              <Image src={heroMain.coverImage} alt={heroMain.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+              <SafeImage src={heroMain.coverImage} alt={heroMain.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
               {/* Blue accent bottom bar */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#2563eb] via-[#06b6d4] to-[#8b5cf6]"></div>
               <div className="absolute bottom-0 left-0 p-6 md:p-8 w-full">
                 <span className="bg-[#2563eb] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider mb-3 inline-block shadow-lg shadow-blue-500/30">⚡ Nổi bật</span>
                 <h2 className="text-white text-2xl md:text-3xl font-bold leading-tight mb-3 line-clamp-3">{heroMain.title}</h2>
-                <p className="text-gray-300 text-[14px] leading-relaxed line-clamp-2 mb-3 max-w-xl">{heroMain.excerpt}</p>
+                <p className="text-gray-300 text-[14px] leading-relaxed line-clamp-2 mb-3 max-w-xl">{stripMarkdown(heroMain.excerpt)}</p>
                 <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide">
                   <span>By <span className="font-bold text-white">{heroMain.author.toUpperCase()}</span></span>
                   <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(heroMain.date)}</span>
@@ -703,7 +705,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
             <div className="lg:col-span-2 flex flex-col gap-6">
               {heroSide.map(post => (
                 <Link key={post.id} href={`/article/${post.slug}`} className="flex-1 relative group overflow-hidden rounded-xl cursor-pointer border border-gray-200 shadow-md min-h-[195px]">
-                  <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                  <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"></div>
                   <div className="absolute top-3 left-3">
                     <span className="bg-[#06b6d4] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-cyan-500/25">{post.category}</span>
@@ -740,7 +742,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
                     return (
                       <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#2563eb]/30 transition-all">
                         <div className="relative overflow-hidden aspect-[16/10]">
-                          <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
+                          <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
                           <div className="absolute top-3 left-3">
                             <span className="bg-[#2563eb] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-blue-500/25">{post.category}</span>
                           </div>
@@ -751,7 +753,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
                             <span className="text-[#2563eb] text-[10px] font-bold uppercase tracking-widest">{post.category}</span>
                           </div>
                           <h3 className="text-[18px] font-bold leading-snug mb-2 group-hover:text-[#2563eb] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                          <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{post.excerpt}</p>
+                          <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{stripMarkdown(post.excerpt)}</p>
                           <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide mt-auto">
                             <span className="font-bold text-gray-600">{post.author.toUpperCase()}</span>
                             <span>• {formatDate(post.date)}</span>
@@ -778,11 +780,11 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
                   {listPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-5 py-4 px-5 items-center hover:bg-blue-50/50 transition-colors">
                       <div className="w-[120px] md:w-[160px] shrink-0 relative aspect-[16/10] rounded-lg overflow-hidden border border-gray-100">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-[16px] md:text-[18px] font-bold leading-snug mb-1.5 group-hover:text-[#2563eb] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                        <p className="text-gray-500 text-[14px] leading-relaxed line-clamp-1 mb-2 hidden md:block">{post.excerpt}</p>
+                        <p className="text-gray-500 text-[14px] leading-relaxed line-clamp-1 mb-2 hidden md:block">{stripMarkdown(post.excerpt)}</p>
                         <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide">
                           <span className="font-bold text-gray-600">{post.author.toUpperCase()}</span>
                           <span>• {formatDate(post.date)}</span>
@@ -837,7 +839,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
                   <div className="text-3xl mb-3">⚡</div>
                   <h4 className="font-bold mb-2 text-white text-sm uppercase tracking-widest">Tech Update</h4>
                   <p className="text-[12px] text-gray-400 mb-4 leading-relaxed">Nhận tin công nghệ mới nhất vào email mỗi tuần.</p>
-                  <button className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[10px] font-bold py-3 uppercase tracking-widest rounded-lg transition-colors shadow-lg shadow-blue-500/25">Đăng ký ngay</button>
+                  <CategorySubscribeButton categorySlug="cong-nghe" categoryName="Công Nghệ" accentColor="#2563eb" />
                 </div>
               </div>
 
@@ -915,7 +917,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
               {featured.slice(0, 2).map(post => (
                 <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer">
                   <div className="relative aspect-video rounded-lg overflow-hidden mb-3 border border-white/10">
-                    <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
                       <span className="bg-[#2563eb] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">{categoryName}</span>
                     </div>
@@ -932,7 +934,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
               {featured[2] && (
                 <Link href={`/article/${featured[2].slug}`} className="group cursor-pointer h-full flex flex-col">
                   <div className="relative flex-grow min-h-[300px] md:min-h-[400px] rounded-lg overflow-hidden mb-4 border border-white/10">
-                    <Image src={featured[2].coverImage} alt={featured[2].title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <SafeImage src={featured[2].coverImage} alt={featured[2].title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
                       <span className="bg-[#2563eb] text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider whitespace-nowrap">{categoryName}</span>
@@ -950,7 +952,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
               {featured.slice(3, 5).map(post => (
                 <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer">
                   <div className="relative aspect-video rounded-lg overflow-hidden mb-3 border border-white/10">
-                    <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
                       <span className="bg-[#2563eb] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">AI</span>
                     </div>
@@ -971,7 +973,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
           {listItems.length > 0 ? listItems.map(post => (
             <Link key={post.id} href={`/article/${post.slug}`} className="flex flex-col md:flex-row gap-8 group cursor-pointer border-b border-gray-100 pb-12 last:border-0 last:pb-0">
               <div className="w-full md:w-[320px] shrink-0 relative aspect-video rounded-xl overflow-hidden border border-gray-100">
-                <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
               </div>
               <div className="flex flex-col justify-center">
                 <span className="text-[#2563eb] text-[10px] font-bold uppercase tracking-widest mb-2">{categoryName}</span>
@@ -979,7 +981,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
                   {post.title}
                 </h3>
                 <p className="text-gray-500 text-[15px] leading-relaxed mb-6 line-clamp-2">
-                  {post.excerpt}
+                  {stripMarkdown(post.excerpt)}
                 </p>
                 <div className="flex items-center text-[11px] text-gray-400 gap-4 font-bold uppercase tracking-wider">
                   <span>By <span className="text-gray-700">{post.author}</span></span>
@@ -1051,7 +1053,7 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
             {/* Right: Hero post */}
             {heroPost && (
               <Link href={`/article/${heroPost.slug}`} className="flex-1 max-w-xl w-full relative group overflow-hidden rounded-xl cursor-pointer h-[280px] md:h-[320px] border border-white/10 shadow-2xl shadow-black/30">
-                <Image src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                <SafeImage src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 p-6 w-full">
                   <div className="flex items-center gap-2 mb-3">
@@ -1077,7 +1079,7 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
             {featuredStrip.map(post => (
               <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
                 <div className="relative aspect-[16/9] overflow-hidden">
-                  <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+                  <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
                   <div className="absolute top-3 left-3">
                     <span className="bg-[#10b981] text-white text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">{post.category}</span>
                   </div>
@@ -1114,14 +1116,14 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
                   {mainGrid.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex flex-col bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-[#10b981]/30 transition-colors">
                       <div className="relative aspect-[16/10] overflow-hidden">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                       </div>
                       <div className="p-4 flex-1 flex flex-col">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-[#10b981] text-[10px] font-bold uppercase tracking-widest">{post.category}</span>
                         </div>
                         <h3 className="text-[18px] font-bold leading-snug mb-2 group-hover:text-[#10b981] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                        <p className="text-gray-500 text-[14px] leading-relaxed line-clamp-2 mb-3">{post.excerpt}</p>
+                        <p className="text-gray-500 text-[14px] leading-relaxed line-clamp-2 mb-3">{stripMarkdown(post.excerpt)}</p>
                         <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide mt-auto">
                           <span className="font-bold text-gray-600">{post.author.toUpperCase()}</span>
                           <span>• {formatDate(post.date)}</span>
@@ -1147,7 +1149,7 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
                   {remainingPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-4 p-4 hover:bg-gray-50 transition-colors items-center">
                       <div className="w-[100px] md:w-[130px] shrink-0 relative aspect-[16/10] rounded-lg overflow-hidden border border-gray-100">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="130px" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="130px" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-[16px] font-bold leading-snug mb-1 group-hover:text-[#10b981] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
@@ -1163,34 +1165,51 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
             )}
           </div>
 
-          {/* Sidebar: Numbered trending list */}
-          {sidebarList.length > 0 && (
-            <aside className="w-full lg:w-[300px] shrink-0">
-              <div className="sticky top-28">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-1.5 h-7 bg-[#10b981] rounded-full"></div>
-                  <h2 className="text-lg font-bold uppercase tracking-widest text-gray-900">Đọc nhiều</h2>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                  {sidebarList.map((post, idx) => (
-                    <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-4 p-4 items-center border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                      <div className="text-3xl font-black text-[#10b981]/20 leading-none select-none w-8 text-center shrink-0">
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-bold leading-snug mb-1 group-hover:text-[#10b981] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                        <span className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">{formatDate(post.date)}</span>
-                      </div>
-                      <div className="w-14 h-14 shrink-0 overflow-hidden rounded-lg border border-gray-100">
-                        <Image src={post.coverImage} alt={post.title} width={56} height={56} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
-                      </div>
-                    </Link>
-                  ))}
+          {/* Sidebar: Numbered trending list + Newsletter CTA */}
+          <aside className="w-full lg:w-[300px] shrink-0">
+            <div className="sticky top-28">
+              {sidebarList.length > 0 && (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1.5 h-7 bg-[#10b981] rounded-full"></div>
+                    <h2 className="text-lg font-bold uppercase tracking-widest text-gray-900">Đọc nhiều</h2>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-6">
+                    {sidebarList.map((post, idx) => (
+                      <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-4 p-4 items-center border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                        <div className="text-3xl font-black text-[#10b981]/20 leading-none select-none w-8 text-center shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-[15px] font-bold leading-snug mb-1 group-hover:text-[#10b981] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
+                          <span className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">{formatDate(post.date)}</span>
+                        </div>
+                        <div className="w-14 h-14 shrink-0 overflow-hidden rounded-lg border border-gray-100">
+                          <SafeImage src={post.coverImage} alt={post.title} width={56} height={56} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* IT Newsletter CTA */}
+              <div className="bg-gradient-to-br from-[#022c22] to-[#064e3b] rounded-xl p-6 text-center border border-[#10b981]/20 relative overflow-hidden mb-6">
+                <div className="absolute inset-0 opacity-[0.06]" style={{
+                  backgroundImage: `repeating-linear-gradient(45deg, #10b981, #10b981 1px, transparent 1px, transparent 8px)`,
+                  backgroundSize: '12px 12px'
+                }}></div>
+                <div className="relative z-10">
+                  <div className="text-3xl mb-3">💻</div>
+                  <h4 className="font-bold mb-2 text-white text-sm uppercase tracking-widest">IT Weekly</h4>
+                  <p className="text-[12px] text-gray-400 mb-4 leading-relaxed">Cập nhật mới nhất về lập trình, DevOps, cloud và bảo mật.</p>
+                  <CategorySubscribeButton categorySlug="it" categoryName="CNTT" accentColor="#10b981" />
                 </div>
               </div>
+
               <AdBanner size="sidebar" slotId={`${slug}-sidebar`} />
-            </aside>
-          )}
+            </div>
+          </aside>
         </div>
       </div>
     </div>
@@ -1306,7 +1325,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Link href={`/article/${heroPost.slug}`} className="group cursor-pointer flex flex-col md:flex-row bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-md hover:shadow-xl transition-all">
             <div className="w-full md:w-[58%] relative aspect-[16/10] md:aspect-auto md:min-h-[380px] overflow-hidden shrink-0">
-              <Image src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
+              <SafeImage src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" priority />
               <div className="absolute top-4 left-4 flex items-center gap-2">
                 <span className="bg-[#6366f1] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-indigo-500/30 flex items-center gap-1.5"><Brain size={12} /> AI Spotlight</span>
               </div>
@@ -1317,7 +1336,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                 <span className="text-[#6366f1] text-[10px] font-bold uppercase tracking-widest">Tiêu điểm</span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black leading-snug mb-4 group-hover:text-[#6366f1] transition-colors text-gray-900">{heroPost.title}</h2>
-              <p className="text-gray-500 text-[15px] leading-relaxed mb-5 line-clamp-3">{heroPost.excerpt}</p>
+              <p className="text-gray-500 text-[15px] leading-relaxed mb-5 line-clamp-3">{stripMarkdown(heroPost.excerpt)}</p>
               <div className="flex items-center text-[11px] text-gray-400 gap-4 uppercase tracking-wide">
                 <span>By <span className="font-bold text-gray-700">{heroPost.author.toUpperCase()}</span></span>
                 <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(heroPost.date)}</span>
@@ -1337,7 +1356,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
               return (
                 <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all overflow-hidden">
                   <div className="relative aspect-[16/9] overflow-hidden">
-                    <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+                    <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${accents[idx]}, transparent)` }}></div>
                     <div className="absolute top-3 left-3">
                       <span className="text-white text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg" style={{ backgroundColor: accents[idx] }}>{post.category}</span>
@@ -1380,14 +1399,14 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <Link href={`/article/${spotlightPost.slug}`} className="group cursor-pointer flex flex-col md:flex-row bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#6366f1]/30 transition-all">
                   <div className="w-full md:w-[55%] relative aspect-[16/10] md:aspect-auto md:min-h-[260px] overflow-hidden shrink-0">
-                    <Image src={spotlightPost.coverImage} alt={spotlightPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <SafeImage src={spotlightPost.coverImage} alt={spotlightPost.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                     <div className="absolute top-3 left-3">
                       <span className="bg-[#6366f1] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-indigo-500/25 flex items-center gap-1"><Sparkles size={11} /> {spotlightPost.category}</span>
                     </div>
                   </div>
                   <div className="p-6 flex-1 flex flex-col justify-center">
                     <h3 className="text-xl md:text-2xl font-bold leading-snug mb-3 group-hover:text-[#6366f1] transition-colors text-gray-900">{spotlightPost.title}</h3>
-                    <p className="text-gray-500 text-[14px] leading-relaxed mb-4 line-clamp-3">{spotlightPost.excerpt}</p>
+                    <p className="text-gray-500 text-[14px] leading-relaxed mb-4 line-clamp-3">{stripMarkdown(spotlightPost.excerpt)}</p>
                     <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide">
                       <span>By <span className="font-bold text-gray-700">{spotlightPost.author.toUpperCase()}</span></span>
                       <span className="flex items-center gap-1"><Clock size={12} /> {formatDate(spotlightPost.date)}</span>
@@ -1410,7 +1429,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                     return (
                       <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-[#6366f1]/30 transition-all">
                         <div className="relative overflow-hidden aspect-[16/9]">
-                          <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
+                          <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 640px) 100vw, 50vw" />
                           <div className="absolute top-3 left-3">
                             <span className="bg-[#a78bfa] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-purple-500/25">{post.category}</span>
                           </div>
@@ -1421,7 +1440,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                             <span className="text-[#6366f1] text-[10px] font-bold uppercase tracking-widest">{post.category}</span>
                           </div>
                           <h3 className="text-[18px] font-bold leading-snug mb-2 group-hover:text-[#6366f1] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
-                          <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{post.excerpt}</p>
+                          <p className="text-gray-500 text-[14px] leading-relaxed mb-3 line-clamp-2 flex-grow">{stripMarkdown(post.excerpt)}</p>
                           <div className="flex items-center text-[11px] text-gray-400 gap-3 uppercase tracking-wide mt-auto">
                             <span className="font-bold text-gray-600">{post.author.toUpperCase()}</span>
                             <span>• {formatDate(post.date)}</span>
@@ -1448,7 +1467,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                   {remainingPosts.map(post => (
                     <Link key={post.id} href={`/article/${post.slug}`} className="group cursor-pointer flex gap-4 p-4 hover:bg-indigo-50/50 transition-colors items-center">
                       <div className="w-[120px] md:w-[160px] shrink-0 relative aspect-[16/10] rounded-lg overflow-hidden border border-gray-100">
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
+                        <SafeImage src={post.coverImage} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="160px" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-[16px] md:text-[18px] font-bold leading-snug mb-1.5 group-hover:text-[#6366f1] transition-colors text-gray-900 line-clamp-2">{post.title}</h3>
@@ -1523,7 +1542,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                   <div className="text-3xl mb-3">🧠</div>
                   <h4 className="font-bold mb-2 text-white text-sm uppercase tracking-widest">AI Weekly</h4>
                   <p className="text-[12px] text-gray-400 mb-4 leading-relaxed">Tin AI mới nhất từ OpenAI, Google, Meta và hơn thế nữa.</p>
-                  <button className="w-full bg-[#6366f1] hover:bg-[#4f46e5] text-white text-[10px] font-bold py-3 uppercase tracking-widest rounded-lg transition-colors shadow-lg shadow-indigo-500/25">Đăng ký ngay</button>
+                  <CategorySubscribeButton categorySlug="ai" categoryName="AI" accentColor="#6366f1" />
                 </div>
               </div>
 

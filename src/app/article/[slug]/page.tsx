@@ -1,6 +1,6 @@
 import { getPostBySlug, getPostMetadataBySlug, getPosts, formatDate } from "@/lib/notion";
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import Link from "next/link";
 import { Clock, Folder } from "lucide-react";
 import type { Metadata } from 'next';
@@ -160,7 +160,7 @@ async function ArticleContent({ slug }: { slug: string }) {
 
       {/* Full-width Hero Image */}
       <figure className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] mb-12">
-        <Image 
+        <SafeImage 
           src={post.coverImage} 
           alt={post.title} 
           fill

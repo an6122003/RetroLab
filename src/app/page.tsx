@@ -1,11 +1,13 @@
 import { getPosts, formatDate } from "@/lib/notion";
 import type { ArticleData } from "@/lib/notion";
 import { getLatestYoutubeVideos } from "@/lib/youtube";
+import { stripMarkdown } from "@/lib/utils/stripMarkdown";
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import { Clock, PlayCircle, ArrowRight, ShieldCheck, MonitorPlay, BrainCircuit } from "lucide-react";
 import Ticker from "@/components/ui/Ticker";
 import NewsletterSection from "@/components/ui/NewsletterSection";
+import LoadMorePosts from "@/components/ui/LoadMorePosts";
 import AdBanner from "@/components/ui/AdBanner";
 import YoutubeCarousel from "@/components/ui/YoutubeCarousel";
 import * as Cards from "@/components/ui/ArticleCards";
@@ -94,7 +96,7 @@ export default async function Home() {
         {/* Mag Top Item */}
         <Link href={`/article/${magTop.slug}`} className="flex flex-col md:flex-row gap-6 mb-10 group cursor-pointer">
           <div className="w-full md:w-[380px] shrink-0 aspect-[16/9] rounded-lg overflow-hidden relative border border-gray-100">
-            <Image src={magTop.coverImage} alt={magTop.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="380px" />
+            <SafeImage src={magTop.coverImage} alt={magTop.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="380px" />
           </div>
           <div className="flex-1 flex flex-col justify-center">
             <div className="mb-3">
@@ -104,7 +106,7 @@ export default async function Home() {
               {magTop.title}
             </h2>
             <p className="text-gray-600 text-[15px] leading-relaxed line-clamp-2 mb-4">
-              {magTop.excerpt}
+              {stripMarkdown(magTop.excerpt)}
             </p>
             <div className="flex items-center text-[12px] text-gray-400 gap-3">
               <span>By <span className="font-bold text-gray-700">{magTop.author.toUpperCase()}</span></span>
@@ -115,7 +117,7 @@ export default async function Home() {
 
         {/* Mag Hero (Full Width Style) */}
         <Link href={`/article/${magHero.slug}`} className="relative w-full aspect-[16/9] md:aspect-[2.5/1] rounded-lg overflow-hidden mb-12 group cursor-pointer block">
-          <Image src={magHero.coverImage} alt={magHero.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="100vw" />
+          <SafeImage src={magHero.coverImage} alt={magHero.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="100vw" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end items-center pb-10 px-4 text-center">
             <span className="bg-[#ef4444] text-white text-[11px] font-bold px-3 py-1 uppercase tracking-widest mb-4">{magHero.category}</span>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white max-w-4xl leading-tight drop-shadow-lg">
@@ -144,7 +146,7 @@ export default async function Home() {
           {/* Asymmetric Large Post */}
           <Link href={`/article/${asymLarge.slug}`} className="flex flex-col gap-4 border-b border-gray-200 pb-8 group cursor-pointer">
             <div className="w-full aspect-[16/9] rounded-lg overflow-hidden relative border border-gray-100">
-              <Image src={asymLarge.coverImage} alt={asymLarge.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 1024px) 100vw, 65vw" />
+              <SafeImage src={asymLarge.coverImage} alt={asymLarge.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 1024px) 100vw, 65vw" />
             </div>
             <div className="flex flex-col gap-2 mt-2">
               <span className="text-[#2563eb] text-[11px] font-bold uppercase tracking-widest">{asymLarge.category}</span>
@@ -152,7 +154,7 @@ export default async function Home() {
                 {asymLarge.title}
               </h2>
               <p className="text-gray-600 text-[15px] leading-relaxed line-clamp-2 mt-2">
-                {asymLarge.excerpt}
+                {stripMarkdown(asymLarge.excerpt)}
               </p>
               <div className="flex items-center text-[12px] text-gray-400 gap-2 mt-2">
                 <span>By <span className="font-bold text-gray-700">{asymLarge.author.toUpperCase()}</span></span>
@@ -239,6 +241,9 @@ export default async function Home() {
 
       {/* 8. NEWSLETTER SECTION */}
       <NewsletterSection />
+
+      {/* 9. LOAD MORE POSTS — Infinite browse */}
+      <LoadMorePosts />
       
       </div>
     </main>

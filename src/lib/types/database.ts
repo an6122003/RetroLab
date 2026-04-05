@@ -45,6 +45,18 @@ export interface Comment {
   updated_at: string;
 }
 
+export interface NewsletterSubscription {
+  id: number;
+  email: string;
+  user_id: string | null;
+  frequency: 'daily' | 'weekly';
+  categories: string[];
+  is_active: boolean;
+  subscribed_at: string;
+  unsubscribed_at: string | null;
+  created_at: string;
+}
+
 // ═══════════════════════════════════════════
 // Auth user (minimal — only what we expose)
 // ═══════════════════════════════════════════

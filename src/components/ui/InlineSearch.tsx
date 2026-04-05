@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, X, ArrowRight, Clock, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import Link from 'next/link';
 
 interface SearchResult {
@@ -195,7 +195,7 @@ export default function InlineSearch() {
                       className="flex gap-3 px-4 py-3 hover:bg-blue-50/50 transition-colors group"
                     >
                       <div className="w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-gray-100 relative">
-                        <Image
+                        <SafeImage
                           src={post.coverImage}
                           alt={post.title}
                           fill

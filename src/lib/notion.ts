@@ -4,6 +4,11 @@ import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from "notion-to-md";
 import { marked } from 'marked';
 
+// Re-export shared types & utilities so existing server-side imports keep working
+export type { ArticleData, ArticleDetail, PostMetadata } from '@/lib/types/article';
+export { formatDate } from '@/lib/types/article';
+import type { ArticleData, ArticleDetail, PostMetadata } from '@/lib/types/article';
+
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const databaseId = process.env.NOTION_DATABASE_ID!;
 
@@ -12,24 +17,6 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
 marked.setOptions({
   gfm: true
 });
-
-// A shared interface for article data
-export interface ArticleData {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  category: string;
-  date: string;
-  author: string;
-  coverImage: string;
-  isFeatured: boolean;
-  tags: string;
-}
-
-export interface ArticleDetail extends Omit<ArticleData, 'isFeatured' | 'slug'> {
-  content: string;
-}
 
 // ═══════════════════════════════════════════
 // In-memory cache for fast repeated reads
@@ -241,15 +228,6 @@ export async function searchPostsByTag(tag: string): Promise<ArticleData[]> {
  * Lightweight metadata-only lookup. Skips the expensive markdown→HTML conversion.
  * Used by generateMetadata so it resolves fast and doesn't block loading.tsx.
  */
-export interface PostMetadata {
-  title: string;
-  excerpt: string;
-  coverImage: string;
-  category: string;
-  author: string;
-  date: string;
-  tags: string;
-}
 
 export async function getPostMetadataBySlug(slug: string): Promise<PostMetadata | null> {
   // Check if the full article is already cached — if so, reuse it
@@ -399,22 +377,3 @@ export async function getCategories(): Promise<string[]> {
   return Array.from(cats);
 }
 
-// Helper: format a date string to a locale-friendly format
-export function formatDate(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
-    if (diffHours < 1) return 'Vừa xong';
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    
-    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
-}

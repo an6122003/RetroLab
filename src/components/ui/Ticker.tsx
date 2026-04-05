@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronUp, ChevronDown, Newspaper } from 'lucide-react';
-import type { ArticleData } from '@/lib/notion';
+import type { ArticleData } from '@/lib/types/article';
 
 const CYCLE_INTERVAL = 5000; // 5 seconds
 
