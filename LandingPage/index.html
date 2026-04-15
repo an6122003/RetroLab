@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RetroLab — AI-Powered Vietnamese Tech News Platform | Portfolio Case Study</title>
+  <meta name="description" content="RetroLab: A fully automated, AI-driven Vietnamese technology news platform. Featuring automated content pipeline, multi-source aggregation, AI rewriting and localization, and a headless CMS." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       Navigation
+       ═══════════════════════════════════════════ -->
+  <nav id="main-nav" class="nav">
+    <div class="nav-inner">
+      <a href="#hero" class="nav-logo">
+        <svg class="logo-svg" width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="16" fill="#2563eb" />
+          <circle cx="22" cy="10" r="4" fill="#facc15" />
+        </svg>
+        <span class="logo-text">Retro<span class="logo-accent">Lab</span></span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview" class="nav-link">Overview</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="#showcase" class="nav-link">Showcase</a>
+        <a href="#metrics" class="nav-link">Results</a>
+      </div>
+      <a href="https://retrolab.com.vn" target="_blank" rel="noopener" class="nav-cta">
+        Visit Live Site
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════
+       Hero Section
+       ═══════════════════════════════════════════ -->
+  <section id="hero" class="hero">
+    <div class="hero-bg-grid"></div>
+    <div class="hero-glow hero-glow-1"></div>
+    <div class="hero-glow hero-glow-2"></div>
+    <div class="hero-glow hero-glow-3"></div>
+    
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        <span>Product Management Portfolio</span>
+      </div>
+      
+      <h1 class="hero-title">
+        <span class="hero-line"><span class="gradient-text">AI-Powered</span></span>
+        <span class="hero-line">Vietnamese Tech News</span>
+        <span class="hero-line">Platform</span>
+      </h1>
+      
+      <p class="hero-subtitle">
+        An automated, AI-driven digital media platform designed to capture the Vietnamese tech news market. By treating traditional editorial workflows as a scaling problem, RetroLab maximizes content output to <strong>50+ articles daily</strong> while driving operational costs to <strong>near zero</strong> with a custom multi-provider LLM pipeline.
+      </p>
+      
+      <div class="hero-actions">
+        <a href="#features" class="btn btn-primary">
+          <span>Explore Features</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </a>
+        <a href="https://retrolab.com.vn" target="_blank" rel="noopener" class="btn btn-ghost">
+          <span>retrolab.com.vn</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+        </a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-number" data-count="71">0</span>
+          <span class="stat-label">Articles Published</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number" data-count="15">0</span><span class="stat-suffix">+</span>
+          <span class="stat-label">Sources Aggregated</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number">$0.04</span>
+          <span class="stat-label">Cost Per 50 Articles</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number" data-count="5">0</span>
+          <span class="stat-label">Categories</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-screenshot-container">
+      <div class="screenshot-frame">
+        <div class="frame-header">
+          <div class="frame-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span class="frame-url">retrolab.com.vn</span>
+        </div>
+        <img src="assets/retrolab-homepage.png" alt="RetroLab.com.vn — Vietnamese Tech News Homepage" class="screenshot-img" loading="eager" />
+      </div>
+      <div class="screenshot-glow"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       Overview Section
+       ═══════════════════════════════════════════ -->
+  <section id="overview" class="section section-overview">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">The Problem</span>
+        <h2 class="section-title">Why Build RetroLab?</h2>
+        <p class="section-desc">
+          Vietnamese tech enthusiasts lack a high-quality, centralized source of international technology news in their native language. Existing solutions rely on manual translation, are slow to update, and provide fragmented coverage.
+        </p>
+      </div>
+
+      <div class="problems-grid">
+        <div class="problem-card">
+
+          <h3>Content Velocity</h3>
+          <p>Tech news is highly perishable. By the time human editors translate a breaking story from English to Vietnamese, the 12-hour delay renders the article obsolete and kills SEO potential.</p>
+        </div>
+        <div class="problem-card">
+
+          <h3>Unsustainable Margins</h3>
+          <p>Scaling a traditional localized media site requires hiring armies of translators. The human cost per article destroys profitability, making high-volume coverage financially impossible.</p>
+        </div>
+        <div class="problem-card">
+
+          <h3>Inefficient Discovery</h3>
+          <p>Editors waste hours manually scouring dozens of fragmented international feeds (The Verge, TechCrunch) just to decide what to write about, bottlenecking actual production.</p>
+        </div>
+      </div>
+
+      <div class="solution-banner">
+        <div class="solution-inner">
+          <div class="solution-text">
+            <span class="solution-label">The Solution</span>
+            <h3>End-to-End AI Automation</h3>
+            <p>RetroLab replaces the traditional editorial headcount with a headless, multi-agent AI architecture. By automating discovery, curation, translation, and publishing, the system operates at a scale and speed that human teams cannot match, delivering high-quality localized content at virtually zero marginal cost.</p>
+          </div>
+          <div class="solution-metrics">
+            <div class="metric">
+              <span class="metric-value">~2min</span>
+              <span class="metric-label">Source → Published</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">99%</span>
+              <span class="metric-label">Automation Rate</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">$0.001</span>
+              <span class="metric-label">Per Article Cost</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       Features Section
+       ═══════════════════════════════════════════ -->
+  <section id="features" class="section section-features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Core Features</span>
+        <h2 class="section-title">What Powers RetroLab</h2>
+        <p class="section-desc">A deep dive into the key capabilities that make this platform tick.</p>
+      </div>
+
+      <!-- Feature 1: AI Pipeline -->
+      <div class="feature-row">
+        <div class="feature-text">
+          <div class="feature-number">01</div>
+          <h3 class="feature-title">Automated AI Pipeline with <span class="gradient-text">Multi-LLM Routing</span></h3>
+          <p class="feature-desc">
+            To make AI-generated content profitable, I designed a cost-aware AI strategy. Routine tasks (like categorization and tagging) are dynamically routed to free or local models, reserving paid, premium APIs strictly for complex, quality-critical rewriting.
+          </p>
+          <ul class="feature-list">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Dynamic routing between Gemini, Claude, and Ollama
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Intelligent deduplication & content quality scoring
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Real-time FinOps tracking to monitor per-token cost and ROI per article
+            </li>
+          </ul>
+        </div>
+        <div class="feature-visual">
+          <div class="screenshot-frame">
+            <div class="frame-header">
+              <div class="frame-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="frame-url">admin.retrolab.com.vn/pipeline</span>
+            </div>
+            <img src="assets/admin-pipeline-light.png" alt="RetroLab Pipeline Dashboard — Multi-LLM routing and task monitoring" class="screenshot-img" loading="lazy" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 2: Headless CMS -->
+      <div class="feature-row feature-row-reverse">
+        <div class="feature-text">
+          <div class="feature-number">02</div>
+          <h3 class="feature-title">Zero-Friction <span class="gradient-text-alt">Headless CMS</span></h3>
+          <p class="feature-desc">
+            Instead of building a custom backend UI that editors had to learn, I strategically integrated Notion as the primary database. This enterprise-grade infrastructure reduced server overhead to zero and completely eliminated onboarding friction for the editorial team.
+          </p>
+          <ul class="feature-list">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Familiar Notion interface for zero-training onboarding
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Zero database hosting costs or maintenance overhead
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Seamless sync to Next.js SSR frontend with ISR caching
+            </li>
+          </ul>
+        </div>
+        <div class="feature-visual">
+          <div class="screenshot-frame">
+            <div class="frame-header">
+              <div class="frame-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="frame-url">admin.retrolab.com.vn/editor</span>
+            </div>
+            <img src="assets/admin-editor-light.png" alt="RetroLab Editor — Full-featured Markdown editor with split-screen preview" class="screenshot-img" loading="lazy" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature 3: Localization -->
+      <div class="feature-row">
+        <div class="feature-text">
+          <div class="feature-number">03</div>
+          <h3 class="feature-title">90% <span class="gradient-text">Workflow Reduction</span></h3>
+          <p class="feature-desc">
+            The custom pipeline handles automated localization instantly. English-language source articles are culturally adapted for Vietnamese readers, transforming a multi-hour manual translation process into a single-click "Approve" workflow for human editors.
+          </p>
+          <ul class="feature-list">
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              LLM-powered cultural adaptation and contextual rewriting
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Automated SEO optimization (titles, tags, summaries)
+            </li>
+            <li>
+              <svg class="check-icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+              Human-in-the-loop queue for final quality control
+            </li>
+          </ul>
+        </div>
+        <div class="feature-visual">
+          <div class="screenshot-frame">
+            <div class="frame-header">
+              <div class="frame-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="frame-url">admin.retrolab.com.vn/curation</span>
+            </div>
+            <img src="assets/admin-curation-light.png" alt="RetroLab Curation Queue — Article review from 15+ sources with approve/discard workflow" class="screenshot-img" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       Architecture Section
+       ═══════════════════════════════════════════ -->
+  <section id="architecture" class="section section-arch">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Strategic Technical Decisions</span>
+        <h2 class="section-title">Every Tool Chosen for a Reason</h2>
+        <p class="section-desc">Each technology was selected to solve a specific product constraint — not just because it was popular.</p>
+      </div>
+
+      <div class="arch-flow">
+        <div class="arch-node">
+          <h4>Sources</h4>
+          <p>RSS Feeds & Web Crawlers</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node arch-node-primary">
+          <h4>Celery Workers</h4>
+          <p>Scraper → Rewriter → Image</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+          <h4>LLM Engine</h4>
+          <p>Gemini / Claude / Ollama</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node">
+          <h4>Notion CMS</h4>
+          <p>Content Storage & API</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node arch-node-accent">
+          <h4>Next.js</h4>
+          <p>SSR Public Frontend</p>
+        </div>
+      </div>
+
+      <div class="tech-stack">
+        <h3 class="tech-title">Why Each Tool Was Chosen</h3>
+        <div class="tech-decisions-grid">
+          <div class="tech-decision-card">
+            <span class="tech-badge">Next.js 15</span>
+            <p>Chosen for server-side rendering. Critical for SEO performance in the competitive media space.</p>
+          </div>
+          <div class="tech-decision-card">
+            <span class="tech-badge">Notion API</span>
+            <p>Chosen to eliminate editor onboarding time. Zero training needed for a tool they already use daily.</p>
+          </div>
+          <div class="tech-decision-card">
+            <span class="tech-badge">Google Gemini + Claude</span>
+            <p>Multi-provider strategy to avoid vendor lock-in and dynamically route tasks to the cheapest capable model.</p>
+          </div>
+          <div class="tech-decision-card">
+            <span class="tech-badge">Celery + Redis</span>
+            <p>Chosen for resilient async task queuing. Ensures the pipeline never blocks on slow LLM API calls.</p>
+          </div>
+          <div class="tech-decision-card">
+            <span class="tech-badge">Docker Compose</span>
+            <p>Chosen for reproducible, zero-downtime deployments on a single VPS. Keeping infrastructure costs near zero.</p>
+          </div>
+          <div class="tech-decision-card">
+            <span class="tech-badge">PostgreSQL</span>
+            <p>Chosen as the source-of-truth for pipeline state and FinOps metrics. Enabling reliable cost analytics.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       Feature Portfolio — All Platform Screens
+       ═══════════════════════════════════════════ -->
+  <section id="showcase" class="section section-showcase">
+    <div class="container">
+      <!-- Section header -->
+      <div class="section-header">
+        <span class="section-label">Product Showcase</span>
+        <h2 class="section-title">The Operational Engine</h2>
+        <p class="section-desc">Behind retrolab.com.vn, the entire editorial operation runs on three interconnected systems. Each one was designed to eliminate a specific bottleneck in the content lifecycle.</p>
+      </div>
+
+      <!-- Block 1: Pipeline + Curation (Image Left / Text Right) -->
+      <div class="showcase-block">
+        <div class="showcase-visual">
+          <div class="screenshot-frame">
+            <div class="frame-header">
+              <div class="frame-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="frame-url">admin.retrolab.com.vn/dashboard</span>
+            </div>
+            <img src="assets/admin-dashboard-light.png" alt="RetroLab Dashboard — Full operational overview and human curation" class="screenshot-img" loading="lazy" />
+          </div>
+        </div>
+        <div class="showcase-text">
+          <span class="showcase-tag showcase-tag-green">Pipeline & Human Oversight</span>
+          <h3 class="showcase-title">Automated Discovery with a Deliberate Quality Gate</h3>
+          <p class="showcase-desc">The pipeline autonomously scrapes 15+ international RSS feeds, deduplicates content, and queues articles for processing. But full automation without oversight is reckless. The Curation Queue is a deliberate design choice: a single human decision point where an editor reviews, approves, or discards each article in one click before the AI rewriting engine takes over. This is the "human-in-the-loop" pattern that ensures editorial integrity at scale.</p>
+        </div>
+      </div>
+
+      <!-- Block 2: FinOps (Text Left / Image Right) -->
+      <div class="showcase-block showcase-block-reverse">
+        <div class="showcase-visual">
+          <div class="screenshot-frame">
+            <div class="frame-header">
+              <div class="frame-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="frame-url">admin.retrolab.com.vn/finops</span>
+            </div>
+            <img src="assets/admin-finops-light.png" alt="RetroLab FinOps Dashboard — Per-model token cost and ROI tracking" class="screenshot-img" loading="lazy" />
+          </div>
+        </div>
+        <div class="showcase-text">
+          <span class="showcase-tag showcase-tag-blue">Unit Economics</span>
+          <h3 class="showcase-title">FinOps — Real-Time Cost Intelligence</h3>
+          <p class="showcase-desc">Proving the pipeline works is step one. Proving it's profitable is step two. The FinOps dashboard tracks per-model token spend across Gemini and Claude in real time, breaking down cost-per-article to the fraction of a cent. This is the tool that answers the single most important PM question: <em>"At $0.001 per article, is the AI pipeline cheaper than hiring one junior editor?"</em> The answer drives every routing decision in the system.</p>
+        </div>
+      </div>
+
+      <!-- Block 3: Editor (Image Left / Text Right) -->
+      <div class="showcase-block">
+        <div class="showcase-visual">
+          <div class="screenshot-frame">
+            <div class="frame-header">
+              <div class="frame-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="frame-url">admin.retrolab.com.vn/editor</span>
+            </div>
+            <img src="assets/admin-editor-light.png" alt="RetroLab Rich Content Editor — Split-screen Markdown with Notion sync" class="screenshot-img" loading="lazy" />
+          </div>
+        </div>
+        <div class="showcase-text">
+          <span class="showcase-tag showcase-tag-cyan">Zero-Friction Tooling</span>
+          <h3 class="showcase-title">Rich Editor — Where Content Gets Polished</h3>
+          <p class="showcase-desc">After an article clears the pipeline and passes curation, it arrives here. The editor provides a split-screen Markdown environment with live preview, inline AI-assisted rewriting, and one-click publish directly to Notion. By syncing with the Notion API as the content store, there is zero database hosting cost and zero onboarding friction — editors work in a tool they already know.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       Metrics / Results Section
+       ═══════════════════════════════════════════ -->
+  <section id="metrics" class="section section-metrics">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Impact & Results</span>
+        <h2 class="section-title">Measurable Outcomes</h2>
+        <p class="section-desc">Key results that demonstrate the platform's effectiveness and efficiency.</p>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-card-value">50+</div>
+          <div class="metric-card-label">Articles/Day Capacity</div>
+          <p class="metric-card-desc">Automated pipeline processes and publishes 50+ articles daily from 15+ international sources without manual intervention.</p>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-value">~2 min</div>
+          <div class="metric-card-label">Time-to-Publish</div>
+          <p class="metric-card-desc">From source article detection to fully localized, SEO-optimized Vietnamese content published on the live site.</p>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-value">$0.001</div>
+          <div class="metric-card-label">Cost Per Article</div>
+          <p class="metric-card-desc">Multi-provider LLM routing and free-tier optimization drive per-article cost to a fraction of a cent.</p>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-value">99%</div>
+          <div class="metric-card-label">Automation Rate</div>
+          <p class="metric-card-desc">Only the curation step requires human input. Everything else from discovery to publishing is fully automated.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       PM Contribution Section
+       ═══════════════════════════════════════════ -->
+  <section class="section section-pm">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Product Management</span>
+        <h2 class="section-title">My Role & Contributions</h2>
+        <p class="section-desc">Served as the sole Product Manager and Technical Architect, driving the platform from initial concept to live deployment.</p>
+      </div>
+
+      <div class="pm-grid">
+        <div class="pm-card">
+          <div class="pm-card-header">
+            <h3>Product Strategy</h3>
+          </div>
+          <ul class="pm-list">
+            <li>Defined the "0-to-1" product vision for a high-volume, low-overhead media platform</li>
+            <li>Defined the Vietnamese localization strategy to capture market share from slower, manual-translation competitors</li>
+            <li>Navigated resource constraints by leveraging free-tier APIs and headless integrations</li>
+          </ul>
+        </div>
+        <div class="pm-card">
+          <div class="pm-card-header">
+            <h3>End-to-End Execution</h3>
+          </div>
+          <ul class="pm-list">
+            <li>Owned the complete product lifecycle from initial architecture to live deployment</li>
+            <li>Bridged the gap between complex AI pipeline logic and a seamless CMS user experience</li>
+            <li>Architected the technical stack and managed the complete delivery cycle across frontend interfaces and backend APIs</li>
+          </ul>
+        </div>
+        <div class="pm-card">
+          <div class="pm-card-header">
+            <h3>Growth & Analytics</h3>
+          </div>
+          <ul class="pm-list">
+            <li>Designed a FinOps dashboard to aggressively track and optimize LLM token costs</li>
+            <li>Iterated on AI prompt engineering based on output quality and SEO performance</li>
+            <li>Defined success metrics and built internal dashboards to track content throughput, cost efficiency, and pipeline health</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       CTA Section
+       ═══════════════════════════════════════════ -->
+  <section class="section section-cta">
+    <div class="container">
+      <div class="cta-content">
+        <h2 class="cta-title">See It Live</h2>
+        <p class="cta-desc">Visit retrolab.com.vn to experience the fully automated platform firsthand.</p>
+        <div class="cta-actions">
+          <a href="https://retrolab.com.vn" target="_blank" rel="noopener" class="btn btn-primary btn-lg">
+            <span>Visit retrolab.com.vn</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       Footer — matching retrolab.com.vn
+       ═══════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <!-- Column 1: Brand -->
+        <div class="footer-brand-col">
+          <div class="footer-brand">
+            <svg class="logo-svg" width="24" height="24" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="16" fill="#2563eb" />
+              <circle cx="22" cy="10" r="4" fill="#facc15" />
+            </svg>
+            <span class="logo-text">Retro<span class="logo-accent">Lab</span></span>
+          </div>
+          <p class="footer-tagline">Bắt trọn mọi chuyển động của thế giới số tại RetroLab. Trạm tin tức tổng hợp đa nguồn về Công Nghệ, AI cho đến thế giới Game và Giả Lập.</p>
+          <div class="footer-social">
+            <a href="#" aria-label="Facebook">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </a>
+            <a href="#" aria-label="Twitter">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+            </a>
+            <a href="#" aria-label="YouTube">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Column 2: Categories -->
+        <div class="footer-col">
+          <h4 class="footer-heading">Chuyên mục</h4>
+          <ul class="footer-nav">
+            <li><a href="https://retrolab.com.vn/category/ai" target="_blank" rel="noopener">Trí tuệ nhân tạo</a></li>
+            <li><a href="https://retrolab.com.vn/category/cong-nghe" target="_blank" rel="noopener">Công Nghệ</a></li>
+            <li><a href="https://retrolab.com.vn/category/it" target="_blank" rel="noopener">Công Nghệ Thông Tin</a></li>
+            <li><a href="https://retrolab.com.vn/category/game-gia-lap" target="_blank" rel="noopener">Game &amp; Giả Lập</a></li>
+            <li><a href="https://retrolab.com.vn/category/tin-tuc" target="_blank" rel="noopener">Tin tức</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 3: About -->
+        <div class="footer-col">
+          <h4 class="footer-heading">Về chúng tôi</h4>
+          <ul class="footer-nav">
+            <li><a href="https://retrolab.com.vn/gioi-thieu" target="_blank" rel="noopener">Giới thiệu</a></li>
+            <li><a href="https://retrolab.com.vn/chinh-sach-bao-mat" target="_blank" rel="noopener">Chính sách bảo mật</a></li>
+            <li><a href="https://retrolab.com.vn/dieu-khoan-su-dung" target="_blank" rel="noopener">Điều khoản sử dụng</a></li>
+            <li><a href="https://retrolab.com.vn/lien-he-quang-cao" target="_blank" rel="noopener">Liên hệ quảng cáo</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 4: Contact -->
+        <div class="footer-col">
+          <h4 class="footer-heading">Liên hệ</h4>
+          <ul class="footer-nav">
+            <li>
+              <a href="mailto:contact@retrolab.com.vn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:8px"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                contact@retrolab.com.vn
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 RetroLab.com.vn. All rights reserved.</span>
+        <span>Designed with <span class="heart">♥</span> for the Tech Community</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+name: Deploy Portfolio to Cloud Run
+
+on:
+  workflow_dispatch:   # Manual trigger only
+  push:
+    branches: [main]
+    paths:
+      - 'LandingPage/**'
+
+env:
+  GCP_PROJECT: retrolab-prod
+  GCP_REGION: asia-southeast1
+  REGISTRY: asia-southeast1-docker.pkg.dev/retrolab-prod/retrolab
+  IMAGE: asia-southeast1-docker.pkg.dev/retrolab-prod/retrolab/portfolio
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # for Workload Identity Federation
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Auth Docker to GAR
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build & Push
+        run: |
+          docker build \
+            -f LandingPage/Dockerfile \
+            -t ${{ env.IMAGE }}:latest \
+            -t ${{ env.IMAGE }}:${{ github.sha }} \
+            LandingPage/
+          docker push ${{ env.IMAGE }}:latest
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy retrolab-portfolio \
+            --image ${{ env.IMAGE }}:latest \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 128Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 2

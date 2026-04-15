@@ -399,6 +399,36 @@ function RunTab({
     staleTime: 60_000,
   });
 
+  // Config for auto-approve toggle
+  const { data: config } = useQuery({
+    queryKey: ['pipeline-config'],
+    queryFn: api.getPipelineConfig,
+  });
+
+  const autoApproveMutation = useMutation({
+    mutationFn: (enabled: boolean) => {
+      if (!config) return Promise.reject(new Error('Config not loaded'));
+      return api.updatePipelineConfig({ ...config, auto_approve: enabled });
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-config'] });
+      toast.success(enabled ? 'Auto-approve enabled — new articles go live automatically' : 'Auto-approve disabled — articles will be saved as drafts');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const autoPublishMutation = useMutation({
+    mutationFn: (enabled: boolean) => {
+      if (!config) return Promise.reject(new Error('Config not loaded'));
+      return api.updatePipelineConfig({ ...config, auto_publish: enabled });
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-config'] });
+      toast.success(enabled ? 'Auto-publish enabled — approved articles are pushed to Notion automatically' : 'Auto-publish disabled — you publish to Notion manually');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const toggleTag = (tag: string) => {
@@ -448,6 +478,7 @@ function RunTab({
   const totalArticles = pipelineStatus?.total_articles ?? 0;
 
   const hasPendingWork = rawNew > 0 || rawProcessing > 0;
+  const isAutoApprove = config?.auto_approve ?? false;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -455,6 +486,112 @@ function RunTab({
         <h2 className="text-3xl font-extrabold tracking-tight font-headline text-on-surface">Run Pipeline</h2>
         <p className="text-on-surface-variant mt-2 text-lg">Manually trigger the news discovery and processing pipeline.</p>
       </div>
+
+      {/* ── Auto-Approve Toggle ─────────────────────────── */}
+      {config && (
+        <div className={`rounded-2xl p-5 border transition-all duration-300 ${
+          isAutoApprove
+            ? 'bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border-emerald-500/30'
+            : 'bg-surface-container-low border-outline-variant/15'
+        }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                isAutoApprove
+                  ? 'bg-emerald-500/20 text-emerald-600'
+                  : 'bg-surface-container text-outline'
+              }`}>
+                <span className="material-symbols-outlined text-[22px]">
+                  {isAutoApprove ? 'verified' : 'gpp_maybe'}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-on-surface">Auto-Approve</p>
+                  {isAutoApprove && (
+                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      LIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {isAutoApprove
+                    ? 'Articles are automatically approved after pipeline completion — no manual review needed'
+                    : 'Articles are saved as drafts after pipeline — you review and approve manually'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => autoApproveMutation.mutate(!isAutoApprove)}
+              disabled={autoApproveMutation.isPending}
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                isAutoApprove
+                  ? 'bg-emerald-500 focus:ring-emerald-500/50'
+                  : 'bg-outline/30 focus:ring-outline/30'
+              } ${autoApproveMutation.isPending ? 'opacity-60' : 'cursor-pointer'}`}
+              title={isAutoApprove ? 'Click to disable auto-approve' : 'Click to enable auto-approve'}
+            >
+              <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                isAutoApprove ? 'left-[30px]' : 'left-0.5'
+              }`} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Auto-Publish Toggle ─────────────────────────── */}
+      {config && (
+        <div className={`rounded-2xl p-5 border transition-all duration-300 ${
+          (config.auto_publish ?? false)
+            ? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-blue-500/10 border-blue-500/30'
+            : 'bg-surface-container-low border-outline-variant/15'
+        }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                (config.auto_publish ?? false)
+                  ? 'bg-blue-500/20 text-blue-600'
+                  : 'bg-surface-container text-outline'
+              }`}>
+                <span className="material-symbols-outlined text-[22px]">
+                  {(config.auto_publish ?? false) ? 'cloud_upload' : 'cloud_off'}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-on-surface">Auto-Publish to Notion</p>
+                  {(config.auto_publish ?? false) && (
+                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      LIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {(config.auto_publish ?? false)
+                    ? 'Approved articles are automatically pushed to Notion — they go live on the website within 30 seconds'
+                    : 'Approved articles stay in the dashboard — you publish to Notion manually'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => autoPublishMutation.mutate(!(config.auto_publish ?? false))}
+              disabled={autoPublishMutation.isPending}
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                (config.auto_publish ?? false)
+                  ? 'bg-blue-500 focus:ring-blue-500/50'
+                  : 'bg-outline/30 focus:ring-outline/30'
+              } ${autoPublishMutation.isPending ? 'opacity-60' : 'cursor-pointer'}`}
+              title={(config.auto_publish ?? false) ? 'Click to disable auto-publish' : 'Click to enable auto-publish'}
+            >
+              <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                (config.auto_publish ?? false) ? 'left-[30px]' : 'left-0.5'
+              }`} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Curation Banner ──────────────────────────────── */}
       {rawScraped > 0 && (
@@ -644,7 +781,7 @@ function RunTab({
                 <span className="text-on-surface-variant font-medium flex-shrink-0 text-xs w-[120px]">{a.step}</span>
                 <span className="text-on-surface-variant truncate flex-1 text-xs" title={a.detail}>{a.detail}</span>
                 <span className="text-[10px] text-outline flex-shrink-0">
-                  {new Date(a.ts).toLocaleTimeString()}
+                  {new Date(a.ts).toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
               </div>
             ))}

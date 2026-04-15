@@ -19,6 +19,10 @@ export interface ArticleData {
   coverImage: string;
   isFeatured: boolean;
   tags: string;
+  /** First image from article content — used as fallback when cover fails */
+  contentFirstImage?: string;
+  /** All unique images from article content — used as cascading fallbacks */
+  contentImages?: string[];
 }
 
 export interface ArticleDetail extends Omit<ArticleData, 'isFeatured' | 'slug'> {

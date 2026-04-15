@@ -69,8 +69,10 @@ function mapPageToArticle(page: any): ArticleData {
   const tags = extractProperty(page, 'Tags', 'multi_select', '');
   const coverImage = page.cover?.external?.url || page.cover?.file?.url || 'https://picsum.photos/seed/default/800/450';
 
-  return { id: page.id, title, slug, excerpt, category, date, author, coverImage, isFeatured, tags };
+  return { id: page.id, title, slug, excerpt, category, date, author, coverImage, isFeatured, tags, contentFirstImage: undefined };
 }
+
+
 
 export async function getPosts(): Promise<ArticleData[]> {
   const cacheKey = 'all-posts';
@@ -354,6 +356,21 @@ export async function getPostBySlug(slug: string): Promise<ArticleDetail | null>
   const content = n2m.toMarkdownString(mdblocks);
   const htmlContent = await marked.parse(content.parent);
 
+  // Extract ALL unique image URLs from content for cascading fallback
+  // (cover → contentImages[0] → contentImages[1] → … → placeholder)
+  const imgRegex = /<img[^>]+src="([^"]+)"/g;
+  const contentImages: string[] = [];
+  const seenUrls = new Set<string>([coverImage]); // skip the cover itself
+  let match: RegExpExecArray | null;
+  while ((match = imgRegex.exec(htmlContent)) !== null && contentImages.length < 10) {
+    const url = match[1];
+    if (url && !seenUrls.has(url)) {
+      seenUrls.add(url);
+      contentImages.push(url);
+    }
+  }
+  const contentFirstImage = contentImages[0] || undefined;
+
   const article: ArticleDetail = {
     id: page.id,
     title,
@@ -363,6 +380,8 @@ export async function getPostBySlug(slug: string): Promise<ArticleDetail | null>
     author,
     tags,
     coverImage,
+    contentFirstImage,
+    contentImages,
     content: htmlContent
   };
 

@@ -119,6 +119,8 @@ class PipelineConfig(BaseModel):
     # Auto-Approval
     auto_approve: bool = False
     auto_approve_select_image: bool = True
+    # Auto-Publish to Notion
+    auto_publish: bool = False
     # Scheduler
     scheduler_enabled: bool = False
     scheduler_mode: str = "interval"
@@ -563,6 +565,7 @@ async def get_config() -> PipelineConfig:
         randomize_sources=env.get("RANDOMIZE_SOURCES", "true").lower() == "true",
         auto_approve=env.get("AUTO_APPROVE", "false").lower() == "true",
         auto_approve_select_image=env.get("AUTO_APPROVE_SELECT_IMAGE", "true").lower() == "true",
+        auto_publish=env.get("AUTO_PUBLISH", "false").lower() == "true",
         scheduler_enabled=env.get("SCHEDULER_ENABLED", "false").lower() == "true",
         scheduler_mode=env.get("SCHEDULER_MODE", "interval"),
         scheduler_time_of_day=env.get("SCHEDULER_TIME_OF_DAY", "08:00, 16:00"),
@@ -595,6 +598,7 @@ async def update_config(config: PipelineConfig = Body(...)) -> dict[str, str]:
         "RANDOMIZE_SOURCES": str(config.randomize_sources).lower(),
         "AUTO_APPROVE": str(config.auto_approve).lower(),
         "AUTO_APPROVE_SELECT_IMAGE": str(config.auto_approve_select_image).lower(),
+        "AUTO_PUBLISH": str(config.auto_publish).lower(),
         "SCHEDULER_ENABLED": str(config.scheduler_enabled).lower(),
         "SCHEDULER_MODE": config.scheduler_mode,
         "SCHEDULER_TIME_OF_DAY": config.scheduler_time_of_day,
@@ -827,6 +831,7 @@ def _apply_scheduler_config(
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 _scheduler_task = loop.create_task(_scheduler_loop())
+                _ensure_watchdog()  # Always run watchdog alongside scheduler
                 msg = f"every {interval}m" if mode == "interval" else f"at {time_of_day} local"
                 _log_scheduler_activity(
                     f"Started config: {mode} ({msg}) -> {task}",
@@ -966,6 +971,317 @@ def _init_scheduler_from_env():
 _init_scheduler_from_env()
 
 
+# ── Auto-Recovery Watchdog ───────────────────────────────────────
+# Runs every 10 minutes to detect and re-enqueue stuck tasks.
+# This replaces the manual "Retry Stuck" button with automatic
+# self-healing. Tasks can get stuck when:
+#   - A worker crashes mid-execution
+#   - All retries are exhausted but on_failure handler didn't fire
+#   - Network issues cause task loss between broker and worker
+
+_WATCHDOG_INTERVAL = 60   # 1 minute — primary retry mechanism
+_STUCK_THRESHOLD_MINUTES = 2  # re-enqueue if stuck longer than this
+_watchdog_task: asyncio.Task | None = None
+_watchdog_state: dict[str, Any] = {
+    "enabled": False,
+    "last_run_at": None,
+    "last_recovered": {},
+    "total_recovered": 0,
+}
+
+
+async def _watchdog_loop():
+    """Background loop that auto-recovers stuck pipeline tasks."""
+    global _watchdog_state
+    import logging
+    _wlog = logging.getLogger("pipeline.watchdog")
+
+    _watchdog_state["enabled"] = True
+
+    while _watchdog_state["enabled"]:
+        try:
+            await asyncio.sleep(_WATCHDOG_INTERVAL)
+
+            if not _watchdog_state["enabled"]:
+                break
+
+            # Skip if pipeline is stopped
+            try:
+                _r = _redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+                if _r.exists("pipeline:stopped"):
+                    continue
+            except Exception:
+                continue
+
+            # Run stuck recovery in a thread (sync DB access)
+            counts = await asyncio.to_thread(_recover_stuck_tasks)
+
+            _watchdog_state["last_run_at"] = datetime.now().astimezone().isoformat()
+            _watchdog_state["last_recovered"] = counts
+
+            total = sum(counts.values())
+            if total > 0:
+                _watchdog_state["total_recovered"] += total
+                _log_scheduler_activity(
+                    f"🔧 Watchdog recovered {total} stuck tasks: {counts}",
+                    status="done",
+                )
+                _wlog.info(f"Watchdog recovered {total} stuck tasks: {counts}")
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            _wlog.error(f"Watchdog error: {e}")
+            await asyncio.sleep(30)
+
+    _watchdog_state["enabled"] = False
+
+
+def _recover_stuck_tasks() -> dict[str, int]:
+    """Find and re-enqueue tasks stuck in intermediate states.
+
+    Only recovers articles that have been stuck for longer than
+    _STUCK_THRESHOLD_MINUTES to avoid interfering with tasks that
+    are still legitimately running.
+    """
+    from sqlalchemy import text
+
+    celery = _get_celery()
+    engine = _get_engine()
+    counts = {"scrape": 0, "rewrite": 0, "images": 0}
+    threshold = f"{_STUCK_THRESHOLD_MINUTES} minutes"
+
+    with engine.connect() as conn:
+        # 1. Raw articles stuck at 'new' for too long → re-enqueue scrape
+        rows = conn.execute(text(
+            "SELECT id, url, url_hash, source_name, source_type, title, category "
+            "FROM raw_articles "
+            "WHERE status = 'new' "
+            f"AND created_at < NOW() - INTERVAL '{threshold}'"
+        )).fetchall()
+        for row in rows:
+            celery.send_task(
+                "workers.tasks.scrape_article_task",
+                args=[{
+                    "url": row[1], "url_hash": row[2],
+                    "source_name": row[3], "source_type": row[4],
+                    "title": row[5], "category": row[6],
+                }],
+                queue="scraper_queue",
+            )
+            counts["scrape"] += 1
+
+        # 2. Raw articles stuck at 'processing' → re-enqueue rewrite
+        rows = conn.execute(text(
+            "SELECT id, source_name FROM raw_articles "
+            "WHERE status = 'processing' "
+            f"AND created_at < NOW() - INTERVAL '{threshold}'"
+        )).fetchall()
+        for row in rows:
+            celery.send_task(
+                "workers.tasks.rewrite_article_task",
+                args=[str(row[0]), row[1] or "", "vi"],
+                queue="rewriter_queue",
+            )
+            counts["rewrite"] += 1
+
+        # 3. Articles stuck at 'image_pending' → re-enqueue image search
+        rows = conn.execute(text(
+            "SELECT id FROM articles "
+            "WHERE status = 'image_pending' "
+            f"AND created_at < NOW() - INTERVAL '{threshold}'"
+        )).fetchall()
+        for row in rows:
+            celery.send_task(
+                "workers.tasks.search_images_task",
+                args=[str(row[0])],
+                queue="image_search_queue",
+            )
+            counts["images"] += 1
+
+    return counts
+
+
+@router.get("/watchdog/status")
+async def get_watchdog_status() -> dict[str, Any]:
+    """Return the current watchdog state."""
+    return {
+        "enabled": _watchdog_state["enabled"],
+        "interval_seconds": _WATCHDOG_INTERVAL,
+        "stuck_threshold_minutes": _STUCK_THRESHOLD_MINUTES,
+        "last_run_at": _watchdog_state["last_run_at"],
+        "last_recovered": _watchdog_state["last_recovered"],
+        "total_recovered": _watchdog_state["total_recovered"],
+    }
+
+
+def _ensure_watchdog():
+    """Start the watchdog if not already running."""
+    global _watchdog_task
+    if _watchdog_task is None or _watchdog_task.done():
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                _watchdog_task = loop.create_task(_watchdog_loop())
+        except RuntimeError:
+            pass
+    # Also start auto-publisher
+    _ensure_auto_publisher()
+
+
+# ── Auto-Publisher (approved → Notion) ───────────────────────────
+# When auto_approve is enabled, this loop watches for articles with
+# status='approved' and publishes them to Notion automatically.
+# This completes the fully automated pipeline:
+#   Discover → Scrape → Curate → Rewrite → Images → Approved → Published (live)
+
+_AUTO_PUBLISH_INTERVAL = 30  # seconds
+_auto_publish_task: asyncio.Task | None = None
+_auto_publish_state: dict[str, Any] = {
+    "enabled": False,
+    "last_run_at": None,
+    "total_published": 0,
+    "last_error": None,
+}
+
+
+async def _auto_publish_loop():
+    """Background loop that publishes approved articles to Notion."""
+    global _auto_publish_state
+    import logging
+    _plog = logging.getLogger("pipeline.auto_publish")
+
+    _auto_publish_state["enabled"] = True
+
+    while _auto_publish_state["enabled"]:
+        try:
+            await asyncio.sleep(_AUTO_PUBLISH_INTERVAL)
+
+            if not _auto_publish_state["enabled"]:
+                break
+
+            # Check if auto_publish is enabled in config
+            try:
+                _r = _redis_lib.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+                raw = _r.get("pipeline:config")
+                if raw:
+                    conf = json.loads(raw)
+                    # Handle both boolean True and string "true"
+                    val = conf.get("AUTO_PUBLISH", False)
+                    is_enabled = val is True or (isinstance(val, str) and val.lower() == "true")
+                    if not is_enabled:
+                        continue  # auto-publish disabled, skip
+                else:
+                    continue  # no config, skip
+            except Exception as _exc:
+                _plog.debug(f"Config check failed: {_exc}")
+                continue
+
+            # Find approved articles not yet published to Notion
+            published_count = await _auto_publish_articles()
+
+            _auto_publish_state["last_run_at"] = datetime.now().astimezone().isoformat()
+
+            if published_count > 0:
+                _auto_publish_state["total_published"] += published_count
+                _auto_publish_state["last_error"] = None
+                _log_scheduler_activity(
+                    f"📤 Auto-published {published_count} article{'s' if published_count != 1 else ''} to Notion",
+                    status="done",
+                )
+                _plog.info(f"Auto-published {published_count} articles to Notion")
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            _auto_publish_state["last_error"] = str(e)
+            _plog.error(f"Auto-publish error: {e}")
+            await asyncio.sleep(10)
+
+    _auto_publish_state["enabled"] = False
+
+
+async def _auto_publish_articles() -> int:
+    """Find approved articles and publish them to Notion. Returns count published."""
+    from sqlalchemy import select
+    from ..database import get_db
+    from ..models import Article
+    from ..notion import push_to_notion
+    import logging
+    _plog = logging.getLogger("pipeline.auto_publish")
+
+    published = 0
+
+    async for db in get_db():
+        # Find articles that are approved but not yet published to Notion
+        result = await db.execute(
+            select(Article)
+            .where(Article.status == "approved")
+            .where(Article.notion_page_id.is_(None))
+            .limit(10)  # Process in batches to avoid overloading Notion API
+        )
+        articles = result.scalars().all()
+
+        if not articles:
+            return 0
+
+        for article in articles:
+            try:
+                _log_scheduler_activity(
+                    f"📤 Auto-publishing: {(article.title or 'Untitled')[:60]}…",
+                    status="running",
+                )
+
+                notion_page_id = await push_to_notion(article)
+
+                article.notion_page_id = notion_page_id
+                article.published_to_notion_at = datetime.now(timezone.utc)
+                article.status = "published"
+                await db.commit()
+                await db.refresh(article)
+
+                published += 1
+                _plog.info(
+                    f"Auto-published: {article.title[:60]} → {notion_page_id}"
+                )
+
+            except Exception as e:
+                _plog.error(f"Failed to auto-publish {article.id}: {e}")
+                _log_scheduler_activity(
+                    f"📤 Auto-publish failed: {(article.title or 'Untitled')[:60]} — {str(e)[:80]}",
+                    status="error",
+                )
+                # Don't fail the whole batch — continue with next article
+                await db.rollback()
+                continue
+
+    return published
+
+
+@router.get("/auto-publish/status")
+async def get_auto_publish_status() -> dict[str, Any]:
+    """Return the current auto-publisher state."""
+    return {
+        "enabled": _auto_publish_state["enabled"],
+        "interval_seconds": _AUTO_PUBLISH_INTERVAL,
+        "last_run_at": _auto_publish_state["last_run_at"],
+        "total_published": _auto_publish_state["total_published"],
+        "last_error": _auto_publish_state["last_error"],
+    }
+
+
+def _ensure_auto_publisher():
+    """Start the auto-publisher if not already running."""
+    global _auto_publish_task
+    if _auto_publish_task is None or _auto_publish_task.done():
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                _auto_publish_task = loop.create_task(_auto_publish_loop())
+        except RuntimeError:
+            pass
+
+
 # Auto-start scheduler on first request if enabled but task not yet created
 @router.get("/scheduler/ensure-started")
 async def ensure_scheduler_started() -> dict[str, str]:
@@ -973,8 +1289,10 @@ async def ensure_scheduler_started() -> dict[str, str]:
     global _scheduler_task
     if _scheduler_state["enabled"] and (_scheduler_task is None or _scheduler_task.done()):
         _scheduler_task = asyncio.get_event_loop().create_task(_scheduler_loop())
-        return {"status": "started"}
-    return {"status": "already_running" if _scheduler_state["enabled"] else "disabled"}
+    # Always start watchdog alongside scheduler
+    _ensure_watchdog()
+    status = "started" if _scheduler_state["enabled"] else "disabled"
+    return {"status": status, "watchdog": "running" if _watchdog_state["enabled"] else "starting"}
 
 
 # ── Worker Management ────────────────────────────────────────────
@@ -2776,8 +3094,7 @@ async def retry_stuck(target: str = Body("all", embed=True)) -> dict[str, Any]:
         if target in ("all", "rewrite"):
             rows = conn.execute(text(
                 "SELECT id, source_name FROM raw_articles "
-                "WHERE status = 'processing' "
-                "AND id NOT IN (SELECT raw_article_id FROM articles WHERE raw_article_id IS NOT NULL)"
+                "WHERE status = 'processing'"
             )).fetchall()
             for row in rows:
                 celery.send_task(

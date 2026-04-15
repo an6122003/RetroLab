@@ -508,6 +508,8 @@ export interface PipelineConfig {
   // Auto-Approval
   auto_approve: boolean;
   auto_approve_select_image: boolean;
+  // Auto-Publish
+  auto_publish: boolean;
   // Scheduler
   scheduler_enabled: boolean;
   scheduler_mode: string;

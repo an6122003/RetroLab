@@ -22,19 +22,39 @@ logger = structlog.get_logger(__name__)
 # ── Engine & session factory ────────────────────────────────────
 
 _engine = None
+_engine_pid = None  # Track which process created the engine
 
 
 def get_engine():
-    """Get the async engine singleton."""
-    global _engine
+    """Get the async engine for the current process.
+
+    Celery prefork workers share the parent's memory after fork.
+    asyncpg connections cannot be shared across processes, so we:
+    1. Detect the PID change and create a fresh engine per child.
+    2. Use NullPool — each query gets a fresh connection and closes it
+       immediately. This avoids all connection-sharing issues with asyncpg.
+    """
+    import os
+    from sqlalchemy.pool import NullPool
+    global _engine, _engine_pid
+
+    current_pid = os.getpid()
+    if _engine is not None and _engine_pid != current_pid:
+        # We're in a forked child — dispose the parent's engine and create fresh
+        try:
+            _engine.sync_engine.dispose(close=False)
+        except Exception:
+            pass
+        _engine = None
+
     if _engine is None:
         settings = get_settings()
         _engine = create_async_engine(
             settings.database_url,
             echo=False,
-            pool_size=5,
-            max_overflow=10,
+            poolclass=NullPool,
         )
+        _engine_pid = current_pid
     return _engine
 
 

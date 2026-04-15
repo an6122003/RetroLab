@@ -11,6 +11,7 @@ import asyncio
 from datetime import datetime, timezone
 
 import structlog
+from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 
 from workers.celery_app import app
 
@@ -56,23 +57,43 @@ def _is_pipeline_stopped() -> bool:
     except Exception:
         return False
 
-# Persistent event loop for the Celery worker thread.
-# asyncio.run() creates and closes a loop each time, which invalidates
-# any async DB engine connections. Instead, we keep one loop alive.
-_worker_loop = None
+
+def _force_update_status(table: str, row_id: str, new_status: str):
+    """Last-resort sync DB update — works even when asyncpg/event loop is broken.
+
+    Uses a raw synchronous psycopg2 connection to bypass all async machinery.
+    Called from MaxRetriesExceededError and SoftTimeLimitExceeded handlers.
+    """
+    try:
+        from config.settings import get_settings
+        settings = get_settings()
+        # Convert async URL to sync for psycopg2
+        db_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+
+        import psycopg2
+        conn = psycopg2.connect(db_url, connect_timeout=5)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE {table} SET status = %s WHERE id = %s::uuid",
+                    (new_status, row_id),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+        logger.info("force_status_update", table=table, id=row_id, status=new_status)
+    except Exception as e:
+        logger.error("force_status_update_failed", table=table, id=row_id, error=str(e))
 
 
 def _run_async(coro):
     """Run an async coroutine from a sync Celery task.
-    
-    Uses a persistent event loop so the asyncpg engine connections
-    stay valid across multiple calls within the same task.
+
+    Uses asyncio.run() for complete isolation — each call gets a fresh
+    event loop. Safe with NullPool since there are no persistent DB
+    connections to preserve across calls.
     """
-    global _worker_loop
-    if _worker_loop is None or _worker_loop.is_closed():
-        _worker_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(_worker_loop)
-    return _worker_loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _pick_best_hero_image(
@@ -269,6 +290,8 @@ def discover_crawl(self, source_tags=None, category=None):
     bind=True,
     max_retries=3,
     default_retry_delay=30,
+    soft_time_limit=120,   # 2 min soft timeout
+    time_limit=180,        # 3 min hard kill
 )
 def scrape_article_task(self, article_info: dict):
     """
@@ -338,9 +361,21 @@ def scrape_article_task(self, article_info: dict):
         )
         return {"raw_article_id": raw_article_id, "status": "scraped"}
 
+    except SoftTimeLimitExceeded:
+        logger.error("scrape_task_timeout", url=url, source_name=source_name)
+        _log_activity("📰 Scraping", f"Timeout — watchdog will retry: {title_short}", "error")
+        # Keep status at 'new' so watchdog re-enqueues automatically
+        return {"status": "timeout"}
+
     except Exception as exc:
         logger.exception("scrape_task_failed", url=url, source_name=source_name)
-        raise self.retry(exc=exc)
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError:
+            logger.error("scrape_task_gave_up", url=url)
+            _log_activity("📰 Scraping", f"Retries exhausted — watchdog will retry: {title_short}", "error")
+            # Keep status at 'new' so watchdog re-enqueues automatically
+            return {"status": "max_retries_exceeded"}
 
 
 # ── Stage 3: Rewriter ───────────────────────────────────────────
@@ -348,8 +383,10 @@ def scrape_article_task(self, article_info: dict):
 @app.task(
     name="workers.tasks.rewrite_article_task",
     bind=True,
-    max_retries=2,
-    default_retry_delay=60,
+    max_retries=5,
+    default_retry_delay=30,
+    soft_time_limit=300,   # 5 min soft timeout (LLM can be slow)
+    time_limit=360,        # 6 min hard kill
 )
 def rewrite_article_task(self, raw_article_id: str, source_name: str = "", output_language: str = "vi"):
     """
@@ -407,6 +444,8 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
                     raw_article_id=raw_article_id,
                     images_found=len(available_images),
                 )
+        except SoftTimeLimitExceeded:
+            raise  # Let timeout propagate
         except Exception:
             logger.warning("pre_search_images_failed", raw_article_id=raw_article_id)
             # Non-critical — continue without available images
@@ -476,20 +515,28 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
         )
         return {"article_id": article_id, "status": "image_pending"}
 
+    except SoftTimeLimitExceeded:
+        logger.error("rewrite_task_timeout", raw_article_id=raw_article_id)
+        _log_activity("✍️ Rewriting", f"Timeout — watchdog will retry: {raw_article_id[:12]}…", "error")
+        # Keep status at 'processing' so watchdog re-enqueues automatically
+        return {"status": "timeout"}
+
     except ValueError as exc:
-        # Malformed JSON after retry — mark as failed
-        logger.error("rewrite_failed_permanently", raw_article_id=raw_article_id, error=str(exc))
-        _run_async(create_article({
-            "raw_article_id": raw_article_id,
-            "status": "rewrite_failed",
-            "source_url": "",
-            "source_outlet": source_name,
-        }))
+        # Malformed JSON from LLM — keep at 'processing' for watchdog retry
+        logger.error("rewrite_malformed_json", raw_article_id=raw_article_id, error=str(exc))
+        _log_activity("✍️ Rewriting", f"Bad LLM output — watchdog will retry: {raw_article_id[:12]}…", "error")
+        # Keep status at 'processing' so watchdog re-enqueues automatically
         return {"status": "rewrite_failed"}
 
     except Exception as exc:
         logger.exception("rewrite_task_failed", raw_article_id=raw_article_id)
-        raise self.retry(exc=exc)
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError:
+            logger.error("rewrite_task_gave_up", raw_article_id=raw_article_id)
+            _log_activity("✍️ Rewriting", f"Retries exhausted — watchdog will retry: {raw_article_id[:12]}…", "error")
+            # Keep status at 'processing' so watchdog re-enqueues automatically
+            return {"status": "max_retries_exceeded"}
 
 
 # ── Stage 4: Image Search (FINAL STAGE) ─────────────────────────
@@ -497,8 +544,10 @@ def rewrite_article_task(self, raw_article_id: str, source_name: str = "", outpu
 @app.task(
     name="workers.tasks.search_images_task",
     bind=True,
-    max_retries=2,
+    max_retries=3,
     default_retry_delay=30,
+    soft_time_limit=120,   # 2 min soft timeout
+    time_limit=180,        # 3 min hard kill
 )
 def search_images_task(self, article_id: str):
     """
@@ -660,7 +709,20 @@ def search_images_task(self, article_id: str):
         )
         return {"article_id": article_id, "images_found": len(all_images), "status": final_status}
 
+    except SoftTimeLimitExceeded:
+        logger.error("image_search_timeout", article_id=article_id)
+        _log_activity("🖼️ Image Search", f"Timeout — watchdog will retry: {article_id[:12]}…", "error")
+        # Keep status at 'image_pending' so watchdog re-enqueues automatically
+        return {"status": "timeout"}
+
     except Exception as exc:
         logger.exception("image_search_failed", article_id=article_id)
-        raise self.retry(exc=exc)
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError:
+            logger.error("image_search_gave_up", article_id=article_id)
+            _log_activity("🖼️ Image Search", f"Retries exhausted — watchdog will retry: {article_id[:12]}…", "error")
+            # Keep status at 'image_pending' so watchdog re-enqueues automatically
+            return {"status": "max_retries_exceeded"}
+
 
