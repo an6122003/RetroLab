@@ -287,7 +287,7 @@ deploy-server: ## Build & run pipeline + publisher on this server
 	$(call stop-dev-processes)
 	@echo "  >> Building and starting server containers..."
 	@set -a && . $(PUB_ROOT)/.env && set +a && \
-		docker compose -f docker-compose.server.yml up -d --build
+		docker compose -f docker-compose.server.yml up -d --build --scale worker=2
 	@echo ""
 	@echo "  [OK] Server services deployed!"
 	@echo ""

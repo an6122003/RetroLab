@@ -167,6 +167,7 @@ async function ArticleContent({ slug }: { slug: string }) {
           className="object-cover"
           priority
           sizes="100vw"
+          fallbackSrcs={post.contentImages}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#fafbff] via-black/20 to-transparent"></div>
       </figure>

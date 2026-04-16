@@ -101,7 +101,7 @@ function SearchResultItem({ article }: { article: ArticleData }) {
   return (
     <Link href={`/article/${article.slug}`} className="flex flex-col sm:flex-row gap-6 group cursor-pointer">
       <div className="w-full sm:w-[300px] shrink-0 relative overflow-hidden rounded-lg aspect-[16/9]">
-        <SafeImage src={article.coverImage} alt={article.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="300px" />
+        <SafeImage src={article.coverImage} alt={article.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="300px" fallbackSrc={article.contentFirstImage} />
         <div className="absolute top-3 left-3">
           <span className="bg-[#2563eb] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">{article.category}</span>
         </div>

@@ -54,6 +54,13 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
+@app.on_event("startup")
+async def start_background_tasks():
+    """Start watchdog and auto-publisher loops on app boot."""
+    from .routers.pipeline import _ensure_watchdog
+    _ensure_watchdog()  # This also starts _ensure_auto_publisher()
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "publisher"}

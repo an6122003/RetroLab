@@ -49,10 +49,15 @@ app.conf.update(
         "workers.tasks.search_images_task": {"queue": "image_search_queue"},
     },
 
-    # Retry defaults
+    # Reliability defaults
     task_acks_late=True,
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
+
+    # Global time limits (safety net — per-task overrides in tasks.py)
+    task_soft_time_limit=300,   # 5 min soft limit (raises SoftTimeLimitExceeded)
+    task_time_limit=360,        # 6 min hard kill
+    result_expires=3600,        # Clean up results after 1 hour
 
     # ── Beat schedule: EMPTY — do not add entries here. ──────────
     # All scheduled pipeline runs are controlled by the publisher's

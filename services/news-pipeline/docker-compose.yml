@@ -63,7 +63,7 @@ services:
       celery -A workers.celery_app worker
       -Q scraper_queue,rewriter_queue,image_search_queue,default
       --loglevel=info
-      --concurrency=4
+      --concurrency=8
 
   # NOTE: Celery Beat has been REMOVED.
   # All scheduled runs are managed by the publisher's built-in scheduler,

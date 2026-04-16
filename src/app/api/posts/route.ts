@@ -13,11 +13,14 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(24, Math.max(1, parseInt(searchParams.get('limit') || '12', 10)));
     
-    // Skip posts already shown on the homepage (first ~25 are used in sections)
-    const HOMEPAGE_POSTS_COUNT = 25;
-
     const allPosts = await getPosts();
-    const availablePosts = allPosts.slice(HOMEPAGE_POSTS_COUNT);
+
+    // The homepage uses ~16 unique articles in various sections.
+    // If total posts is small, don't skip any so users can browse everything.
+    const HOMEPAGE_UNIQUE = Math.min(16, allPosts.length);
+    const availablePosts = allPosts.length > HOMEPAGE_UNIQUE
+      ? allPosts.slice(HOMEPAGE_UNIQUE)
+      : allPosts; // Show all if not many posts
     
     const startIdx = (page - 1) * limit;
     const posts = availablePosts.slice(startIdx, startIdx + limit);
