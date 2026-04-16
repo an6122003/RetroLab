@@ -1152,6 +1152,8 @@ async def _auto_publish_loop():
     _plog = logging.getLogger("pipeline.auto_publish")
 
     _auto_publish_state["enabled"] = True
+    _plog.info("Auto-publisher loop started — checking every %ds", _AUTO_PUBLISH_INTERVAL)
+    _log_scheduler_activity("📤 Auto-publisher loop started", status="done")
 
     while _auto_publish_state["enabled"]:
         try:
