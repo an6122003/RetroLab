@@ -17,6 +17,7 @@ RetroLab được thành lập với sứ mệnh "Bắt trọn mọi chuyển đ
 - Ngôn ngữ: Tiếng Việt (Vietnamese)
 - RSS Feed: https://retrolab.com.vn/feed.xml
 - Sitemap: https://retrolab.com.vn/sitemap.xml
+- Full Article Index: https://retrolab.com.vn/llms-full.txt
 
 ## Liên hệ
 

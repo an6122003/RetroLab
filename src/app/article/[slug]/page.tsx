@@ -9,6 +9,8 @@ import { ArticleSkeleton } from "@/components/ui/Skeletons";
 import ArticleActions from "@/components/post/ArticleActions";
 import AdBanner from "@/components/ui/AdBanner";
 import RelatedPostsCarousel from "@/components/post/RelatedPostsCarousel";
+import AEOArticleSchema from "@/components/seo/AEOArticleSchema";
+import type { FAQItem } from "@/components/seo/AEOArticleSchema";
 
 const SITE_URL = "https://retrolab.com.vn";
 
@@ -68,6 +70,77 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   );
 }
 
+/**
+ * Extract FAQ-like Q&A pairs from article HTML content.
+ * Looks for patterns like:
+ *   <h2>Question?</h2> or <h3>Question?</h3> followed by <p>Answer</p>
+ * Also detects Vietnamese question patterns (e.g., "...là gì?", "Tại sao...", "Làm sao...")
+ */
+function extractFAQFromContent(html: string): FAQItem[] {
+  const faqs: FAQItem[] = [];
+
+  // Match h2/h3 headings that end with '?' or start with Vietnamese question words
+  const headingRegex = /<h[23][^>]*>(.*?)<\/h[23]>\s*<p>([\s\S]*?)<\/p>/gi;
+  const questionPatterns = /(\?|là gì|tại sao|làm sao|như thế nào|khi nào|bao giờ|ở đâu|ai là|có nên|nên không|thế nào)/i;
+
+  let match: RegExpExecArray | null;
+  while ((match = headingRegex.exec(html)) !== null && faqs.length < 5) {
+    const rawQuestion = match[1].replace(/<[^>]+>/g, '').trim();
+    const rawAnswer = match[2].replace(/<[^>]+>/g, '').trim();
+
+    if (rawQuestion && rawAnswer && questionPatterns.test(rawQuestion)) {
+      faqs.push({
+        question: rawQuestion,
+        answer: rawAnswer.length > 300 ? rawAnswer.substring(0, 297) + '...' : rawAnswer,
+      });
+    }
+  }
+
+  return faqs;
+}
+
+/**
+ * Find related posts by matching tags (shared tags = higher relevance).
+ * Falls back to same-category posts if no tag matches found.
+ */
+function getRelatedPosts(
+  currentPost: { id: string; tags: string; category: string },
+  allPosts: typeof import("@/lib/notion").getPosts extends () => Promise<infer T> ? (T extends (infer U)[] ? U[] : never) : never
+) {
+  const currentTags = currentPost.tags
+    .split(',')
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean);
+
+  // Score each post by number of shared tags
+  const scored = allPosts
+    .filter(p => p.id !== currentPost.id)
+    .map(p => {
+      const postTags = p.tags
+        .split(',')
+        .map(t => t.trim().toLowerCase())
+        .filter(Boolean);
+      const sharedTags = currentTags.filter(t => postTags.includes(t)).length;
+      const sameCategory = p.category.toLowerCase() === currentPost.category.toLowerCase() ? 1 : 0;
+      // Score: shared tags * 3 + same category bonus
+      return { post: p, score: sharedTags * 3 + sameCategory };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  // Take top 12 with score > 0, then fill with recent posts
+  const related = scored.filter(s => s.score > 0).slice(0, 12).map(s => s.post);
+
+  if (related.length < 12) {
+    const relatedIds = new Set(related.map(p => p.id));
+    const filler = allPosts
+      .filter(p => p.id !== currentPost.id && !relatedIds.has(p.id))
+      .slice(0, 12 - related.length);
+    related.push(...filler);
+  }
+
+  return related;
+}
+
 async function ArticleContent({ slug }: { slug: string }) {
   const post = await getPostBySlug(slug);
   
@@ -75,79 +148,33 @@ async function ArticleContent({ slug }: { slug: string }) {
     notFound();
   }
 
-  // Get related posts for "You May Also Like"
+  // Get related posts using tag-based matching for internal SEO loop
   const allPosts = await getPosts();
-  const relatedPosts = allPosts
-    .filter(p => p.id !== post.id)
-    .slice(0, 12);
+  const relatedPosts = getRelatedPosts(post, allPosts);
 
   const articleUrl = `${SITE_URL}/article/${slug}`;
 
-  // JSON-LD: Article + BreadcrumbList
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "NewsArticle",
-        "@id": articleUrl,
-        headline: post.title,
-        description: post.excerpt,
-        image: {
-          "@type": "ImageObject",
-          url: post.coverImage,
-          width: 1200,
-          height: 630,
-        },
-        datePublished: post.date,
-        dateModified: post.date,
-        author: {
-          "@type": "Person",
-          name: post.author,
-        },
-        publisher: {
-          "@id": `${SITE_URL}/#organization`,
-        },
-        mainEntityOfPage: {
-          "@type": "WebPage",
-          "@id": articleUrl,
-        },
-        articleSection: post.category,
-        keywords: post.tags || undefined,
-        inLanguage: "vi",
-        isAccessibleForFree: true,
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Trang chủ",
-            item: SITE_URL,
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: post.category,
-            item: `${SITE_URL}/category/${post.category.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '')}`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: post.title,
-            item: articleUrl,
-          },
-        ],
-      },
-    ],
-  };
+  // Extract FAQ items from article content for AEO
+  const faqItems = extractFAQFromContent(post.content);
+
+  // Estimate word count for schema
+  const plainText = post.content.replace(/<[^>]+>/g, '');
+  const wordCount = plainText.split(/\s+/).filter(Boolean).length;
 
   return (
     <div className="relative min-h-screen font-sans text-gray-800">
-      {/* JSON-LD structured data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      {/* AEO-optimized JSON-LD: Article + Breadcrumbs + auto-extracted FAQ */}
+      <AEOArticleSchema
+        title={post.title}
+        description={post.excerpt}
+        author={post.author}
+        publishedDate={post.date}
+        coverImage={post.coverImage}
+        articleUrl={articleUrl}
+        category={post.category}
+        tags={post.tags}
+        faqItems={faqItems}
+        wordCount={wordCount}
       />
 
       {/* ── Subtle gradient background ── */}
@@ -242,6 +269,28 @@ async function ArticleContent({ slug }: { slug: string }) {
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
+          {/* FAQ Section — rendered visually if FAQs were extracted */}
+          {faqItems.length > 0 && (
+            <section className="mt-12 mb-8 border-t border-gray-200 pt-8" aria-label="Câu hỏi thường gặp">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 uppercase tracking-wide">
+                Câu hỏi thường gặp
+              </h2>
+              <div className="space-y-5">
+                {faqItems.map((faq, idx) => (
+                  <details key={idx} className="group bg-gray-50 rounded-xl border border-gray-200/80 overflow-hidden">
+                    <summary className="flex items-center justify-between cursor-pointer px-5 py-4 text-[15px] font-semibold text-gray-800 hover:bg-gray-100 transition-colors">
+                      <span>{faq.question}</span>
+                      <span className="text-gray-400 group-open:rotate-180 transition-transform duration-200 ml-4 shrink-0">▼</span>
+                    </summary>
+                    <div className="px-5 pb-5 text-gray-600 text-[14px] leading-relaxed border-t border-gray-200/60 pt-4">
+                      {faq.answer}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Tags — now clickable, linking to tag search */}
           {post.tags && (
             <footer className="flex flex-wrap gap-2 mt-8 mb-4" aria-label="Từ khóa bài viết">
@@ -279,7 +328,7 @@ async function ArticleContent({ slug }: { slug: string }) {
         <AdBanner size="leaderboard" slotId="article-after-content" />
       </div>
 
-      {/* You May Also Like — Carousel */}
+      {/* You May Also Like — Tag-based related posts for SEO internal linking */}
       <RelatedPostsCarousel posts={relatedPosts} />
     </div>
   );

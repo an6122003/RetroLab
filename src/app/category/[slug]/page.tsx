@@ -1,6 +1,7 @@
 import { getPosts } from "@/lib/notion";
 import type { Metadata } from "next";
 import * as Layouts from "./layouts";
+import CategorySchema from "@/components/seo/CategorySchema";
 
 export const revalidate = 3600;
 
@@ -45,6 +46,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       url,
       siteName: 'RetroLab',
       locale: 'vi_VN',
+      images: [
+        {
+          url: `${SITE_URL}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: `${categoryName} - RetroLab`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${categoryName} - RetroLab`,
+      description,
+      images: [`${SITE_URL}/og-image.png`],
     },
   };
 }
@@ -53,6 +68,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const resolvedParams = await params;
   const slug = resolvedParams.slug;
   const categoryName = getCategoryName(slug);
+  const description = CATEGORY_DESCRIPTIONS[slug]
+    || `Tất cả bài viết trong chuyên mục ${categoryName} trên RetroLab.`;
   
   const allPosts = await getPosts();
   let categoryPosts: typeof allPosts;
@@ -73,26 +90,36 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     categoryPosts = allPosts.slice(0, 10);
   }
 
+  // Inject structured data for all category layouts
+  const schemaElement = (
+    <CategorySchema
+      categoryName={categoryName}
+      categorySlug={slug}
+      description={description}
+      articleCount={categoryPosts.length}
+    />
+  );
+
   if (slug === 'ai') {
-    return <Layouts.AILayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
+    return <>{schemaElement}<Layouts.AILayout categoryName={categoryName} slug={slug} posts={categoryPosts} /></>;
   }
 
   if (slug === 'tin-tuc') {
-    return <Layouts.NewsLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
+    return <>{schemaElement}<Layouts.NewsLayout categoryName={categoryName} slug={slug} posts={categoryPosts} /></>;
   }
 
   if (slug === 'cong-nghe') {
-    return <Layouts.MagazineLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
+    return <>{schemaElement}<Layouts.MagazineLayout categoryName={categoryName} slug={slug} posts={categoryPosts} /></>;
   }
 
   if (slug === 'game-gia-lap') {
-    return <Layouts.AlternateLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
+    return <>{schemaElement}<Layouts.AlternateLayout categoryName={categoryName} slug={slug} posts={categoryPosts} /></>;
   }
 
   if (slug === 'it') {
-    return <Layouts.ITLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
+    return <>{schemaElement}<Layouts.ITLayout categoryName={categoryName} slug={slug} posts={categoryPosts} /></>;
   }
 
   // Default layout
-  return <Layouts.DefaultCategoryLayout categoryName={categoryName} slug={slug} posts={categoryPosts} />;
+  return <>{schemaElement}<Layouts.DefaultCategoryLayout categoryName={categoryName} slug={slug} posts={categoryPosts} /></>;
 }
