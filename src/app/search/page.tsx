@@ -38,9 +38,9 @@ export default async function SearchPage({
   return (
     <div className="bg-white font-sans text-gray-800 min-h-screen">
       {/* Search Header */}
-      <div className="bg-[#f8f9fa] border-b border-gray-200 py-12 md:py-20">
+      <div className="bg-[#f8f9fa] border-b border-gray-200 py-8 sm:py-12 md:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-3xl md:text-5xl font-sans font-black tracking-tight text-gray-900 mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-sans font-black tracking-tight text-gray-900 mb-6 sm:mb-8">
             {tag ? (
               <span className="flex items-center justify-center gap-3">
                 <Tag size={36} className="text-[#2563eb]" />
@@ -55,7 +55,7 @@ export default async function SearchPage({
       </div>
 
       {/* Search Results Section */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {isSearching && (
           <div className="flex flex-col sm:flex-row justify-between items-center mb-10 pb-4 border-b border-gray-200 gap-4">
             <p className="text-gray-600 text-lg">

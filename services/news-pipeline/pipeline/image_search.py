@@ -297,16 +297,56 @@ async def _scrape_google_images(query: str) -> dict[str, Any] | None:
     Scrape Google Images search results using Playwright.
 
     Uses a real headed browser to bypass Google's bot detection.
-    Runs Playwright synchronously in a thread pool to avoid event loop conflicts.
+    Runs Playwright in a subprocess (multiprocessing) to guarantee
+    cleanup of all chrome-headless child processes on timeout.
     Falls back to httpx if Playwright is unavailable.
     """
-    import asyncio
-    import concurrent.futures
+    import multiprocessing
 
     try:
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            images = await loop.run_in_executor(pool, _google_images_playwright, query)
+        from playwright.sync_api import sync_playwright as _check_pw  # noqa: F401
+    except ImportError:
+        logger.warning("playwright_not_installed_for_google_images")
+        images = await _google_images_httpx_fallback(query)
+        if not images:
+            return None
+        best = _pick_best_image(images)
+        return {
+            "url": best["url"],
+            "thumbnail_url": best.get("thumbnail_url", best["url"]),
+            "source": "google_images",
+            "photographer": "",
+            "page_url": best.get("page_url", ""),
+            "license": "Web image — verify rights before publishing",
+            "query_used": query,
+            "ai_generated": False,
+            "prompt_used": None,
+            "width": best.get("width"),
+            "height": best.get("height"),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    try:
+        from config.settings import get_settings
+        settings = get_settings()
+
+        result_queue = multiprocessing.Queue()
+        proc = multiprocessing.Process(
+            target=_google_images_playwright_worker,
+            args=(query, settings.playwright_headless, result_queue),
+            daemon=True,
+        )
+        proc.start()
+        proc.join(timeout=60)  # 60s max for image search
+
+        images = []
+        if proc.is_alive():
+            logger.warning("google_images_playwright_timeout", query=query)
+            _kill_process_tree(proc.pid)
+            proc.kill()
+            proc.join(timeout=5)
+        elif not result_queue.empty():
+            images = result_queue.get_nowait()
 
         if not images:
             # Fallback to httpx (may work sometimes)
@@ -345,30 +385,50 @@ async def _scrape_google_images(query: str) -> dict[str, Any] | None:
         return None
 
 
-def _google_images_playwright(query: str) -> list[dict[str, Any]]:
+def _kill_process_tree(pid):
+    """Kill a process and all its children using SIGKILL."""
+    import os
+    import signal
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["pgrep", "-P", str(pid)],
+            capture_output=True, text=True, timeout=5,
+        )
+        child_pids = [int(p) for p in result.stdout.strip().split() if p]
+        for cpid in child_pids:
+            _kill_process_tree(cpid)
+        os.kill(pid, signal.SIGKILL)
+    except Exception:
+        pass
+
+
+def _google_images_playwright_worker(query: str, headless: bool, result_queue) -> None:
     """
     Synchronous Playwright-based Google Images scraper.
-    Runs in a thread pool from the async caller.
+    Runs in a child process for complete isolation.
     """
+    import signal
     import time as _time
 
+    # Ensure this process and its children die if parent disappears
+    try:
+        import ctypes
+        PR_SET_PDEATHSIG = 1
+        ctypes.CDLL("libc.so.6").prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+    except Exception:
+        pass
+
+    pw = None
+    browser = None
     try:
         from playwright.sync_api import sync_playwright
-    except ImportError:
-        logger.warning("playwright_not_installed_for_google_images")
-        return []
-
-    images: list[dict[str, Any]] = []
-    seen_urls: set[str] = set()
-
-    try:
-        from config.settings import get_settings
-        settings = get_settings()
 
         pw = sync_playwright().start()
         browser = pw.chromium.launch(
-            headless=settings.playwright_headless,
-            args=["--disable-blink-features=AutomationControlled"],
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled",
+                  "--no-sandbox", "--disable-dev-shm-usage"],
         )
         ctx = browser.new_context(
             user_agent=(
@@ -404,16 +464,24 @@ def _google_images_playwright(query: str) -> list[dict[str, Any]]:
         # Get the full page HTML
         html = page.content()
 
-        browser.close()
-        pw.stop()
-
         # Parse results from rendered HTML
         images = _parse_google_results(html)
+        result_queue.put(images)
 
     except Exception as exc:
         logger.warning("google_images_playwright_failed", error=str(exc))
-
-    return images
+        result_queue.put([])
+    finally:
+        try:
+            if browser:
+                browser.close()
+        except Exception:
+            pass
+        try:
+            if pw:
+                pw.stop()
+        except Exception:
+            pass
 
 
 async def _google_images_httpx_fallback(query: str) -> list[dict[str, Any]]:

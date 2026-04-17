@@ -180,27 +180,97 @@ def _extract_links(html: str, base_url: str, url_pattern: str) -> list[str]:
 
 
 async def _fetch_with_playwright(url: str, headless: bool = True) -> str:
-    """Fetch a page using Playwright for JS-rendered content."""
-    from playwright.async_api import async_playwright
+    """Fetch a page using Playwright for JS-rendered content.
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=headless,
-            args=["--no-sandbox", "--disable-dev-shm-usage"],
-        )
+    Uses multiprocessing for full isolation — guarantees all chrome-headless
+    child processes are cleaned up even on timeout.
+    """
+    import multiprocessing
+
+    def _do_fetch(target_url: str, is_headless: bool, result_queue):
+        """Run in a child process."""
+        import signal
+
+        # Ensure this process and its children die if parent disappears
         try:
-            page = await browser.new_page()
+            import ctypes
+            PR_SET_PDEATHSIG = 1
+            ctypes.CDLL("libc.so.6").prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+        except Exception:
+            pass
+
+        pw = None
+        browser = None
+        try:
+            from playwright.sync_api import sync_playwright
+            pw = sync_playwright().start()
+            browser = pw.chromium.launch(
+                headless=is_headless,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
+            page = browser.new_page()
             try:
-                await page.goto(url, wait_until="networkidle", timeout=30_000)
+                page.goto(target_url, wait_until="networkidle", timeout=30_000)
             except Exception:
                 try:
-                    await page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+                    page.goto(target_url, wait_until="domcontentloaded", timeout=15_000)
                 except Exception:
                     pass
-            content = await page.content()
+            result_queue.put(page.content())
+        except Exception:
+            result_queue.put("")
         finally:
             try:
-                await browser.close()
+                if browser:
+                    browser.close()
             except Exception:
                 pass
-    return content
+            try:
+                if pw:
+                    pw.stop()
+            except Exception:
+                pass
+
+    def _kill_process_tree(pid):
+        """Kill a process and all its children."""
+        import os
+        import signal
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["pgrep", "-P", str(pid)],
+                capture_output=True, text=True, timeout=5,
+            )
+            child_pids = [int(p) for p in result.stdout.strip().split() if p]
+            for cpid in child_pids:
+                _kill_process_tree(cpid)
+            os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+
+    result_queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_do_fetch,
+        args=(url, headless, result_queue),
+        daemon=True,
+    )
+    proc.start()
+
+    try:
+        proc.join(timeout=60)  # 60s max for page fetch
+        if proc.is_alive():
+            logger.warning("page_crawler_playwright_timeout", url=url)
+            _kill_process_tree(proc.pid)
+            proc.kill()
+            proc.join(timeout=5)
+            return ""
+        if not result_queue.empty():
+            return result_queue.get_nowait()
+        return ""
+    except Exception:
+        logger.exception("page_crawler_playwright_error", url=url)
+        if proc.is_alive():
+            _kill_process_tree(proc.pid)
+            proc.kill()
+            proc.join(timeout=5)
+        return ""

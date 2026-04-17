@@ -103,7 +103,7 @@ export default function YoutubeCarousel({ videos }: { videos: YoutubeVideo[] }) 
               href={video.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group/card flex-shrink-0 w-[290px] flex flex-col bg-gray-900 p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              className="group/card flex-shrink-0 w-[240px] sm:w-[290px] flex flex-col bg-gray-900 p-2 rounded-lg hover:bg-gray-800 transition-colors"
             >
               <div className="relative overflow-hidden rounded-md mb-3 aspect-[16/9] shrink-0">
                 <SafeImage

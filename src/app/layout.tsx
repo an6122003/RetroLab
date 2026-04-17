@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/ui/Header";
 import Footer from "@/components/ui/Footer";
 import ScrollToTop from "@/components/ui/ScrollToTop";
+import BottomNavigation from "@/components/ui/BottomNavigation";
 import NavigationProgress from "@/components/ui/NavigationProgress";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
@@ -181,6 +182,7 @@ export default function RootLayout({
             {children}
           </div>
           <Footer />
+          <BottomNavigation />
           <ScrollToTop />
         </AuthProvider>
       </body>

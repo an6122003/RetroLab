@@ -7,6 +7,8 @@ import type { Metadata } from 'next';
 import { Suspense } from "react";
 import { ArticleSkeleton } from "@/components/ui/Skeletons";
 import ArticleActions from "@/components/post/ArticleActions";
+import ReadingProgressBar from "@/components/post/ReadingProgressBar";
+import FloatingArticleBar from "@/components/post/FloatingArticleBar";
 import AdBanner from "@/components/ui/AdBanner";
 import RelatedPostsCarousel from "@/components/post/RelatedPostsCarousel";
 import AEOArticleSchema from "@/components/seo/AEOArticleSchema";
@@ -163,6 +165,8 @@ async function ArticleContent({ slug }: { slug: string }) {
 
   return (
     <div className="relative min-h-screen font-sans text-gray-800">
+      {/* Reading progress bar + time left (mobile only) */}
+      <ReadingProgressBar estimatedMinutes={Math.max(2, Math.ceil(wordCount / 200))} />
       {/* AEO-optimized JSON-LD: Article + Breadcrumbs + auto-extracted FAQ */}
       <AEOArticleSchema
         title={post.title}
@@ -186,7 +190,7 @@ async function ArticleContent({ slug }: { slug: string }) {
       </div>
 
       {/* Full-width Hero Image */}
-      <figure className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] mb-12">
+      <figure className="relative w-full h-[260px] sm:h-[400px] md:h-[500px] lg:h-[600px] mb-8 sm:mb-12">
         <SafeImage 
           src={post.coverImage} 
           alt={post.title} 
@@ -247,10 +251,10 @@ async function ArticleContent({ slug }: { slug: string }) {
                 {post.category}
               </Link>
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-[42px] font-sans font-bold leading-tight mb-6 text-gray-900">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-sans font-bold leading-tight mb-4 sm:mb-6 text-gray-900">
               {post.title}
             </h1>
-            <div className="flex items-center justify-center text-[11px] text-gray-500 gap-3 uppercase tracking-wide">
+            <div className="flex items-center justify-center flex-wrap text-[11px] text-gray-500 gap-3 uppercase tracking-wide">
               <span>By <span className="font-bold text-gray-700">{post.author.toUpperCase()}</span></span>
               <span className="flex items-center gap-1.5">
                 <Clock size={12} />
@@ -327,6 +331,9 @@ async function ArticleContent({ slug }: { slug: string }) {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-4">
         <AdBanner size="leaderboard" slotId="article-after-content" />
       </div>
+
+      {/* Floating Action Bar — mobile only */}
+      <FloatingArticleBar postSlug={slug} postTitle={post.title} />
 
       {/* You May Also Like — Tag-based related posts for SEO internal linking */}
       <RelatedPostsCarousel posts={relatedPosts} />
