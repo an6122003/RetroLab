@@ -64,6 +64,8 @@ services:
     <<: *pipeline-common
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      replicas: 2
     command: >
       celery -A workers.celery_app worker
       -Q scraper_queue,rewriter_queue,image_search_queue,default

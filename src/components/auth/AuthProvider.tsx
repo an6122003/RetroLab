@@ -49,10 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     init();
 
-    // Subscribe to auth changes (login/logout/token refresh)
+    // Subscribe to live auth changes (login / logout / token refresh).
+    // NOTE: we do NOT set loading=true here — that would cause a full
+    // re-render of UserMenu (skeleton flash) every time the session refreshes.
     const unsubscribe = onAuthStateChange((updatedUser) => {
       if (mounted) {
         setUser(updatedUser);
+        // Only clear loading if it's still true from the initial load.
+        // This handles the race where the subscription fires before init() resolves.
         setLoading(false);
       }
     });

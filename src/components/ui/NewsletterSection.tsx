@@ -73,7 +73,7 @@ export default function NewsletterSection() {
 
   return (
     <>
-      <div className="bg-[#2563eb] rounded-lg p-8 md:p-10 text-center flex flex-col items-center shadow-xl mb-12 relative overflow-hidden">
+      <div className="bg-[#2563eb] rounded-lg p-6 sm:p-8 md:p-10 text-center flex flex-col items-center shadow-xl mb-8 sm:mb-12 relative overflow-hidden">
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 right-0 w-60 h-60 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3" />
@@ -82,10 +82,10 @@ export default function NewsletterSection() {
           <div className="w-12 h-12 bg-[#facc15] rounded-lg flex items-center justify-center mb-4 shadow-lg">
             <Mail size={24} className="text-[#2563eb]" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2 sm:mb-3">
             Đừng bỏ lỡ bất kỳ cập nhật nào
           </h2>
-          <p className="text-blue-100 text-base max-w-2xl mb-6">
+          <p className="text-blue-100 text-sm sm:text-base max-w-2xl mb-4 sm:mb-6">
             Nhận bản tin công nghệ, đánh giá sản phẩm mới nhất và các thủ thuật AI độc quyền trực tiếp vào hộp thư của bạn.
           </p>
 
@@ -128,11 +128,11 @@ export default function NewsletterSection() {
           ═══════════════════════════════════════════ */}
       {showModal && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 bg-gray-900/50 backdrop-blur-sm animate-fade-in"
           style={{ zIndex: 99999 }}
           onClick={handleClose}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden transform transition-all" onClick={e => e.stopPropagation()}>
 
             {modalPhase === 'success' ? (
               /* ═══ SUCCESS CELEBRATION ═══ */

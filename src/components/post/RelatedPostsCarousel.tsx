@@ -35,11 +35,11 @@ export default function RelatedPostsCarousel({ posts }: { posts: RelatedPost[] }
   const canGoForward = page < totalPages - 1;
 
   return (
-    <div className="w-full bg-white/60 backdrop-blur-sm py-16 mt-8 border-t border-gray-100">
+    <div className="w-full bg-white/60 backdrop-blur-sm py-10 sm:py-16 mt-6 sm:mt-8 border-t border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header row with title + nav buttons */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-sans font-bold uppercase tracking-widest text-gray-800">
+          <h2 className="text-base sm:text-lg font-sans font-bold uppercase tracking-widest text-gray-800">
             You May Also Like
           </h2>
           {totalPages > 1 && (
@@ -70,7 +70,7 @@ export default function RelatedPostsCarousel({ posts }: { posts: RelatedPost[] }
 
         {/* 2-row × 3-col grid with page transition */}
         <div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10 transition-opacity duration-300"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 sm:gap-x-8 gap-y-8 sm:gap-y-10 transition-opacity duration-300"
           key={page}
           style={{ animation: "carousel-fade-in 0.35s ease-out" }}
         >
@@ -94,7 +94,7 @@ export default function RelatedPostsCarousel({ posts }: { posts: RelatedPost[] }
                   </span>
                 </div>
               </div>
-              <h3 className="text-[18px] font-sans font-bold leading-snug mb-3 group-hover:text-[#2563eb] transition-colors text-gray-900 line-clamp-2">
+              <h3 className="text-[16px] sm:text-[18px] font-sans font-bold leading-snug mb-2 sm:mb-3 group-hover:text-[#2563eb] transition-colors text-gray-900 line-clamp-2">
                 {post.title}
               </h3>
               <div className="flex items-center text-[11px] text-gray-400 gap-2 uppercase tracking-wide mt-auto">

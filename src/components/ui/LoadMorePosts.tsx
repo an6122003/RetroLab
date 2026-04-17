@@ -47,12 +47,12 @@ export default function LoadMorePosts() {
   return (
     <div className="mb-12">
       {/* Section Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
         <div className="w-10 h-10 bg-[#2563eb] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
           <Newspaper size={20} className="text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-wider">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 uppercase tracking-wider">
             Tất cả bài viết
           </h2>
           {totalRemaining !== null && (
@@ -66,7 +66,7 @@ export default function LoadMorePosts() {
 
       {/* Posts Grid */}
       {posts.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           {posts.map((post, idx) => (
             <Link
               key={`more-${post.id}-${idx}`}
@@ -90,8 +90,8 @@ export default function LoadMorePosts() {
               </div>
 
               {/* Content */}
-              <div className="p-5 flex-1 flex flex-col">
-                <h3 className="text-[15px] font-bold text-gray-900 leading-snug mb-2 line-clamp-2 group-hover:text-[#2563eb] transition-colors">
+              <div className="p-4 sm:p-5 flex-1 flex flex-col">
+                <h3 className="text-[14px] sm:text-[15px] font-bold text-gray-900 leading-snug mb-2 line-clamp-2 group-hover:text-[#2563eb] transition-colors">
                   {post.title}
                 </h3>
                 <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
@@ -118,7 +118,7 @@ export default function LoadMorePosts() {
           <button
             onClick={loadMore}
             disabled={loading}
-            className="group relative px-8 py-4 bg-white border-2 border-gray-200 rounded-2xl font-semibold text-gray-700 hover:border-[#2563eb] hover:text-[#2563eb] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-3 shadow-sm hover:shadow-md"
+            className="group relative px-6 sm:px-8 py-3 sm:py-4 bg-white border-2 border-gray-200 rounded-2xl font-semibold text-gray-700 hover:border-[#2563eb] hover:text-[#2563eb] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 sm:gap-3 shadow-sm hover:shadow-md text-sm sm:text-base"
           >
             {loading ? (
               <>

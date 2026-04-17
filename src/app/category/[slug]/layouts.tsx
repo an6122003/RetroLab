@@ -57,7 +57,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
           <TrendingUp size={14} className="text-[#f59e0b]/35" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-16 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 md:py-16 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -66,7 +66,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <span className="text-[#fca5a5] font-bold tracking-[0.25em] uppercase text-[11px]">Chuyên mục</span>
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-none">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-none">
                 {categoryName}
               </h1>
               <p className="text-[#fca5a5]/60 text-[13px] mt-3 font-mono tracking-wide">{'>'} Breaking News & Headlines</p>
@@ -265,7 +265,7 @@ export function NewsLayout({ categoryName, slug, posts }: LayoutProps) {
 
           {/* Sidebar */}
           <aside className="w-full lg:w-[300px] shrink-0">
-            <div className="sticky top-28 flex flex-col gap-8">
+            <div className="lg:sticky lg:top-28 flex flex-col gap-6 sm:gap-8">
               {/* Most Read / Hot */}
               {sidebarPosts.length > 0 && (
                 <div>
@@ -370,7 +370,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
       {/* Cinematic Full-Width Hero */}
       {heroPost && (
         <div className="relative">
-          <Link href={`/article/${heroPost.slug}`} className="block relative w-full h-[400px] md:h-[520px] overflow-hidden group cursor-pointer">
+          <Link href={`/article/${heroPost.slug}`} className="block relative w-full h-[280px] sm:h-[400px] md:h-[520px] overflow-hidden group cursor-pointer">
             <SafeImage src={heroPost.coverImage} alt={heroPost.title} fill className="object-cover transition-transform duration-1000 group-hover:scale-105" priority fallbackSrc={heroPost.contentFirstImage} />
             {/* Gradient overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#1a0a2e] via-[#1a0a2e]/50 to-transparent"></div>
@@ -389,7 +389,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
                   <span className="bg-[#8b5cf6] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-purple-500/40">🎮 {heroPost.category}</span>
                   <span className="bg-[#ec4899] text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-pink-500/30">Tiêu điểm</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">{heroPost.title}</h1>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">{heroPost.title}</h1>
                 <p className="text-gray-300 text-[15px] leading-relaxed line-clamp-2 mb-4 max-w-xl">{stripMarkdown(heroPost.excerpt)}</p>
                 <div className="flex items-center text-[11px] text-gray-400 gap-4 uppercase tracking-wide">
                   <span>By <span className="font-bold text-white">{heroPost.author.toUpperCase()}</span></span>
@@ -404,7 +404,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
       {/* Horizontal Featured Strip — overlapping hero */}
       {stripPosts.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20 mb-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {stripPosts.map((post, idx) => {
               const accentColors = ['#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b'];
               const accent = accentColors[idx % 4];
@@ -526,7 +526,7 @@ export function AlternateLayout({ categoryName, slug, posts }: LayoutProps) {
 
           {/* Sidebar */}
           <aside className="w-full lg:w-[300px] shrink-0">
-            <div className="sticky top-28 flex flex-col gap-8">
+            <div className="lg:sticky lg:top-28 flex flex-col gap-6 sm:gap-8">
               {/* Trending in Gaming */}
               {sidebarPosts.length > 0 && (
                 <div>
@@ -637,7 +637,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <span className="text-[#60a5fa] font-bold tracking-[0.2em] uppercase text-[11px]">Chuyên mục</span>
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-none">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-none">
                 {categoryName}
               </h1>
             </div>
@@ -685,7 +685,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
         {heroMain && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-4">
             {/* Large Hero */}
-            <Link href={`/article/${heroMain.slug}`} className="lg:col-span-3 relative group overflow-hidden rounded-xl cursor-pointer h-[320px] md:h-[420px] border border-gray-200 shadow-md">
+            <Link href={`/article/${heroMain.slug}`} className="lg:col-span-3 relative group overflow-hidden rounded-xl cursor-pointer h-[240px] sm:h-[320px] md:h-[420px] border border-gray-200 shadow-md">
               <SafeImage src={heroMain.coverImage} alt={heroMain.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" fallbackSrc={heroMain.contentFirstImage} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
               {/* Blue accent bottom bar */}
@@ -799,7 +799,7 @@ export function MagazineLayout({ categoryName, slug, posts }: LayoutProps) {
 
           {/* Sidebar */}
           <aside className="w-full lg:w-[300px] shrink-0">
-            <div className="sticky top-28 flex flex-col gap-8">
+            <div className="lg:sticky lg:top-28 flex flex-col gap-6 sm:gap-8">
               {/* Trending Tech */}
               {sidebarPosts.length > 0 && (
                 <div>
@@ -893,7 +893,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
       <div className="fixed -z-10 top-[35%] left-[50%] -translate-x-1/2 w-[900px] h-[900px] bg-[#2563eb]/[0.06] rounded-full blur-[180px] pointer-events-none"></div>
 
       {/* Dark Header with Dot Pattern and 5-Post Grid */}
-      <div className="bg-[#1a1f2e] pt-16 pb-20 relative overflow-hidden">
+      <div className="bg-[#1a1f2e] pt-10 sm:pt-16 pb-14 sm:pb-20 relative overflow-hidden">
         {/* Dot Pattern Background */}
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `radial-gradient(#4b5563 1px, transparent 1px)`,
@@ -902,7 +902,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-sans font-black tracking-widest uppercase text-white mb-6">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-sans font-black tracking-widest uppercase text-white mb-4 sm:mb-6">
               {categoryName}
             </h1>
             <p className="text-gray-300 max-w-2xl mx-auto text-[15px] leading-relaxed">
@@ -911,7 +911,7 @@ export function DefaultCategoryLayout({ categoryName, slug, posts }: LayoutProps
           </div>
 
           {/* 5-Post Bento Grid (2-1-2) */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch">
             {/* Left Column (2 Small) */}
             <div className="flex flex-col gap-6">
               {featured.slice(0, 2).map(post => (
@@ -1042,7 +1042,7 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <span className="text-[#10b981] font-bold tracking-[0.25em] uppercase text-[11px]">Chuyên mục</span>
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-none mb-5">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-none mb-5">
                 {categoryName}
               </h1>
               <p className="text-gray-400 max-w-lg text-[14px] leading-relaxed">
@@ -1167,7 +1167,7 @@ export function ITLayout({ categoryName, slug, posts }: LayoutProps) {
 
           {/* Sidebar: Numbered trending list + Newsletter CTA */}
           <aside className="w-full lg:w-[300px] shrink-0">
-            <div className="sticky top-28">
+            <div className="lg:sticky lg:top-28">
               {sidebarList.length > 0 && (
                 <>
                   <div className="flex items-center gap-3 mb-6">
@@ -1271,7 +1271,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
           <Network size={14} className="text-[#818cf8]/40" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-16 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 md:py-16 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -1280,7 +1280,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
                 </div>
                 <span className="text-[#818cf8] font-bold tracking-[0.25em] uppercase text-[11px]">Chuyên mục</span>
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-none">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-none">
                 Trí Tuệ Nhân Tạo
               </h1>
               <p className="text-[#818cf8]/70 text-[13px] mt-3 font-mono tracking-wide">{'>'} Artificial Intelligence & Machine Learning</p>
@@ -1485,7 +1485,7 @@ export function AILayout({ categoryName, slug, posts }: LayoutProps) {
 
           {/* Sidebar */}
           <aside className="w-full lg:w-[300px] shrink-0">
-            <div className="sticky top-28 flex flex-col gap-8">
+            <div className="lg:sticky lg:top-28 flex flex-col gap-6 sm:gap-8">
               {/* AI Trending */}
               {sidebarPosts.length > 0 && (
                 <div>

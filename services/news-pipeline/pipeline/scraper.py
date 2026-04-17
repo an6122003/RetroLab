@@ -417,22 +417,37 @@ def _clean_author_name(name: str) -> str:
 
 async def _fetch_with_playwright(url: str) -> str:
     """Fetch a page using Playwright with Cloudflare challenge handling.
-    
-    Runs sync Playwright in a thread pool to avoid event loop conflicts
-    in Celery workers.
+
+    Uses multiprocessing (not threading) so we can forcefully kill the
+    subprocess and ALL its chrome-headless children on timeout —
+    preventing the zombie process leak that occurs with thread pools.
     """
-    import concurrent.futures
+    import multiprocessing
     import time as _time
 
     settings = get_settings()
+    timeout_seconds = 120  # Hard limit: 2 minutes
 
-    def _do_fetch(target_url: str) -> str:
-        from playwright.sync_api import sync_playwright
-        pw = sync_playwright().start()
+    def _do_fetch(target_url: str, headless: bool, result_queue):
+        """Run in a child process — fully isolated from the Celery worker."""
+        import signal
+        import os
+
+        # Ensure this process and its children die if parent disappears
+        try:
+            import ctypes
+            PR_SET_PDEATHSIG = 1
+            ctypes.CDLL("libc.so.6").prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+        except Exception:
+            pass
+
+        pw = None
         browser = None
         try:
+            from playwright.sync_api import sync_playwright
+            pw = sync_playwright().start()
             browser = pw.chromium.launch(
-                headless=settings.playwright_headless,
+                headless=headless,
                 args=[
                     "--disable-blink-features=AutomationControlled",
                     "--no-sandbox",
@@ -470,8 +485,9 @@ async def _fetch_with_playwright(url: str) -> str:
                     pass  # Continue even on timeout
 
             # Wait for bot challenges / JS rendering to complete
+            import time as _t
             for _ in range(6):
-                _time.sleep(3)
+                _t.sleep(3)
                 title = page.title().lower()
                 try:
                     body_text = page.inner_text("body")[:500].lower()
@@ -485,7 +501,10 @@ async def _fetch_with_playwright(url: str) -> str:
                 if not blocked:
                     break
 
-            return page.content()
+            html = page.content()
+            result_queue.put(html)
+        except Exception as e:
+            result_queue.put("")
         finally:
             try:
                 if browser:
@@ -493,18 +512,56 @@ async def _fetch_with_playwright(url: str) -> str:
             except Exception:
                 pass
             try:
-                pw.stop()
+                if pw:
+                    pw.stop()
             except Exception:
                 pass
 
-    loop = asyncio.get_event_loop()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+    def _kill_process_tree(pid):
+        """Kill a process and all its children using SIGKILL."""
+        import os
+        import signal
         try:
-            return await asyncio.wait_for(
-                loop.run_in_executor(pool, _do_fetch, url),
-                timeout=120,  # Hard limit: 2 minutes max
+            # Get all child PIDs first
+            import subprocess
+            result = subprocess.run(
+                ["pgrep", "-P", str(pid)],
+                capture_output=True, text=True, timeout=5,
             )
-        except asyncio.TimeoutError:
+            child_pids = [int(p) for p in result.stdout.strip().split() if p]
+            # Recursively kill children first
+            for cpid in child_pids:
+                _kill_process_tree(cpid)
+            # Then kill the parent
+            os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+
+    result_queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_do_fetch,
+        args=(url, settings.playwright_headless, result_queue),
+        daemon=True,
+    )
+    proc.start()
+
+    try:
+        proc.join(timeout=timeout_seconds)
+        if proc.is_alive():
             logger.warning("playwright_fetch_timeout", url=url)
+            _kill_process_tree(proc.pid)
+            proc.kill()
+            proc.join(timeout=5)
             return ""
+        # Get result from queue
+        if not result_queue.empty():
+            return result_queue.get_nowait()
+        return ""
+    except Exception:
+        logger.exception("playwright_fetch_error", url=url)
+        if proc.is_alive():
+            _kill_process_tree(proc.pid)
+            proc.kill()
+            proc.join(timeout=5)
+        return ""
 
