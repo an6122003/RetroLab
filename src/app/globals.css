@@ -8,13 +8,96 @@
   body {
     @apply bg-[#f0f2f8] text-gray-800 font-sans antialiased;
   }
+
+  /* ── Global overflow prevention ──
+     IMPORTANT: Use `clip` instead of `hidden` because
+     `overflow-x: hidden` creates a new BFC that destroys
+     `position: sticky` on child elements (e.g., the header).
+     `clip` prevents horizontal overflow but does NOT break sticky.
+     ───────────────────────────────── */
+  html, body {
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ── Hide scrollbars on scrollable containers ──
+     Targeted approach instead of `*` selector to avoid
+     potential performance issues on every DOM element. */
+  html,
+  body,
+  nav,
+  aside,
+  [class*="overflow"],
+  .no-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  nav::-webkit-scrollbar,
+  aside::-webkit-scrollbar,
+  [class*="overflow"]::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
 }
+
+/* Bottom Navigation Safe Area is handled by Footer pb-20 on mobile */
+
+/* ═══════════════════════════════════════════
+   Bottom Sheet Animation
+   ═══════════════════════════════════════════ */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes slide-down-out {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+/* ═══════════════════════════════════════════
+   Responsive Utility Classes
+   ═══════════════════════════════════════════ */
+
+/* Safe container — prevents overflow on all screens */
+.safe-container {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Text clamping utilities */
+.line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+.line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+
+/* Responsive aspect ratio helper */
+.aspect-video { aspect-ratio: 16 / 9; }
+.aspect-wide  { aspect-ratio: 2.5 / 1; }
 
 /* Hide scrollbar for carousel containers */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Carousel page transition */
+/* Tap-safe: ensure comfortable touch targets on mobile */
+@media (max-width: 767px) {
+  .tap-safe {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Carousel page transition
+   ═══════════════════════════════════════════ */
 @keyframes carousel-fade-in {
   from { opacity: 0; transform: translateX(12px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -76,17 +159,17 @@
 }
 
 /* Fade-in for skeleton → content transitions */
-@keyframes fade-in {
+@keyframes content-fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out;
+.animate-content-fade-in {
+  animation: content-fade-in 0.4s ease-out;
 }
 
 /* ═══════════════════════════════════════════
-   News Ticker
+   News Ticker — responsive
    ═══════════════════════════════════════════ */
 .ticker-wrapper {
   position: relative;
@@ -116,51 +199,82 @@
 .ticker-inner {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem 0.75rem 1.25rem;
-  min-height: 52px;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem 0.625rem 1rem;
+  min-height: 48px;
+}
+
+@media (min-width: 640px) {
+  .ticker-inner {
+    gap: 1rem;
+    padding: 0.75rem 1rem 0.75rem 1.25rem;
+    min-height: 52px;
+  }
 }
 
 .ticker-label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   color: #2563eb;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   white-space: nowrap;
   flex-shrink: 0;
-  padding: 5px 12px;
+  padding: 4px 8px;
   background: rgba(37, 99, 235, 0.08);
   border-radius: 6px;
   border: 1px solid rgba(37, 99, 235, 0.12);
 }
 
+@media (min-width: 640px) {
+  .ticker-label {
+    gap: 6px;
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+}
+
 .ticker-headline-link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-width: 0;
   flex: 1;
   overflow: hidden;
   text-decoration: none;
 }
 
+@media (min-width: 640px) {
+  .ticker-headline-link {
+    gap: 0.75rem;
+  }
+}
+
 .ticker-category {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
   flex-shrink: 0;
-  padding: 3px 8px;
+  padding: 2px 6px;
   background: #f1f5f9;
   border-radius: 4px;
   border: 1px solid #e2e8f0;
   transition: color 0.2s;
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .ticker-category {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 8px;
+  }
 }
 
 .ticker-headline-link:hover .ticker-category {
@@ -170,13 +284,19 @@
 }
 
 .ticker-headline {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1e293b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: color 0.2s;
+}
+
+@media (min-width: 640px) {
+  .ticker-headline {
+    font-size: 14px;
+  }
 }
 
 .ticker-headline-link:hover .ticker-headline {
@@ -215,19 +335,33 @@
 .ticker-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex-shrink: 0;
   margin-left: auto;
 }
 
+@media (min-width: 640px) {
+  .ticker-controls {
+    gap: 4px;
+  }
+}
+
 .ticker-counter {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #94a3b8;
   font-variant-numeric: tabular-nums;
-  margin-right: 4px;
-  min-width: 28px;
+  margin-right: 2px;
+  min-width: 24px;
   text-align: center;
+}
+
+@media (min-width: 640px) {
+  .ticker-counter {
+    font-size: 11px;
+    margin-right: 4px;
+    min-width: 28px;
+  }
 }
 
 .ticker-btn {
@@ -280,11 +414,11 @@
    Custom prose styles for article content
    ═══════════════════════════════════════════ */
 .prose h2 {
-  @apply text-2xl font-sans font-bold mt-10 mb-4 text-gray-900;
+  @apply text-xl sm:text-2xl font-sans font-bold mt-8 sm:mt-10 mb-3 sm:mb-4 text-gray-900;
 }
 
 .prose p {
-  @apply leading-relaxed mb-6;
+  @apply text-[15px] sm:text-base leading-relaxed mb-5 sm:mb-6;
 }
 
 .prose img {
@@ -300,11 +434,11 @@
 }
 
 .prose figure {
-  @apply mb-8;
+  @apply mb-6 sm:mb-8;
 }
 
 .prose ul, .prose ol {
-  @apply ml-6 mb-6;
+  @apply ml-4 sm:ml-6 mb-5 sm:mb-6;
 }
 
 .prose li {
@@ -312,7 +446,7 @@
 }
 
 .prose pre {
-  @apply bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto mb-6;
+  @apply bg-gray-900 text-gray-100 rounded-lg p-3 sm:p-4 overflow-x-auto mb-5 sm:mb-6 text-sm;
 }
 
 .prose code {
@@ -321,4 +455,53 @@
 
 .prose pre code {
   @apply bg-transparent text-gray-100 px-0 py-0;
+}
+
+/* Ensure images and embeds in prose never overflow */
+.prose img,
+.prose video,
+.prose iframe,
+.prose embed,
+.prose object {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose iframe {
+  @apply w-full rounded-lg;
+  aspect-ratio: 16 / 9;
+}
+
+/* Tables responsive */
+.prose table {
+  @apply text-sm;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ═══════════════════════════════════════════
+   Mobile-specific adjustments
+   ═══════════════════════════════════════════ */
+@media (max-width: 639px) {
+  /* Ensure all fixed-width elements don't overflow */
+  .max-w-7xl,
+  .max-w-5xl,
+  .max-w-4xl,
+  .max-w-3xl {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Mobile slide-in animation for menu
+   ═══════════════════════════════════════════ */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out;
 }
